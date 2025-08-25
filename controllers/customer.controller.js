@@ -1,22 +1,40 @@
 const Customer = require("../models/customer.model");
 const Machine = require("../models/machine.model");
-
+const User = require("../models/user.model");
 // Helper: pick only allowed fields
 const pickCustomerFields = (body) => {
   return {
-    organizationName: body.organizationName,
+    organization: body.organization,  // organization ID
     phoneNumber: body.phoneNumber,
     email: body.email,
     contactPerson: body.contactPerson,
     designation: body.designation,
-    machines: body.machines // will validate in schema
+    customerName: body.customerName,
+    machines: body.machines,
+    countryOrigin: body.countryOrigin
   };
 };
 
-// ✅ Create Customer
+
+
 exports.createCustomer = async (req, res) => {
   try {
     const customerData = pickCustomerFields(req.body);
+
+    // ✅ Filter users to only those belonging to the organization
+    if (customerData.organization) {
+      // Fetch users from DB by IDs
+      const validUser = await User.findById(customerData.organization, "fullName email");
+
+
+      // Only add one organization user
+      if (validUser) {
+        customerData.users = validUser._id;
+      } else {
+        customerData.users = {};
+      }
+    }
+
     const customer = new Customer(customerData);
 
     // If machines assigned, update their status
@@ -27,16 +45,23 @@ exports.createCustomer = async (req, res) => {
     }
 
     await customer.save();
-    res.status(201).json({ message: "Customer created successfully", data: customer });
+
+    // Populate machines & users for response
+    const populatedCustomer = await Customer.findById(customer._id)
+      .populate("machines.machine")
+      .populate("users", "fullName email");
+
+    res.status(201).json({ message: "Customer created successfully", data: populatedCustomer });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
 
+
 // ✅ Get All Active Customers
 exports.getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find({ isActive: true }).populate("machines.machine");
+    const customers = await Customer.find({ isActive: true }).populate("machines.machine").populate("users", "fullName email");
     res.json({ count: customers.length, data: customers });
   } catch (err) {
     res.status(500).json({ error: err.message });

@@ -7,5 +7,6 @@ router.post("/register", auth.register);
 router.post("/verify-email", auth.verifyEmail);
 router.post("/verify-phone", auth.verifyPhone);
 router.post("/login", auth.login);
+router.get("/getOraganization", auth.getOrganizationUsers);
 
-module.exports = router;
+module.exports = router;1

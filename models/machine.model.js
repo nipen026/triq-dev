@@ -4,9 +4,8 @@ const machineSchema = new mongoose.Schema({
   machineName: { type: String, required: true },      // "#1234 - Machine Name"
   modelNumber: { type: String, required: true },      // "#1234"
   serialNumber: { type: String, unique: true },       // Unique SN
-  functionality: { 
-    type: String, 
-    enum: ["Manual", "Semi Automatic", "Fully Automatic"], 
+  machine_type: { 
+    type: String,
     required: true 
   },
 
@@ -27,8 +26,8 @@ const machineSchema = new mongoose.Schema({
     enum: ["Available", "Assigned", "Under Maintenance"], 
     default: "Available" 
   },
-  isActive: { type: Boolean, default: true }
-
+  isActive: { type: Boolean, default: true },
+  remarks: String
 
 }, { timestamps: true });
 

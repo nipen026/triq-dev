@@ -104,3 +104,22 @@ exports.login = async (req, res) => {
 
   res.status(200).json({ success: true , token });
 };
+
+
+exports.getOrganizationUsers = async (req, res) => {
+  try {
+    // find the Organization role _id
+    const orgRole = await Role.findOne({ name: "organization" });
+    if (!orgRole) {
+      return res.status(404).json({ message: "Organization role not found" });
+    }
+
+    // find all users who have that role
+    const users = await User.find({ roles: orgRole._id })
+      .populate("roles", "name"); // optional populate
+
+    res.json({ count: users.length, data: users });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};

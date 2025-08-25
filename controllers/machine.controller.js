@@ -6,12 +6,13 @@ const pickMachineFields = (body) => {
     machineName: body.machineName,
     modelNumber: body.modelNumber,
     serialNumber: body.serialNumber,
-    functionality: body.functionality,
+    machine_type: body.machine_type,
     processingDimensions: body.processingDimensions,
     totalPower: body.totalPower,
     manualsLink: body.manualsLink,
     notes: body.notes,
-    status: body.status
+    status: body.status,
+    remarks: body.remarks
   };
 };
 

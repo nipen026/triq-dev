@@ -1,12 +1,14 @@
 const mongoose = require("mongoose");
 
 const customerSchema = new mongoose.Schema({
-  organizationName: { type: String, required: true },
+  organization: { type: String, required: true },
   phoneNumber: { type: String, required: true },
+  customerName: { type: String, required: true },
   email: { type: String },
   contactPerson: { type: String },
   designation: { type: String },
-
+  countryOrigin: { type: String, default: 'US' },
+  users: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   machines: [
     {
       machine: { type: mongoose.Schema.Types.ObjectId, ref: "Machine" },
