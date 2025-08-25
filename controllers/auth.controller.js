@@ -11,7 +11,7 @@ exports.register = async (req, res) => {
 
   try {
   const hash = await bcrypt.hash(password, 10);
-  const emailOTP = Math.floor(100000 + Math.random() * 900000).toString();
+  const emailOTP = '123456';
 
   // 🔄 Check if role exists; if not, create it
   let userRole = await Role.findOne({ name: role });
