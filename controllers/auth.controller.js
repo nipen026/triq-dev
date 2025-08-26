@@ -104,7 +104,7 @@ exports.login = async (req, res) => {
     expiresIn: "7d",
   });
 
-  res.status(200).json({ success: true , token });
+  res.status(200).json({ success: true , token, user });
 };
 
 
