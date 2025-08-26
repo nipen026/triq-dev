@@ -45,20 +45,29 @@ exports.register = async (req, res) => {
 };
 
 exports.verifyEmail = async (req, res) => {
-  const { email, otp } = req.body;
-  const user = await User.findOne({ email });
-  console.log(user);
-  
-  if (!user || user.emailOTP !== otp) {
-    return res.status(400).json({ msg: "Invalid OTP" });
+  try {
+    const { email, otp } = req.body;
+    const user = await User.findOne({ email });
+
+    if (!user) {
+      return res.status(400).json({ msg: "User not found" });
+    }
+
+    // ✅ Check OTP
+    if (user.emailOTP !== otp) {
+      return res.status(400).json({ msg: "Invalid OTP" });
+    }
+
+    // ✅ If OTP matches, verify email
+    user.isEmailVerified = true;
+    await user.save();
+
+    res.status(200).json({ msg: "Email verified successfully" });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  user.isEmailVerified = true;
-  // user.emailOTP = null;
-  await user.save();
-
-  res.status(200).json({ msg: "Email verified" });
 };
+
 
 
 exports.verifyPhone = async (req, res) => {
