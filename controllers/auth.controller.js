@@ -91,11 +91,13 @@ exports.verifyPhone = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email }).populate("roles");
+  console.log(user);
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ msg: "Invalid credentials" });
   }
-
+  console.log(user,"user2");
+  
   if (!user.isEmailVerified ) {
     return res.status(403).json({ msg: "Please verify your account" });
   }
