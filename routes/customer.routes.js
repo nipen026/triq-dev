@@ -8,10 +8,10 @@ const {
   getCustomerById,
   deleteCustomer
 } = require("../controllers/customer.controller");
-
+const auth = require("../middleware/auth.middleware");
 // @route   POST /api/customers
 // @desc    Create new customer
-router.post("/create-customer", createCustomer);
+router.post("/create-customer", auth, createCustomer);
 
 // @route   GET /api/customers
 // @desc    Get all customers

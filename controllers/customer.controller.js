@@ -22,10 +22,11 @@ exports.createCustomer = async (req, res) => {
     const customerData = pickCustomerFields(req.body);
 
     // ✅ Filter users to only those belonging to the organization
-    if (customerData.organization) {
-      // Fetch users from DB by IDs
-      const validUser = await User.findById(customerData.organization, "fullName email");
+   if (req.user && req.user.id) {
+    console.log(req.user.id);
 
+      // Fetch users from DB by IDs
+      const validUser = await User.findById(req.user.id, "fullName email");
 
       // Only add one organization user
       if (validUser) {
