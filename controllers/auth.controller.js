@@ -28,9 +28,10 @@ exports.register = async (req, res) => {
     phone,
     countryCode,
     roles: [userRole._id],
-    emailOTP,
+    emailOTP: emailOTP,
   });
-
+  console.log(user,email,emailOTP,"create");
+  
   await user.save();
 
   // ✉️ Send OTP via email
@@ -46,13 +47,14 @@ exports.register = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   const { email, otp } = req.body;
   const user = await User.findOne({ email });
-
+  console.log(user);
+  
   if (!user || user.emailOTP !== otp) {
     return res.status(400).json({ msg: "Invalid OTP" });
   }
 
   user.isEmailVerified = true;
-  user.emailOTP = null;
+  // user.emailOTP = null;
   await user.save();
 
   res.status(200).json({ msg: "Email verified" });
