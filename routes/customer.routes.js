@@ -6,7 +6,8 @@ const {
   getCustomers,
   updateCustomer,
   getCustomerById,
-  deleteCustomer
+  deleteCustomer,
+  searchCustomers
 } = require("../controllers/customer.controller");
 const auth = require("../middleware/auth.middleware");
 // @route   POST /api/customers
@@ -25,5 +26,5 @@ router.put("/update-customer/:id", updateCustomer);
 // @route   DELETE /api/customers/:id
 // @desc    Delete customer by ID
 router.delete("/delete-customer/:id", deleteCustomer);
-
+router.get("/search-customers", auth, searchCustomers);
 module.exports = router;
