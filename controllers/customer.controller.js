@@ -1,6 +1,7 @@
 const Customer = require("../models/customer.model");
 const Machine = require("../models/machine.model");
 const User = require("../models/user.model");
+const { getFlag } = require("../utils/flagHelper");
 // Helper: pick only allowed fields
 const pickCustomerFields = (body) => {
   return {
@@ -22,8 +23,8 @@ exports.createCustomer = async (req, res) => {
     const customerData = pickCustomerFields(req.body);
 
     // ✅ Filter users to only those belonging to the organization
-   if (req.user && req.user.id) {
-    console.log(req.user.id);
+    if (req.user && req.user.id) {
+      console.log(req.user.id);
 
       // Fetch users from DB by IDs
       const validUser = await User.findById(req.user.id, "fullName email");
@@ -60,9 +61,41 @@ exports.createCustomer = async (req, res) => {
 
 
 // ✅ Get All Active Customers
+// exports.getCustomers = async (req, res) => {
+//   try {
+//     const customers = await Customer.find({ isActive: true }).populate("machines.machine").populate("users", "fullName email");
+//     res.json({ count: customers.length, data: customers });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+// // ✅ Get Single Customer by ID
+// exports.getCustomerById = async (req, res) => {
+//   try {
+//     const customer = await Customer.findOne({ _id: req.params.id, isActive: true })
+//       .populate("machines.machine");
+
+//     if (!customer) return res.status(404).json({ message: "Customer not found or inactive" });
+
+//     res.json(customer);
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 exports.getCustomers = async (req, res) => {
   try {
-    const customers = await Customer.find({ isActive: true }).populate("machines.machine").populate("users", "fullName email");
+    let customers = await Customer.find({ isActive: true })
+      .populate("machines.machine")
+      .populate("users", "fullName email");
+
+    // Add flag for each customer
+    customers = customers.map(c => {
+      const obj = c.toObject();
+      obj.flag = getFlag(c.countryOrigin);  // attach flag svg
+      return obj;
+    });
+
     res.json({ count: customers.length, data: customers });
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -73,16 +106,19 @@ exports.getCustomers = async (req, res) => {
 exports.getCustomerById = async (req, res) => {
   try {
     const customer = await Customer.findOne({ _id: req.params.id, isActive: true })
-      .populate("machines.machine");
+      .populate("machines.machine")
+      .populate("users", "fullName email");
 
     if (!customer) return res.status(404).json({ message: "Customer not found or inactive" });
 
-    res.json(customer);
+    const obj = customer.toObject();
+    obj.flag = getFlag(customer.countryOrigin);  // attach flag svg
+
+    res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
-
 // ✅ Update Customer
 exports.updateCustomer = async (req, res) => {
   try {

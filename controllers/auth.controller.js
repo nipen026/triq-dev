@@ -136,3 +136,40 @@ exports.getOrganizationUsers = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+exports.searchOrganizationUser = async (req, res) => {
+  try {
+    const { search } = req.query; // 👈 single key
+    const loggedInUserId = req.user?.id;
+
+    // find the Organization role
+    const orgRole = await Role.findOne({ name: "organization" });
+    if (!orgRole) {
+      return res.status(404).json({ message: "Organization role not found" });
+    }
+
+    // build query
+    const query = { 
+      roles: orgRole._id,
+      _id: { $ne: loggedInUserId } // exclude current user
+    };
+
+    if (search) {
+      query.$or = [
+        { email: { $regex: search, $options: "i" } },
+        { phone: { $regex: search, $options: "i" } },
+        { fullName: { $regex: search, $options: "i" } } // optional
+      ];
+    }
+
+    const users = await User.find(query).populate("roles", "name");
+
+    if (!users.length) {
+      return res.status(404).json({ message: "No organization users found" });
+    }
+
+    res.json({ success: true, count: users.length, data: users });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
