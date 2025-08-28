@@ -16,7 +16,7 @@ app.use("/api/auth", authRoutes);
 app.use("/api/machines", machineRoutes);
 app.use("/api/customers", customerRoutes);
 app.use(
-  "/flags",
+  "/api/flags",
   express.static(path.join(__dirname, "node_modules/flag-icons/flags/4x3"))
 );
 module.exports = app;
