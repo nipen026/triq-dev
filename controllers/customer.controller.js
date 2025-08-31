@@ -271,3 +271,40 @@ exports.searchCustomers = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+
+// ✅ Remove a machine from customer
+exports.removeMachineFromCustomer = async (req, res) => {
+  try {
+    const { customerId, machineId } = req.params;
+
+    // ✅ Find customer
+    const customer = await Customer.findById(customerId);
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // ✅ Check if machine is assigned to this customer
+    const machineIndex = customer.machines.findIndex(
+      (m) => m.machine.toString() === machineId
+    );
+    if (machineIndex === -1) {
+      return res.status(400).json({ message: "Machine not assigned to this customer" });
+    }
+
+    // ✅ Remove machine from customer
+    customer.machines.splice(machineIndex, 1);
+    await customer.save();
+
+    // ✅ Update machine status back to "Available"
+    await Machine.findByIdAndUpdate(machineId, { status: "Available" });
+
+    // ✅ Populate response
+    const updatedCustomer = await Customer.findById(customerId)
+      .populate("machines.machine")
+      .populate("users", "fullName email");
+
+    res.json({ message: "Machine removed from customer", data: updatedCustomer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
