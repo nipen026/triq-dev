@@ -10,37 +10,37 @@ exports.register = async (req, res) => {
   const { fullName, email, password, phone, countryCode, role } = req.body;
 
   try {
-  const hash = await bcrypt.hash(password, 10);
-  const emailOTP = '123456';
+    const hash = await bcrypt.hash(password, 10);
+    const emailOTP = '123456';
 
-  // 🔄 Check if role exists; if not, create it
-  let userRole = await Role.findOne({ name: role });
+    // 🔄 Check if role exists; if not, create it
+    let userRole = await Role.findOne({ name: role });
 
-  if (!userRole) {
-    userRole = await Role.create({ name: role });
+    if (!userRole) {
+      userRole = await Role.create({ name: role });
+    }
+
+    // 🧾 Create new user
+    const user = new User({
+      fullName,
+      email,
+      password: hash,
+      phone,
+      countryCode,
+      roles: [userRole._id],
+      emailOTP: emailOTP,
+    });
+    console.log(user, email, emailOTP, "create");
+
+    await user.save();
+
+    // ✉️ Send OTP via email
+    await sendEmailOTP(email, emailOTP);
+
+    res.status(200).json({ msg: "Registered. Verify email and phone OTP." });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
   }
-
-  // 🧾 Create new user
-  const user = new User({
-    fullName,
-    email,
-    password: hash,
-    phone,
-    countryCode,
-    roles: [userRole._id],
-    emailOTP: emailOTP,
-  });
-  console.log(user,email,emailOTP,"create");
-  
-  await user.save();
-
-  // ✉️ Send OTP via email
-  await sendEmailOTP(email, emailOTP);
-
-  res.status(200).json({ msg: "Registered. Verify email and phone OTP." });
-} catch (err) {
-  res.status(500).json({ error: err.message });
-}
 
 };
 
@@ -58,11 +58,16 @@ exports.verifyEmail = async (req, res) => {
       return res.status(400).json({ msg: "Invalid OTP" });
     }
 
+
+    const token = jwt.sign({ id: user._id, roles: user.roles.map(r => r.name) }, process.env.JWT_SECRET, {
+      expiresIn: "7d",
+    });
+
     // ✅ If OTP matches, verify email
     user.isEmailVerified = true;
     await user.save();
 
-    res.status(200).json({ msg: "Email verified successfully" });
+    res.status(200).json({ msg: "Email verified successfully", token, user });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
@@ -105,9 +110,9 @@ exports.login = async (req, res) => {
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ msg: "Invalid credentials" });
   }
-  console.log(user,"user2");
-  
-  if (!user.isEmailVerified ) {
+  console.log(user, "user2");
+
+  if (!user.isEmailVerified) {
     return res.status(403).json({ msg: "Please verify your account" });
   }
 
@@ -115,7 +120,7 @@ exports.login = async (req, res) => {
     expiresIn: "7d",
   });
 
-  res.status(200).json({ success: true , token, user });
+  res.status(200).json({ success: true, token, user });
 };
 
 
@@ -149,7 +154,7 @@ exports.searchOrganizationUser = async (req, res) => {
     }
 
     // build query
-    const query = { 
+    const query = {
       roles: orgRole._id,
       _id: { $ne: loggedInUserId } // exclude current user
     };
