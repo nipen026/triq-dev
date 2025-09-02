@@ -17,12 +17,12 @@ router.post("/create-customer", auth, createCustomer);
 
 // @route   GET /api/customers
 // @desc    Get all customers
-router.get("/get-customers", getCustomers);
+router.get("/get-customers", auth, getCustomers);
 router.get("/getCustomerById/:id", getCustomerById);
 
 // @route   PUT /api/customers/:id
 // @desc    Update customer by ID
-router.put("/update-customer/:id", updateCustomer);
+router.put("/update-customer/:id",auth, updateCustomer);
 
 // @route   DELETE /api/customers/:id
 // @desc    Delete customer by ID

@@ -105,7 +105,7 @@ exports.verifyPhone = async (req, res) => {
 exports.login = async (req, res) => {
   const { email, password } = req.body;
   const user = await User.findOne({ email }).populate("roles");
-  console.log(user);
+  console.log(await bcrypt);
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ msg: "Invalid credentials" });

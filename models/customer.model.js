@@ -7,6 +7,7 @@ const customerSchema = new mongoose.Schema({
   contactPerson: { type: String },
   designation: { type: String },
   countryOrigin: { type: String, default: 'US' },
+  organization:{ type: mongoose.Schema.Types.ObjectId, ref: "User" },
   users: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   machines: [
     {

@@ -65,9 +65,22 @@
 exports.createCustomer = async (req, res) => {
   const session = await Customer.startSession();
   session.startTransaction();
+
   try {
     const customerData = pickCustomerFields(req.body);
+if (req.user && req.user.id) {
+        console.log(req.user.id);
 
+        // Fetch users from DB by IDs
+        const validUser = await User.findById(req.user.id, "fullName email");
+
+        // Only add one organization user
+        if (validUser) {
+          customerData.organization = validUser._id;
+        } else {
+          customerData.users = {};
+        }
+      }
     // ✅ Check duplicate email or phone for User before proceeding
     const existingUser = await User.findOne({
       $or: [
@@ -115,6 +128,8 @@ exports.createCustomer = async (req, res) => {
       email: customer.email,
       password: hashedPassword,
       phone: customer.phoneNumber,
+      isEmailVerified:true,
+      isPhoneVerified:true,
       countryCode: "+91", // or dynamic from req.body
       roles: [processorRole._id],
     });
@@ -158,24 +173,31 @@ exports.createCustomer = async (req, res) => {
   }
 };
 
-  exports.getCustomers = async (req, res) => {
-    try {
-      let customers = await Customer.find({ isActive: true })
-        .populate("machines.machine")
-        .populate("users", "fullName email");
+exports.getCustomers = async (req, res) => {
+  try {
+    const userId = req.user.id; // ✅ from token (organization role user)
 
-      // Add flag for each customer
-      customers = customers.map(c => {
-        const obj = c.toObject();
-        obj.flag = getFlag(c.countryOrigin);  // attach flag svg
-        return obj;
-      });
+    // Find only customers linked to this organization user
+    let customers = await Customer.find({
+        isActive: true,
+        organization: userId   // ✅ filter by org user
+      })
+      .populate("machines.machine")
+      .populate("users", "fullName email");
 
-      res.json({ count: customers.length, data: customers });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  };
+    // Add flag for each customer
+    customers = customers.map(c => {
+      const obj = c.toObject();
+      obj.flag = getFlag(c.countryOrigin);
+      return obj;
+    });
+
+    res.json({ count: customers.length, data: customers });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
 
   // ✅ Get Single Customer by ID
   exports.getCustomerById = async (req, res) => {

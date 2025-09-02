@@ -3,6 +3,7 @@ const Machine = require("../models/machine.model");
 // Helper: pick only allowed fields from body
 const pickMachineFields = (body) => {
   return {
+    user:body.user,
     machineName: body.machineName,
     modelNumber: body.modelNumber,
     serialNumber: body.serialNumber,
@@ -19,11 +20,15 @@ const pickMachineFields = (body) => {
 // ✅ Create Machine (only organization role)
 exports.createMachine = async (req, res) => {
   try {
+    const userId = req.user.id;
     if (!req.user.roles.includes("organization")) {
       return res.status(403).json({ message: "Only organization role can create a machine" });
     }
 
-    const machineData = pickMachineFields(req.body);
+    const machineData = pickMachineFields({
+      ...req.body,
+      user:userId
+    });
     const machine = new Machine(machineData);
     await machine.save();
 
@@ -35,8 +40,9 @@ exports.createMachine = async (req, res) => {
 
 // ✅ Get All Active Machines
 exports.getMachines = async (req, res) => {
+  const userId = req.user.id
   try {
-    const machines = await Machine.find({ isActive: true });
+    const machines = await Machine.find({ isActive: true,user:userId });
     res.json({ count: machines.length, data: machines });
   } catch (err) {
     res.status(500).json({ message: err.message });
