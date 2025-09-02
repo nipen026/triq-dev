@@ -47,7 +47,7 @@ exports.register = async (req, res) => {
 exports.verifyEmail = async (req, res) => {
   try {
     const { email, otp } = req.body;
-    const user = await User.findOne({ email });
+    const user = await User.findOne({ email }).populate("roles");
 
     if (!user) {
       return res.status(400).json({ msg: "User not found" });
