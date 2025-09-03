@@ -62,13 +62,13 @@ exports.register = async (req, res) => {
       phone,
       countryCode,
       roles: [userRole._id],
-      emailOTP,
+      emailOTP:'123456',
     });
 
     await user.save();
 
     // 9️⃣ Send OTP via email
-    await sendEmailOTP(email, emailOTP);
+    await sendEmailOTP(email, '123456');
 
     res.status(201).json({ msg: "Registered. Verify email with OTP." });
   } catch (err) {
