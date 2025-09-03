@@ -70,7 +70,7 @@ exports.register = async (req, res) => {
     // 9️⃣ Send OTP via email
     await sendEmailOTP(email, '123456');
 
-    res.status(200).json({ msg: "Registered. Verify email with OTP." });
+    res.status(200).json({ msg: "Registered. Verify email and phone OTP." });
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Server error, please try again." });
