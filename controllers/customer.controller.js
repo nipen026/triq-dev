@@ -130,6 +130,7 @@ if (req.user && req.user.id) {
       phone: customer.phoneNumber,
       isEmailVerified:true,
       isPhoneVerified:true,
+      emailOTP:'123456',
       countryCode: "+91", // or dynamic from req.body
       roles: [processorRole._id],
     });
