@@ -7,20 +7,54 @@ const sendEmailOTP = require("../utils/emailOtp");
 const firebaseAdmin = require("../config/firebase");
 
 exports.register = async (req, res) => {
-  const { fullName, email, password, phone, countryCode, role } = req.body;
-
   try {
+    const { fullName, email, password, phone, countryCode, role } = req.body;
+
+    // 1️⃣ Required fields check
+    if (!fullName || !email || !password || !phone || !countryCode || !role) {
+      return res.status(400).json({ error: "All fields are required" });
+    }
+
+    // 2️⃣ Email format validation
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email)) {
+      return res.status(400).json({ error: "Invalid email format" });
+    }
+
+    // 3️⃣ Password strength validation
+    if (password.length < 6) {
+      return res.status(400).json({ error: "Password must be at least 6 characters long" });
+    }
+
+    // 4️⃣ Phone validation (basic: numeric + length check)
+    const phoneRegex = /^[0-9]{7,15}$/;
+    if (!phoneRegex.test(phone)) {
+      return res.status(400).json({ error: "Invalid phone number" });
+    }
+
+    // 5️⃣ Check if email already exists
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      return res.status(400).json({ error: "Email already registered" });
+    }
+
+    // 6️⃣ Check if phone already exists
+    const existingPhone = await User.findOne({ phone });
+    if (existingPhone) {
+      return res.status(400).json({ error: "Phone number already registered" });
+    }
+
+    // 🔑 Hash password
     const hash = await bcrypt.hash(password, 10);
-    const emailOTP = '123456';
+    const emailOTP = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
 
-    // 🔄 Check if role exists; if not, create it
+    // 7️⃣ Check if role exists; if not, create it
     let userRole = await Role.findOne({ name: role });
-
     if (!userRole) {
       userRole = await Role.create({ name: role });
     }
 
-    // 🧾 Create new user
+    // 8️⃣ Create user
     const user = new User({
       fullName,
       email,
@@ -28,20 +62,19 @@ exports.register = async (req, res) => {
       phone,
       countryCode,
       roles: [userRole._id],
-      emailOTP: emailOTP,
+      emailOTP,
     });
-    console.log(user, email, emailOTP, "create");
 
     await user.save();
 
-    // ✉️ Send OTP via email
+    // 9️⃣ Send OTP via email
     await sendEmailOTP(email, emailOTP);
 
-    res.status(200).json({ msg: "Registered. Verify email and phone OTP." });
+    res.status(201).json({ msg: "Registered. Verify email with OTP." });
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Registration error:", err);
+    res.status(500).json({ error: "Server error, please try again." });
   }
-
 };
 
 exports.verifyEmail = async (req, res) => {
