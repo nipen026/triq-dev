@@ -61,7 +61,7 @@ exports.register = async (req, res) => {
       password: hash,
       phone,
       countryCode,
-      organizationType,
+      // organizationType,
       roles: [userRole._id],
       emailOTP:'123456',
     });
@@ -98,6 +98,7 @@ exports.verifyEmail = async (req, res) => {
     });
 
     // ✅ If OTP matches, verify email
+
     user.isEmailVerified = true;
     await user.save();
 
