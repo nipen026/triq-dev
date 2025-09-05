@@ -68,39 +68,26 @@ exports.createCustomer = async (req, res) => {
 
   try {
     const customerData = pickCustomerFields(req.body);
-if (req.user && req.user.id) {
-        console.log(req.user.id);
 
-        // Fetch users from DB by IDs
-        const validUser = await User.findById(req.user.id, "fullName email");
-
-        // Only add one organization user
-        if (validUser) {
-          customerData.organization = validUser._id;
-        } else {
-          customerData.users = {};
-        }
+    // Attach organisation from token user (if present)
+    if (req.user && req.user.id) {
+      const validUser = await User.findById(req.user.id, "fullName email");
+      if (validUser) {
+        customerData.organization = validUser._id;
       }
-    // ✅ Check duplicate email or phone for User before proceeding
-    const existingUser = await User.findOne({
+    }
+
+    // ✅ Check if user exists by email/phone
+    let existingUser = await User.findOne({
       $or: [
         { email: customerData.email },
         { phone: customerData.phoneNumber }
       ]
     });
 
-    if (existingUser) {
-      await session.abortTransaction();
-      session.endSession();
-      return res.status(400).json({
-        message: "User already exists with this email or phone number"
-      });
-    }
-
-    // ✅ Create Customer first
+    // ✅ Always create Customer
     const customer = new Customer(customerData);
-    // console.log(customer,"customer");
-    
+
     // If machines assigned, update their status
     if (customerData.machines && customerData.machines.length > 0) {
       for (let m of customerData.machines) {
@@ -110,31 +97,49 @@ if (req.user && req.user.id) {
 
     await customer.save({ session });
 
-    // ✅ Find processor role, if not exist → create it
-    let processorRole = await Role.findOne({ name: "processor" });
-    if (!processorRole) {
-      processorRole = new Role({ name: "processor" });
-      await processorRole.save({ session });
-    }
-    console.log(processorRole,"processorRole`");
-    
-    // ✅ Generate random password
-    const plainPassword = crypto.randomBytes(6).toString("hex"); // 12-char random password
-    const hashedPassword = await bcrypt.hash(plainPassword, 10);
+    let user;
+    if (existingUser) {
+      // ✅ Skip creating user, just link
+      user = existingUser;
+    } else {
+      // ✅ Find or create processor role
+      let processorRole = await Role.findOne({ name: "processor" });
+      if (!processorRole) {
+        processorRole = new Role({ name: "processor" });
+        await processorRole.save({ session });
+      }
 
-    // ✅ Create linked user
-    const user = new User({
-      fullName: customer.contactPerson || customer.customerName,
-      email: customer.email,
-      password: hashedPassword,
-      phone: customer.phoneNumber,
-      isEmailVerified:true,
-      isPhoneVerified:true,
-      emailOTP:'123456',
-      countryCode: "+91", // or dynamic from req.body
-      roles: [processorRole._id],
-    });
-    await user.save({ session });
+      // ✅ Generate random password
+      const plainPassword = crypto.randomBytes(6).toString("hex");
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+      // ✅ Create linked user
+      user = new User({
+        fullName: customer.contactPerson || customer.customerName,
+        email: customer.email,
+        password: hashedPassword,
+        phone: customer.phoneNumber,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        emailOTP: "123456",
+        countryCode: "+91",
+        roles: [processorRole._id],
+      });
+      await user.save({ session });
+
+      // ✅ Send email only when new user created
+      await sendMail({
+        to: customer.email,
+        subject: "Welcome! Your Processor Account is Ready",
+        html: `
+          <p>Hello ${customer.contactPerson || customer.customerName},</p>
+          <p>Your processor account has been created.</p>
+          <p><strong>Email:</strong> ${customer.email}</p>
+          <p><strong>Password:</strong> ${plainPassword}</p>
+          <p>Please log in and change your password immediately.</p>
+        `,
+      });
+    }
 
     // ✅ Link user to customer
     customer.users = [user._id];
@@ -144,27 +149,16 @@ if (req.user && req.user.id) {
     await session.commitTransaction();
     session.endSession();
 
-    // ✅ Send email with new password
-    await sendMail({
-      to: customer.email,
-      subject: "Welcome! Your Processor Account is Ready",
-      html: `
-        <p>Hello ${customer.contactPerson || customer.customerName},</p>
-        <p>Your processor account has been created.</p>
-        <p><strong>Email:</strong> ${customer.email}</p>
-        <p><strong>Password:</strong> ${plainPassword}</p>
-        <p>Please log in and change your password immediately.</p>
-      `,
-    });
-
     // ✅ Populate response
     const populatedCustomer = await Customer.findById(customer._id)
       .populate("machines.machine")
       .populate("users", "fullName email roles");
 
     res.status(201).json({
-      message: "Customer & user created successfully",
-      data: populatedCustomer
+      message: existingUser
+        ? "Customer created and linked to existing user"
+        : "Customer & new user created successfully",
+      data: populatedCustomer,
     });
 
   } catch (err) {
@@ -173,6 +167,7 @@ if (req.user && req.user.id) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 exports.getCustomers = async (req, res) => {
   try {
