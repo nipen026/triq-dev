@@ -8,7 +8,7 @@ const firebaseAdmin = require("../config/firebase");
 
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password, phone, countryCode, role } = req.body;
+    const { fullName, email, password, phone, countryCode, role,organizationType } = req.body;
 
     // 1️⃣ Required fields check
     if (!fullName || !email || !password || !phone || !countryCode || !role) {
@@ -61,6 +61,7 @@ exports.register = async (req, res) => {
       password: hash,
       phone,
       countryCode,
+      organizationType,
       roles: [userRole._id],
       emailOTP:'123456',
     });

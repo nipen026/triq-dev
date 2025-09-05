@@ -7,6 +7,7 @@ const UserSchema = new mongoose.Schema({
   phone: String,
   countryCode: String,
   roles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
+  organizationType:String,
   emailOTP: String,
   isEmailVerified: { type: Boolean, default: false },
   isPhoneVerified: { type: Boolean, default: false },
