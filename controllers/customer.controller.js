@@ -185,6 +185,7 @@ exports.getCustomers = async (req, res) => {
     customers = customers.map(c => {
       const obj = c.toObject();
       obj.flag = getFlag(c.countryOrigin);
+      obj.userImage = 'https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
       return obj;
     });
 
@@ -196,22 +197,36 @@ exports.getCustomers = async (req, res) => {
 
 
   // ✅ Get Single Customer by ID
-  exports.getCustomerById = async (req, res) => {
-    try {
-      const customer = await Customer.findOne({ _id: req.params.id, isActive: true })
+exports.getCustomerById = async (req, res) => {
+  try {
+    const id = req.params.id;
+
+    // Try finding by customerId first
+    let customer = await Customer.findOne({ _id: id, isActive: true })
+      .populate("machines.machine")
+      .populate("users", "fullName email");
+
+    // If not found, maybe it's a userId (processor)
+    if (!customer) {
+      customer = await Customer.findOne({ users: id, isActive: true })
         .populate("machines.machine")
         .populate("users", "fullName email");
-
-      if (!customer) return res.status(404).json({ message: "Customer not found or inactive" });
-
-      const obj = customer.toObject();
-      obj.flag = getFlag(customer.countryOrigin);  // attach flag svg
-
-      res.json(obj);
-    } catch (err) {
-      res.status(500).json({ error: err.message });
     }
-  };
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found or inactive" });
+    }
+
+    const obj = customer.toObject();
+    obj.flag = getFlag(customer.countryOrigin);
+    obj.userImage = 'https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' // attach flag svg
+
+    res.json(obj);
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
   // ✅ Update Customer
   exports.updateCustomer = async (req, res) => {
     try {

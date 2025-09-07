@@ -63,7 +63,7 @@ exports.getMachineOverview = async (req, res) => {
     const customer = await Customer.findOne({ users: userId, isActive: true })
       .populate({
         path: "machines.machine",
-        select: "machineName modelNumber serialNumber machine_type status isActive",
+        select: "machineName modelNumber serialNumber machine_type status isActive remarks",
       });
 
     if (!customer) {
@@ -85,6 +85,7 @@ exports.getMachineOverview = async (req, res) => {
       warrantyEnd: m.warrantyEnd,
       warrantyStatus: m.warrantyStatus,
       invoiceContractNo: m.invoiceContractNo,
+      remark: m.machine?.remarks || null, // ✅ directly from populated machine
     }));
 
     res.json({ data: machines });
