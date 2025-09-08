@@ -71,7 +71,8 @@ exports.getMachineOverview = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: "Customer not found for this processor" });
     }
-
+    console.log(customer,"customer");
+    
     // Extract only machines
     const machines = customer.machines.map(m => ({
       machineId: m.machine?._id,
@@ -87,6 +88,7 @@ exports.getMachineOverview = async (req, res) => {
       warrantyEnd: m.warrantyEnd,
       warrantyStatus: m.warrantyStatus,
       invoiceContractNo: m.invoiceContractNo,
+      organization:customer.organization,
       remark: m.machine?.remarks || null, // ✅ directly from populated machine
     }));
 
