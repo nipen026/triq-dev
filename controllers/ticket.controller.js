@@ -8,7 +8,7 @@ exports.createTicket = async (req, res) => {
   try {
     const user = req.user;
     
-    const { problem, errorCode, notes, ticketType, machineId, organisationId } = req.body;
+    const { problem, errorCode, notes, ticketType, machineId, organisationId,type } = req.body;
 
     // Validate Processor Role
     const processorRole = await Role.findOne({ name: "processor" });
@@ -52,6 +52,7 @@ exports.createTicket = async (req, res) => {
       media,
       machine: machineId,
       processor: user.id,
+      type,
       organisation: organisationId
     });
 
