@@ -12,7 +12,7 @@ const machineSchema = new mongoose.Schema({
   processingDimensions: {
     maxHeight: Number,
     maxWidth: Number,
-    minHeight: Number,
+    minHeight: Number,  
     minWidth: Number,
     thickness: String,       // "3 - 25"
     maxSpeed: Number,        // m/min

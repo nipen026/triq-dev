@@ -8,6 +8,8 @@ const machineRoutes = require("./routes/machine.routes");
 const customerRoutes = require("./routes/customer.routes");
 const machineSupplierRoute = require("./routes/machineSupplier.routes");
 const ticketRoutes = require("./routes/ticket.routes");
+const servicePricingRoutes = require("./routes/servicePricing.routes");
+
 const path = require("path");
 const app = express();
 connectDB();
@@ -19,6 +21,7 @@ app.use("/api/machines", machineRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/machinesupplier", machineSupplierRoute);
 app.use("/api/ticket", ticketRoutes);
+app.use("/api/servicePricing", servicePricingRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(
   "/api/flags",
