@@ -28,7 +28,8 @@ const ticketSchema = new mongoose.Schema({
   machine: { type: mongoose.Schema.Types.ObjectId, ref: "Machine",  },
 
   processor: { type: mongoose.Schema.Types.ObjectId, ref: "User"  },   // customer company (from token)
-  organisation: { type: mongoose.Schema.Types.ObjectId, ref: "User" } // assigned org
+  organisation: { type: mongoose.Schema.Types.ObjectId, ref: "User" } ,
+  engineerRemark:String
 
 }, { timestamps: true });
 
