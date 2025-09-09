@@ -6,6 +6,7 @@
   const crypto = require("crypto");
   const { getFlag } = require("../utils/flagHelper");
   const sendMail = require("../utils/mailer");
+const { getCountryFromPhone } = require("../utils/phoneHelper");
   // Helper: pick only allowed fields
   const pickCustomerFields = (body) => {
     return {
@@ -20,49 +21,7 @@
     };
   };
 
-
-
-  // exports.createCustomer = async (req, res) => {
-  //   try {
-  //     const customerData = pickCustomerFields(req.body);
-
-  //     // ✅ Filter users to only those belonging to the organization
-  //     if (req.user && req.user.id) {
-  //       console.log(req.user.id);
-
-  //       // Fetch users from DB by IDs
-  //       const validUser = await User.findById(req.user.id, "fullName email");
-
-  //       // Only add one organization user
-  //       if (validUser) {
-  //         customerData.users = validUser._id;
-  //       } else {
-  //         customerData.users = {};
-  //       }
-  //     }
-
-  //     const customer = new Customer(customerData);
-
-  //     // If machines assigned, update their status
-  //     if (customerData.machines && customerData.machines.length > 0) {
-  //       for (let m of customerData.machines) {
-  //         await Machine.findByIdAndUpdate(m.machine, { status: "Assigned" });
-  //       }
-  //     }
-
-  //     await customer.save();
-
-  //     // Populate machines & users for response
-  //     const populatedCustomer = await Customer.findById(customer._id)
-  //       .populate("machines.machine")
-  //       .populate("users", "fullName email");
-
-  //     res.status(201).json({ message: "Customer created successfully", data: populatedCustomer });
-  //   } catch (err) {
-  //     res.status(500).json({ error: err.message });
-  //   }
-  // };
-exports.createCustomer = async (req, res) => {
+  exports.createCustomer = async (req, res) => {
   const session = await Customer.startSession();
   session.startTransaction();
 
@@ -76,7 +35,12 @@ exports.createCustomer = async (req, res) => {
         customerData.organization = validUser._id;
       }
     }
-
+if (!customerData.countryOrigin && customerData.phoneNumber) {
+      const detectedCountry = getCountryFromPhone(customerData.phoneNumber);
+      if (detectedCountry) {
+        customerData.countryOrigin = detectedCountry; // e.g. "IN", "US"
+      }
+    }
     // ✅ Check if user exists by email/phone
     let existingUser = await User.findOne({
       $or: [
