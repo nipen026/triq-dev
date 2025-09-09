@@ -192,3 +192,47 @@ exports.DeleteTicket = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
+// ======================== GET TICKETS BY STATUS (with Pagination) ========================
+exports.getTicketsByStatus = async (req, res) => {
+  try {
+    const user = req.user;
+    const { status } = req.params; // status from URL param
+    let { page = 1, limit = 10 } = req.query; // pagination
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const processorRole = await Role.findOne({ name: "processor" });
+    const organisationRole = await Role.findOne({ name: "organisation" });
+
+    let query = { status, isActive: true };
+
+    if (processorRole && user.roles.includes(processorRole.name)) {
+      query.processor = user.id;
+    } else if (organisationRole && user.roles.includes(organisationRole.name)) {
+      query.organisation = user.id;
+    } else {
+      return res.status(403).json({ message: "Not authorized" });
+    }
+
+    // Count total documents
+    const total = await Ticket.countDocuments(query);
+
+    // Paginated tickets
+    const tickets = await Ticket.find(query)
+      .populate("machine processor organisation")
+      .skip((page - 1) * limit)
+      .limit(limit)
+      .sort({ createdAt: -1 }); // latest first
+
+    res.json({
+      total,
+      page,
+      pages: Math.ceil(total / limit),
+      count: tickets.length,
+      data: tickets
+    });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
