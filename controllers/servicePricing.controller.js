@@ -4,7 +4,7 @@ const ServicePricing = require("../models/servicePricing.model");
 exports.setPricing = async (req, res) => {
   try {
     const user = req.user;
-    if (!user.roles.includes("organisation") || !user.roles.includes("oragnization")) {
+    if (!user.roles.includes("organisation") || !user.roles.includes("organization")) {
       return res
         .status(403)
         .json({ message: "Only organisation can manage pricing" });
