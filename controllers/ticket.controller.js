@@ -2,36 +2,52 @@ const Ticket = require("../models/ticket.model");
 const Machine = require("../models/machine.model");
 const Customer = require("../models/customer.model");
 const Role = require("../models/role.model");
+const ServicePricing = require("../models/servicePricing.model")
 
 // ======================== CREATE TICKET ========================
 exports.createTicket = async (req, res) => {
   try {
     const user = req.user;
-    
-    const { problem, errorCode, notes, ticketType, machineId, organisationId,type,engineerRemark } = req.body;
+    const { 
+      problem, errorCode, notes, ticketType, machineId, organisationId, 
+      type, engineerRemark, pricingItemId, paymentStatus 
+    } = req.body;
 
-    // Validate Processor Role
+    // ✅ ensure processor role
     const processorRole = await Role.findOne({ name: "processor" });
-    console.log(user.roles.includes(processorRole.name),"processorRole");
-    
     if (!user.roles.includes(processorRole.name)) {
-      return res.status(403).json({ message: "Only Processor (customer company) can create tickets" });
+      return res.status(403).json({ message: "Only processor can create tickets" });
     }
 
-    // Validate Machine
+    // ✅ validate machine link
     const machine = await Machine.findById(machineId);
     if (!machine) return res.status(404).json({ message: "Machine not found" });
 
-    // Check customer-machine link
     const customer = await Customer.findOne({ organisation: user._id, "machines.machine": machineId });
     if (!customer) return res.status(400).json({ message: "Machine not linked to this processor/customer" });
 
+    // ✅ check warranty rules
     const machineDetails = customer.machines.find(m => m.machine.toString() === machineId);
     if (machineDetails.warrantyStatus === "Out Of Warranty" && ticketType !== "Full Machine Service") {
       return res.status(400).json({ message: "Only Full Machine Service allowed for out-of-warranty machines" });
     }
 
-    // Handle media uploads (max 5 images)
+    // ✅ check if pricingItemId exists in organisation’s pricing doc
+    let pricingData = null;
+    if (pricingItemId) {
+      const servicePricing = await ServicePricing.findOne(
+        {"pricing._id": pricingItemId },
+        { "pricing.$": 1 } // return only the matched array element
+      );
+      console.log(servicePricing,"servicePricing");
+      
+      if (!servicePricing) {
+        return res.status(404).json({ message: "Invalid pricing item id" });
+      }
+      pricingData = servicePricing.pricing[0]; // matched pricing object
+    }
+
+    // ✅ handle media
     let media = [];
     if (req.files && req.files.length > 0) {
       const imageCount = req.files.filter(f => f.mimetype.startsWith("image/")).length;
@@ -43,7 +59,7 @@ exports.createTicket = async (req, res) => {
       }));
     }
 
-    // Create Ticket
+    // ✅ create ticket
     const ticket = new Ticket({
       problem,
       errorCode,
@@ -54,15 +70,25 @@ exports.createTicket = async (req, res) => {
       processor: user.id,
       type,
       organisation: organisationId,
-      engineerRemark
+      engineerRemark,
+      pricingItemId,
+      paymentStatus: paymentStatus || "unpaid"
     });
 
     await ticket.save();
-    res.status(201).json({ message: "Ticket created successfully", ticket });
+
+    res.status(201).json({ 
+      message: "Ticket created successfully", 
+      ticket, 
+      pricing: pricingData || null // return matched pricing details too
+    });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
+
+
 
 // ======================== GET ALL TICKETS ========================
 exports.getTickets = async (req, res) => {
