@@ -4,11 +4,11 @@ const ServicePricing = require("../models/servicePricing.model");
 exports.setPricing = async (req, res) => {
   try {
     const user = req.user;
-    if (!user.roles.includes("organisation") || !user.roles.includes("organization")) {
-      return res
-        .status(403)
-        .json({ message: "Only organisation can manage pricing" });
-    }
+    if (!user.roles.includes("organisation") && !user.roles.includes("organization")) {
+  return res
+    .status(403)
+    .json({ message: "Only organisation can manage pricing" });
+}
 
     const { supportPricing } = req.body;
     if (!Array.isArray(supportPricing) || supportPricing.length === 0) {
