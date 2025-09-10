@@ -21,7 +21,7 @@ const { getCountryFromPhone } = require("../utils/phoneHelper");
     };
   };
 
-  exports.createCustomer = async (req, res) => {
+exports.createCustomer = async (req, res) => {
   const session = await Customer.startSession();
   session.startTransaction();
 
@@ -35,12 +35,28 @@ const { getCountryFromPhone } = require("../utils/phoneHelper");
         customerData.organization = validUser._id;
       }
     }
-if (!customerData.countryOrigin && customerData.phoneNumber) {
+
+    // ✅ Detect country automatically from phone
+    if (!customerData.countryOrigin && customerData.phoneNumber) {
       const detectedCountry = getCountryFromPhone(customerData.phoneNumber);
       if (detectedCountry) {
         customerData.countryOrigin = detectedCountry; // e.g. "IN", "US"
       }
     }
+
+    // ✅ Check if a customer with this email already exists in same organisation
+    const existingCustomer = await Customer.findOne({
+      email: customerData.email,
+      organization: customerData.organization,
+      isActive: true
+    });
+
+    if (existingCustomer) {
+      await session.abortTransaction();
+      session.endSession();
+      return res.status(400).json({ message: "Customer with this email already exists" });
+    }
+
     // ✅ Check if user exists by email/phone
     let existingUser = await User.findOne({
       $or: [
@@ -49,7 +65,7 @@ if (!customerData.countryOrigin && customerData.phoneNumber) {
       ]
     });
 
-    // ✅ Always create Customer
+    // ✅ Create Customer
     const customer = new Customer(customerData);
 
     // If machines assigned, update their status
@@ -131,6 +147,7 @@ if (!customerData.countryOrigin && customerData.phoneNumber) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 
 exports.getCustomers = async (req, res) => {
