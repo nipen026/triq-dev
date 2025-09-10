@@ -241,7 +241,7 @@ exports.searchCustomers = async (req, res) => {
 
     // Build query
     const query = {
-      organization: user.organization,  // only same org
+      // organization: user.organization,  // only same org
       isActive: true,
     };
 
