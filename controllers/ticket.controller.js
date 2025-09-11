@@ -229,7 +229,7 @@ exports.getTicketsByStatus = async (req, res) => {
     limit = parseInt(limit);
 
     const processorRole = await Role.findOne({ name: "processor" });
-    const organisationRole = await Role.findOne({ name: "organisation" });
+    const organisationRole = await Role.findOne({ name: "organisation" },{name:'organization'});
 
     let query = { status, isActive: true };
 
