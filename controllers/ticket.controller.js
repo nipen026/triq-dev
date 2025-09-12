@@ -362,6 +362,7 @@ exports.getSummary = async (req, res) => {
     res.json({
       ticketDetails: {
         id: ticket._id,
+        ticketNumber:ticket.ticketNumber,
         problem: ticket.problem,
         errorCode: ticket.errorCode,
         status: ticket.status,
