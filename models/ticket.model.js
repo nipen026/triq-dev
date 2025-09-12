@@ -1,6 +1,7 @@
 const mongoose = require("mongoose");
 
 const ticketSchema = new mongoose.Schema({
+  ticketNumber: { type: String, unique: true, required: true }, // 👈 12-digit number
   problem: String,
   errorCode: String,
   notes: String,

@@ -6,13 +6,16 @@ const ServicePricing = require("../models/servicePricing.model")
 const { getFlag } = require("../utils/flagHelper");
 
 
+function generateTicketNumber() {
+  return Math.floor(100000000000 + Math.random() * 900000000000).toString();
+}
 
 exports.createTicket = async (req, res) => {
   try {
     const user = req.user;
-    const { 
-      problem, errorCode, notes, ticketType, machineId, organisationId, 
-      type, engineerRemark, paymentStatus 
+    const {
+      problem, errorCode, notes, ticketType, machineId, organisationId,
+      type, engineerRemark, paymentStatus
     } = req.body;
 
     // ✅ ensure processor role
@@ -24,14 +27,14 @@ exports.createTicket = async (req, res) => {
     // ✅ validate machine link
     const machine = await Machine.findById(machineId);
     if (!machine) return res.status(404).json({ message: "Machine not found" });
-    console.log(user,"user");
-    
+    console.log(user, "user");
+
     const customer = await Customer.findOne({
       users: user.id,
       "machines.machine": machineId
     });
-    console.log(customer,"customer");
-    
+    console.log(customer, "customer");
+
     if (!customer) {
       return res.status(400).json({ message: "Machine not linked to this processor/customer" });
     }
@@ -43,21 +46,21 @@ exports.createTicket = async (req, res) => {
 
     // ✅ enforce warranty restriction
     if (
-      machineDetails.warrantyStatus === "Out Of Warranty" && 
+      machineDetails.warrantyStatus === "Out Of Warranty" &&
       ticketType !== "Full Machine Service"
     ) {
-      return res.status(400).json({ 
-        message: "Only Full Machine Service allowed for out-of-warranty machines" 
+      return res.status(400).json({
+        message: "Only Full Machine Service allowed for out-of-warranty machines"
       });
     }
-    
+
     // ✅ fetch matching pricing by ticketType + type + warranty
     const servicePricing = await ServicePricing.findOne(
       {
         organisation: organisationId,
         pricing: {
           $elemMatch: {
-            ticketType:ticketType,
+            ticketType: ticketType,
             supportMode: type,
             warrantyStatus: machineDetails.warrantyStatus   // 👈 NEW filter
           }
@@ -65,14 +68,14 @@ exports.createTicket = async (req, res) => {
       },
       { "pricing.$": 1 } // only return matched array element
     );
-    
+
     if (
-      !servicePricing || 
-      !servicePricing.pricing || 
+      !servicePricing ||
+      !servicePricing.pricing ||
       servicePricing.pricing.length === 0
     ) {
-      return res.status(404).json({ 
-        message: "No matching pricing found for given ticketType, type, and warranty" 
+      return res.status(404).json({
+        message: "No matching pricing found for given ticketType, type, and warranty"
       });
     }
 
@@ -94,6 +97,7 @@ exports.createTicket = async (req, res) => {
 
     // ✅ create ticket
     const ticket = new Ticket({
+      ticketNumber: generateTicketNumber(),
       problem,
       errorCode,
       notes,
@@ -130,14 +134,14 @@ exports.getTickets = async (req, res) => {
     let tickets = [];
     const processorRole = await Role.findOne({ name: "processor" });
     const organisationRole = await Role.findOne({ name: "organisation" });
-    
+
     if (processorRole && user.roles.includes(processorRole.name)) {
       tickets = await Ticket.find({ processor: user.id, isActive: true })
         .populate("machine processor organisation");
-      
+
     } else if (organisationRole && user.roles.includes(organisationRole.name)) {
-       tickets = await Ticket.find({ organisation: user.id, isActive: true })
-        .populate("machine processor organisation");        
+      tickets = await Ticket.find({ organisation: user.id, isActive: true })
+        .populate("machine processor organisation");
     }
     res.json(tickets);
   } catch (err) {
@@ -150,12 +154,12 @@ exports.getTicketById = async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
-   
-    
+
+
     const ticket = await Ticket.findOne({ _id: id, isActive: true })
       .populate("machine processor organisation");
-    
-    
+
+
     if (!ticket) return res.status(404).json({ message: "Active ticket not found" });
 
     if (
@@ -262,7 +266,7 @@ exports.getTicketsByStatus = async (req, res) => {
     limit = parseInt(limit);
 
     const processorRole = await Role.findOne({ name: "processor" });
-    const organisationRole = await Role.findOne({ name: "organisation" },{name:'organization'});
+    const organisationRole = await Role.findOne({ name: "organisation" }, { name: 'organization' });
 
     let query = { status, isActive: true };
 
@@ -335,24 +339,24 @@ exports.getSummary = async (req, res) => {
       );
     }
     console.log(customer);
-    
+
     // ✅ Add flag + userImage
     const processorDetails = ticket.processor
       ? {
-          ...ticket.processor.toObject(),
-          flag: getFlag(customer.countryOrigin),
-          userImage:
-            "https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0"
-        }
+        ...ticket.processor.toObject(),
+        flag: getFlag(customer.countryOrigin),
+        userImage:
+          "https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0"
+      }
       : null;
 
     const organisationDetails = ticket.organisation
       ? {
-          ...ticket.organisation.toObject(),
-          flag: getFlag(customer.countryOrigin),
-          userImage:
-            "https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0"
-        }
+        ...ticket.organisation.toObject(),
+        flag: getFlag(customer.countryOrigin),
+        userImage:
+          "https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0"
+      }
       : null;
 
     res.json({
