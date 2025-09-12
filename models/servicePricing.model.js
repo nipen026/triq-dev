@@ -8,7 +8,7 @@ const pricingItemSchema = new mongoose.Schema({
   },
   warrantyStatus: {
     type: String,
-    enum: ["In warranty", "Out of warranty"],
+    enum: ["In warranty", "Out Of Warranty"],
     required: true
   },
   ticketType: {

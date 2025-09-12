@@ -16,7 +16,7 @@ const customerSchema = new mongoose.Schema({
       installationDate: { type: Date },
       warrantyStart: { type: Date },
       warrantyEnd: { type: Date },
-      warrantyStatus: { type: String, enum: ["Active", "Expired", "Pending", "Out Of Warranty"], default: "Pending" },
+      warrantyStatus: { type: String, enum: ["In warranty", "Out Of Warranty"], default: "In warranty" },
       invoiceContractNo: { type: String }
     }
   ],

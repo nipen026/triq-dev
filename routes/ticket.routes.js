@@ -15,6 +15,7 @@ router.get("/getById/:id", auth, ticketController.getTicketById);
 router.put("/update/:id", auth, ticketController.updateTicket);
 router.put("/delete/:id", auth, ticketController.DeleteTicket);
 router.get("/getticket/:status", auth, ticketController.getTicketsByStatus);
+router.get("/getTicketSummary/:id", auth, ticketController.getSummary);
 
 
 module.exports = router;

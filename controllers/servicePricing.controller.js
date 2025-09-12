@@ -1,14 +1,16 @@
 const ServicePricing = require("../models/servicePricing.model");
+const { convertCurrency } = require("../utils/currency"); // make sure this points to your util
 
 // ✅ Bulk Create or Update Pricing
 exports.setPricing = async (req, res) => {
   try {
     const user = req.user;
+
     if (!user.roles.includes("organisation") && !user.roles.includes("organization")) {
-  return res
-    .status(403)
-    .json({ message: "Only organisation can manage pricing" });
-}
+      return res
+        .status(403)
+        .json({ message: "Only organisation can manage pricing" });
+    }
 
     const { supportPricing } = req.body;
     if (!Array.isArray(supportPricing) || supportPricing.length === 0) {
@@ -17,21 +19,44 @@ exports.setPricing = async (req, res) => {
         .json({ message: "supportPricing array is required" });
     }
 
+    // ✅ Convert all pricing amounts to USD before saving
+    const convertedPricing = [];
+    for (const item of supportPricing) {
+      console.log(supportPricing,"item");
+      
+      if (!item.cost || !item.currency) {
+        return res.status(400).json({
+          message: "Each pricing item must include amount and currency"
+        });
+      }
+
+      const amountInUSD = await convertCurrency(item.cost, item.currency, "USD");
+
+      convertedPricing.push({
+        ...item,
+        amount: amountInUSD,  // store always in USD
+        originalAmount: item.amount, // optional: keep original for reference
+        originalCurrency: item.currency, // optional
+        currency: "USD" // overwrite currency
+      });
+    }
+
     // ✅ either create or update one doc per organisation
     const updated = await ServicePricing.findOneAndUpdate(
       { organisation: user.id },
       {
         organisation: user.id,
-        pricing: supportPricing // overwrite full array
+        pricing: convertedPricing // overwrite with USD values
       },
       { upsert: true, new: true, setDefaultsOnInsert: true }
     );
 
-    res.json({ message: "Pricing set successfully", data: updated });
+    res.json({ message: "Pricing set successfully (stored in USD)", data: updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 
 
