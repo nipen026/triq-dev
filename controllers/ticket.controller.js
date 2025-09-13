@@ -190,7 +190,7 @@ exports.updateTicket = async (req, res) => {
 
     // Update status only by organisation
     if (status) {
-      if (ticket.organisation.toString() !== user._id.toString()) {
+      if (ticket.organisation.toString() !== user.id.toString()) {
         return res.status(403).json({ message: "Only organisation can update ticket status" });
       }
       ticket.status = status;
@@ -208,7 +208,7 @@ exports.updateTicket = async (req, res) => {
     }
 
     // Update notes by organisation
-    if (notes && ticket.organisation.toString() === user._id.toString()) {
+    if (notes && ticket.organisation.toString() === user.id.toString()) {
       ticket.notes = notes;
     }
 
