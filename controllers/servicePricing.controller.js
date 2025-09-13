@@ -22,13 +22,13 @@ exports.setPricing = async (req, res) => {
     // ✅ Convert all pricing amounts to USD before saving
     const convertedPricing = [];
     for (const item of supportPricing) {
-      console.log(supportPricing,"item");
+      console.log(item,"item");
       
-      if (!item.cost || !item.currency) {
-        return res.status(400).json({
-          message: "Each pricing item must include amount and currency"
-        });
-      }
+      // if (!item.cost || !item.currency) {
+      //   return res.status(400).json({
+      //     message: "Each pricing item must include amount and currency"
+      //   });
+      // }
 
       const amountInUSD = await convertCurrency(item.cost, item.currency, "USD");
 

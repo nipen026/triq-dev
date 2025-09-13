@@ -131,10 +131,13 @@ exports.createTicket = async (req, res) => {
 exports.getTickets = async (req, res) => {
   try {
     const user = req.user;
+    console.log(user);
+    
     let tickets = [];
     const processorRole = await Role.findOne({ name: "processor" });
-    const organisationRole = await Role.findOne({ name: "organisation" });
-
+    const organisationRole = await Role.findOne({name:'organization'});
+    console.log(organisationRole,"organisationRole");
+    
     if (processorRole && user.roles.includes(processorRole.name)) {
       tickets = await Ticket.find({ processor: user.id, isActive: true })
         .populate("machine processor organisation");
@@ -266,7 +269,7 @@ exports.getTicketsByStatus = async (req, res) => {
     limit = parseInt(limit);
 
     const processorRole = await Role.findOne({ name: "processor" });
-    const organisationRole = await Role.findOne({ name: "organisation" }, { name: 'organization' });
+    const organisationRole = await Role.findOne({ name: 'organization' });
 
     let query = { status, isActive: true };
 
