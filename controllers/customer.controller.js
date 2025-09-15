@@ -28,7 +28,7 @@ exports.createCustomer = async (req, res) => {
   try {
     const customerData = pickCustomerFields(req.body);
 
-    // Attach organisation from token user (if present)
+    // Attach organization from token user (if present)
     if (req.user && req.user.id) {
       const validUser = await User.findById(req.user.id, "fullName email");
       if (validUser) {
@@ -44,7 +44,7 @@ exports.createCustomer = async (req, res) => {
       }
     }
 
-    // ✅ Check if a customer with this email already exists in same organisation
+    // ✅ Check if a customer with this email already exists in same organization
     const existingCustomer = await Customer.findOne({
       email: customerData.email,
       organization: customerData.organization,

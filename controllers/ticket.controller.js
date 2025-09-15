@@ -10,6 +10,125 @@ function generateTicketNumber() {
   return Math.floor(100000000000 + Math.random() * 900000000000).toString();
 }
 
+// exports.createTicket = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     const {
+//       problem, errorCode, notes, ticketType, machineId, organisationId,
+//       type, engineerRemark, paymentStatus
+//     } = req.body;
+
+//     // ✅ ensure processor role
+//     const processorRole = await Role.findOne({ name: "processor" });
+//     if (!user.roles.includes(processorRole.name)) {
+//       return res.status(403).json({ message: "Only processor can create tickets" });
+//     }
+
+//     // ✅ validate machine link
+//     const machine = await Machine.findById(machineId);
+//     if (!machine) return res.status(404).json({ message: "Machine not found" });
+//     console.log(user, "user");
+
+//     const customer = await Customer.findOne({
+//       users: user.id,
+//       "machines.machine": machineId
+//     });
+//     console.log(customer, "customer");
+
+//     if (!customer) {
+//       return res.status(400).json({ message: "Machine not linked to this processor/customer" });
+//     }
+
+//     // ✅ get machine warranty details
+//     const machineDetails = customer.machines.find(
+//       m => m.machine.toString() === machineId
+//     );
+
+//     // ✅ enforce warranty restriction
+//     if (
+//       machineDetails.warrantyStatus === "Out Of Warranty" &&
+//       ticketType !== "Full Machine Service"
+//     ) {
+//       return res.status(400).json({
+//         message: "Only Full Machine Service allowed for out-of-warranty machines"
+//       });
+//     }
+
+//     // ✅ fetch matching pricing by ticketType + type + warranty
+//     const servicePricing = await ServicePricing.findOne(
+//       {
+//         organisation: organisationId,
+//         pricing: {
+//           $elemMatch: {
+//             ticketType: ticketType,
+//             supportMode: type,
+//             warrantyStatus: machineDetails.warrantyStatus   // 👈 NEW filter
+//           }
+//         }
+//       },
+//       { "pricing.$": 1 } // only return matched array element
+//     );
+
+//     if (
+//       !servicePricing ||
+//       !servicePricing.pricing ||
+//       servicePricing.pricing.length === 0
+//     ) {
+//       return res.status(404).json({
+//         message: "No matching pricing found for given ticketType, type, and warranty"
+//       });
+//     }
+
+//     const pricingData = servicePricing.pricing[0]; // matched pricing object
+
+//     // ✅ handle media uploads
+//     let media = [];
+//     if (req.files && req.files.length > 0) {
+//       const imageCount = req.files.filter(f => f.mimetype.startsWith("image/")).length;
+//       if (imageCount > 5) {
+//         return res.status(400).json({ message: "Maximum 5 images allowed" });
+//       }
+
+//       media = req.files.map(file => ({
+//         url: `/uploads/tickets/${file.filename}`,
+//         type: file.mimetype.startsWith("image/") ? "image" : "video"
+//       }));
+//     }
+
+//     // ✅ create ticket
+//     const ticket = new Ticket({
+//       ticketNumber: generateTicketNumber(),
+//       problem,
+//       errorCode,
+//       notes,
+//       ticketType,
+//       media,
+//       machine: machineId,
+//       processor: user.id,
+//       type,
+//       organisation: organisationId,
+//       engineerRemark,
+//       pricing: pricingData._id, // save matched pricing item id
+//       paymentStatus: paymentStatus || "unpaid"
+//     });
+
+//     await ticket.save();
+
+//     res.status(201).json({
+//       message: "Ticket created successfully",
+//       ticket,
+//       pricing: pricingData // return matched pricing details too
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
+
+
+
+
+// ======================== GET ALL TICKETS ========================
+
 exports.createTicket = async (req, res) => {
   try {
     const user = req.user;
@@ -27,14 +146,11 @@ exports.createTicket = async (req, res) => {
     // ✅ validate machine link
     const machine = await Machine.findById(machineId);
     if (!machine) return res.status(404).json({ message: "Machine not found" });
-    console.log(user, "user");
 
     const customer = await Customer.findOne({
       users: user.id,
       "machines.machine": machineId
     });
-    console.log(customer, "customer");
-
     if (!customer) {
       return res.status(400).json({ message: "Machine not linked to this processor/customer" });
     }
@@ -62,24 +178,32 @@ exports.createTicket = async (req, res) => {
           $elemMatch: {
             ticketType: ticketType,
             supportMode: type,
-            warrantyStatus: machineDetails.warrantyStatus   // 👈 NEW filter
+            warrantyStatus: machineDetails.warrantyStatus
           }
         }
       },
-      { "pricing.$": 1 } // only return matched array element
+      { "pricing.$": 1 }
     );
+
+    let pricingData;
 
     if (
       !servicePricing ||
       !servicePricing.pricing ||
       servicePricing.pricing.length === 0
     ) {
-      return res.status(404).json({
-        message: "No matching pricing found for given ticketType, type, and warranty"
-      });
+      // ✅ Use default pricing if none found
+      pricingData = {
+        supportMode: "Online",
+        warrantyStatus: "In warranty",
+        ticketType: "Full Machine Service",
+        cost: 0,
+        currency: "USD",
+        _id: new mongoose.Types.ObjectId()  // create fake ObjectId for reference
+      };
+    } else {
+      pricingData = servicePricing.pricing[0];
     }
-
-    const pricingData = servicePricing.pricing[0]; // matched pricing object
 
     // ✅ handle media uploads
     let media = [];
@@ -108,7 +232,7 @@ exports.createTicket = async (req, res) => {
       type,
       organisation: organisationId,
       engineerRemark,
-      pricing: pricingData._id, // save matched pricing item id
+      pricing: pricingData._id, // save pricing item id
       paymentStatus: paymentStatus || "unpaid"
     });
 
@@ -117,7 +241,7 @@ exports.createTicket = async (req, res) => {
     res.status(201).json({
       message: "Ticket created successfully",
       ticket,
-      pricing: pricingData // return matched pricing details too
+      pricing: pricingData
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -125,9 +249,6 @@ exports.createTicket = async (req, res) => {
 };
 
 
-
-
-// ======================== GET ALL TICKETS ========================
 exports.getTickets = async (req, res) => {
   try {
     const user = req.user;
@@ -160,7 +281,7 @@ exports.getTicketById = async (req, res) => {
 
 
     const ticket = await Ticket.findOne({ _id: id, isActive: true })
-      .populate("machine processor organisation");
+      .populate("machine processor organization");
 
 
     if (!ticket) return res.status(404).json({ message: "Active ticket not found" });
@@ -183,7 +304,7 @@ exports.updateTicket = async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
-    const { status, isActive, notes } = req.body;
+    const { status, isActive, notes,paymentStatus } = req.body;
 
     const ticket = await Ticket.findById(id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
@@ -191,7 +312,7 @@ exports.updateTicket = async (req, res) => {
     // Update status only by organisation
     if (status) {
       if (ticket.organisation.toString() !== user.id.toString()) {
-        return res.status(403).json({ message: "Only organisation can update ticket status" });
+        return res.status(403).json({ message: "Only organization can update ticket status" });
       }
       ticket.status = status;
     }
@@ -210,6 +331,9 @@ exports.updateTicket = async (req, res) => {
     // Update notes by organisation
     if (notes && ticket.organisation.toString() === user.id.toString()) {
       ticket.notes = notes;
+    }
+    if (paymentStatus) {
+      ticket.paymentStatus = paymentStatus
     }
 
     await ticket.save();

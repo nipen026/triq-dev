@@ -34,7 +34,7 @@ const ticketSchema = new mongoose.Schema({
   pricing: { type: mongoose.Schema.Types.ObjectId, ref: "ServicePricing" },
 
   // ✅ Payment Status
-  paymentStatus: { type: String, enum: ["paid", "unpaid"], default: "unpaid" },
+  paymentStatus: { type: String, enum: ["paid", "unpaid"], default: "paid" },
 
   engineerRemark: String,
 }, { timestamps: true });
