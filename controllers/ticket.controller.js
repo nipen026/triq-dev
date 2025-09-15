@@ -194,9 +194,9 @@ exports.createTicket = async (req, res) => {
     ) {
       // ✅ Use default pricing if none found
       pricingData = {
-        supportMode: "Online",
-        warrantyStatus: "In warranty",
-        ticketType: "Full Machine Service",
+        supportMode: type,
+        warrantyStatus: machineDetails.warrantyStatus,
+        ticketType: ticketType,
         cost: 0,
         currency: "USD",
         _id: new mongoose.Types.ObjectId()  // create fake ObjectId for reference
