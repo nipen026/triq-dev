@@ -48,49 +48,49 @@ exports.getMachineSupplierList = async (req, res) => {
 
 exports.getMachineOverview = async (req, res) => {
   try {
-    const userId = req.user.id; // user id from token (processor/customer login)
-    const user = await User.findById(userId).populate("roles");
+    const userId = req.user.id;
 
+    const user = await User.findById(userId).populate("roles");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    // Ensure only processor/customer can access their machines
     const roleNames = user.roles.map(r => r.name);
     if (!roleNames.includes("processor")) {
       return res.status(403).json({ message: "Only processor role can access machine overview" });
     }
 
-    // Find customer linked to this processor
-    const customer = await Customer.findOne({ users: userId, isActive: true })
+    // ✅ Use find to get all customers linked to this user
+    const customers = await Customer.find({ users: userId, isActive: true })
       .populate({
         path: "machines.machine",
         select: "machineName modelNumber serialNumber machine_type status isActive remarks",
       });
 
-    if (!customer) {
+    if (!customers || customers.length === 0) {
       return res.status(404).json({ message: "Customer not found for this processor" });
     }
-    console.log(customer,"customer");
-    
-    // Extract only machines
-    const machines = customer.machines.map(m => ({
-      machineId: m.machine?._id,
-      machineName: m.machine?.machineName,
-      modelNumber: m.machine?.modelNumber,
-      serialNumber: m.machine?.serialNumber,
-      machineType: m.machine?.machine_type,
-      status: m.machine?.status,
-      isActive: m.machine?.isActive,
-      purchaseDate: m.purchaseDate,
-      installationDate: m.installationDate,
-      warrantyStart: m.warrantyStart,
-      warrantyEnd: m.warrantyEnd,
-      warrantyStatus: m.warrantyStatus,
-      invoiceContractNo: m.invoiceContractNo,
-      organization:customer.organization,
-      remark: m.machine?.remarks || null, // ✅ directly from populated machine
-    }));
+
+    // ✅ Flatten all machines from all customers
+    const machines = customers.flatMap(customer =>
+      customer.machines.map(m => ({
+        machineId: m.machine?._id,
+        machineName: m.machine?.machineName,
+        modelNumber: m.machine?.modelNumber,
+        serialNumber: m.machine?.serialNumber,
+        machineType: m.machine?.machine_type,
+        status: m.machine?.status,
+        isActive: m.machine?.isActive,
+        purchaseDate: m.purchaseDate,
+        installationDate: m.installationDate,
+        warrantyStart: m.warrantyStart,
+        warrantyEnd: m.warrantyEnd,
+        warrantyStatus: m.warrantyStatus,
+        invoiceContractNo: m.invoiceContractNo,
+        organization: customer.organization,
+        remark: m.machine?.remarks || null,
+      }))
+    );
 
     res.json({ data: machines });
   } catch (err) {
