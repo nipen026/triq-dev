@@ -37,6 +37,54 @@ exports.getRoomByTicket = async (req, res) => {
   res.json(room);
 };
 
+// 🔹 GET /api/chat/rooms (all chats for logged-in user)
+exports.getAllChats = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const roles = req.user.roles; // array like ['processor'] or ['organization']
+
+    let query = {};
+    let currentRole;
+
+    if (roles.includes('organization')) {
+      currentRole = 'organization';
+      query.organisation = userId;
+    } else if (roles.includes('processor')) {
+      currentRole = 'processor';
+      query.processor = userId;
+    } else {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
+
+    // fetch all rooms
+    const rooms = await ChatRoom.find(query)
+      .populate('organisation', 'fullName email')
+      .populate('processor', 'fullName email')
+      .populate('ticket');
+
+    // now map the rooms so that only “other side” user is returned as `chatWith`
+    const formatted = rooms.map(room => {
+      const chatWith =
+        currentRole === 'organization' ? room.processor : room.organisation;
+
+      return {
+        _id: room._id,
+        ticket: room.ticket,
+        chatWith, // the other party’s info
+        // optionally you can still include both ids if you want
+        // organisation: room.organisation._id,
+        // processor: room.processor._id
+      };
+    });
+
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
+};
+
+
 // 🔹 GET /api/chat/messages/:roomId
 exports.getMessages = async (req, res) => {
   const messages = await Message.find({ room: req.params.roomId })
