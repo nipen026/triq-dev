@@ -9,22 +9,30 @@ const customerRoutes = require("./routes/customer.routes");
 const machineSupplierRoute = require("./routes/machineSupplier.routes");
 const ticketRoutes = require("./routes/ticket.routes");
 const servicePricingRoutes = require("./routes/servicePricing.routes");
-
+const ChatRoutes = require("./routes/chat.route");
 const path = require("path");
-const app = express();
-connectDB();
 
+const app = express();
+
+// DB + middleware
+connectDB();
 app.use(cors());
 app.use(express.json());
+
+// API routes
 app.use("/api/auth", authRoutes);
 app.use("/api/machines", machineRoutes);
 app.use("/api/customers", customerRoutes);
 app.use("/api/machinesupplier", machineSupplierRoute);
 app.use("/api/ticket", ticketRoutes);
 app.use("/api/servicePricing", servicePricingRoutes);
+app.use("/api/chat", ChatRoutes);
+
+// Static
 app.use("/uploads", express.static(path.join(__dirname, "uploads")));
 app.use(
   "/api/flags",
   express.static(path.join(__dirname, "node_modules/flag-icons/flags/4x3"))
 );
+
 module.exports = app;
