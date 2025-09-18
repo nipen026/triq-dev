@@ -36,45 +36,45 @@ module.exports = (io) => {
 
     socket.on("sendMessage", async (payload) => {
       console.log(payload);
-      // const { roomId, content,attachments } = payload;
-      // if (!socket.userId || !roomId) return;
-
-      // const room = await ChatRoom.findById(roomId);
-      // console.log(room);
-
-      // if (!room) return;
-
-      // const message = await Message.create({
-      //   room: roomId,
-      //   sender: socket.userId,
-      //   content,
-      //   attachments,
-      // });
-      // console.log('newMessage to room', roomId, message);
-      // io.to(roomId).emit("newMessage", message);
-      const { roomId, content, name, type, data } = payload;
+      const { roomId, content,attachments } = payload;
       if (!socket.userId || !roomId) return;
 
       const room = await ChatRoom.findById(roomId);
+      console.log(room);
+
       if (!room) return;
 
-      // 1️⃣ save buffer to disk (or S3)
-      const buffer = Buffer.from(new Uint8Array(data));
-      const uploadDir = path.join(__dirname, "../uploads/chat");
-      if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-      const fileName = Date.now() + "-" + name;
-      const filePath = path.join(uploadDir, fileName);
-      fs.writeFileSync(filePath, buffer);
-
-      // 2️⃣ create message with URL to saved file
-      const attachmentUrl = "/uploads/chat/" + fileName; // you must serve this folder as static
       const message = await Message.create({
         room: roomId,
         sender: socket.userId,
         content,
-        attachments: [{ url: attachmentUrl, type }]
+        attachments,
       });
+      console.log('newMessage to room', roomId, message);
+      io.to(roomId).emit("newMessage", message);
+      // const { roomId, content, name, type, data } = payload;
+      // if (!socket.userId || !roomId) return;
+
+      // const room = await ChatRoom.findById(roomId);
+      // if (!room) return;
+
+      // // 1️⃣ save buffer to disk (or S3)
+      // const buffer = Buffer.from(new Uint8Array(data));
+      // const uploadDir = path.join(__dirname, "../uploads/chat");
+      // if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
+
+      // const fileName = Date.now() + "-" + name;
+      // const filePath = path.join(uploadDir, fileName);
+      // fs.writeFileSync(filePath, buffer);
+
+      // // 2️⃣ create message with URL to saved file
+      // const attachmentUrl = "/uploads/chat/" + fileName; // you must serve this folder as static
+      // const message = await Message.create({
+      //   room: roomId,
+      //   sender: socket.userId,
+      //   content,
+      //   attachments: [{ url: attachmentUrl, type }]
+      // });
 
       // 3️⃣ broadcast
       io.to(roomId).emit("newMessage", message);

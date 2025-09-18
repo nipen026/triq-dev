@@ -29,7 +29,8 @@ app.use("/api/servicePricing", servicePricingRoutes);
 app.use("/api/chat", ChatRoutes);
 
 // Static
-app.use("/uploads", express.static(path.join(__dirname, "uploads"))); 
+app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Serve uploaded files
+
 app.use(
   "/api/flags",
   express.static(path.join(__dirname, "node_modules/flag-icons/flags/4x3"))

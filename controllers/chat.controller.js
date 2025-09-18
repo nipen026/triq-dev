@@ -95,17 +95,7 @@ exports.getMessages = async (req, res) => {
 
 // 🔹 POST /api/chat/messages
 exports.sendMessage = async (req, res) => {
-  let attachments = [];
-  if (req.files && req.files.length > 0) {
-    attachments = req.files.map((f) => ({
-      url: `/uploads/chat/${f.filename}`,
-      type: f.mimetype.includes("image")
-        ? "image"
-        : f.mimetype.includes("video")
-        ? "video"
-        : "document",
-    }));
-  }
+  
 
   const senderId = req.body.senderId;
 
@@ -113,7 +103,7 @@ exports.sendMessage = async (req, res) => {
     room: req.body.roomId,
     sender: senderId,
     content: req.body.content,
-    attachments,
+    attachments:req.body.attachments || [],
   });
 
   // broadcast via socket.io
