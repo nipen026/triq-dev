@@ -20,7 +20,7 @@ const ticketSchema = new mongoose.Schema({
   type: String,
   status: {
     type: String,
-    enum: ["Active", "In Progress", "Resolved", "Rejected"],
+    enum: ["Active", "In Progress", "Resolved", "Rejected", "On Hold"],
     default: "Active"
   },
 
@@ -35,6 +35,7 @@ const ticketSchema = new mongoose.Schema({
 
   // ✅ Payment Status
   paymentStatus: { type: String, enum: ["paid", "unpaid"], default: "paid" },
+  reschedule_time: { type: String },
 
   engineerRemark: String,
 }, { timestamps: true });
