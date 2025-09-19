@@ -170,10 +170,10 @@ exports.getTicketById = async (req, res) => {
     const user = req.user;
     const { id } = req.params;
 
-
-    const ticket = await Ticket.findOne({ _id: id, isActive: true })
-      .populate("machine processor organization");
-
+   const ticket = await Ticket.findById(id)
+      .populate("machine")
+      .populate("processor", "fullName email phone countryCode")
+      .populate("organisation", "fullName email phone countryCode");
 
     if (!ticket) return res.status(404).json({ message: "Active ticket not found" });
 
@@ -191,41 +191,27 @@ exports.getTicketById = async (req, res) => {
 };
 
 // ======================== UPDATE TICKET ========================
+
 exports.updateTicket = async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
-    const { status, isActive, notes, paymentStatus,reschedule_time } = req.body;
+    const { status, notes, paymentStatus, reschedule_time, isActive } = req.body;
 
     const ticket = await Ticket.findById(id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    // Update status only by organisation
-    if (status) {
-      if (ticket.organisation.toString() !== user.id.toString()) {
-        return res.status(403).json({ message: "Only organization can update ticket status" });
-      }
-      ticket.status = status;
+    // ✅ only organisation can update ticket at all
+    if (ticket.organisation.toString() !== user.id.toString()) {
+      return res.status(403).json({ message: "Only organization can update this ticket" });
     }
 
-    // Update isActive by processor or organisation
-    if (typeof isActive === "boolean") {
-      if (
-        ticket.processor.toString() !== user._id.toString() &&
-        ticket.organisation.toString() !== user._id.toString()
-      ) {
-        return res.status(403).json({ message: "Not allowed to update active status" });
-      }
-      ticket.isActive = isActive;
-    }
+    // ✅ update allowed fields
+    if (status) ticket.status = status;
+    if (typeof isActive === "boolean") ticket.isActive = isActive;
+    if (notes) ticket.notes = notes;
+    if (paymentStatus) ticket.paymentStatus = paymentStatus;
 
-    // Update notes by organisation
-    if (notes && ticket.organisation.toString() === user.id.toString()) {
-      ticket.notes = notes;
-    }
-    if (paymentStatus) {
-      ticket.paymentStatus = paymentStatus
-    }
     if (reschedule_time) {
       ticket.reschedule_time = reschedule_time;
       ticket.status = "On Hold";
@@ -237,6 +223,7 @@ exports.updateTicket = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // ======================== DUMMY DATA FOR CREATE TICKET ========================
 /*
