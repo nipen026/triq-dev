@@ -78,7 +78,7 @@ module.exports = (io) => {
         readBy: [socket.userId]
       });
       console.log('newMessage to room', roomId, message);
-      io.to(roomId).emit("newMessage", message);
+      socket.to(roomId).emit("newMessage", message);
 
     });
 
