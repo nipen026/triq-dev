@@ -13,30 +13,55 @@ module.exports = (io) => {
       console.log("Registered user:", userId);
     });
 
-    socket.on("joinRoom", async (payload) => {
-      let roomId;
-      if (typeof payload === 'object' && payload.roomId) {
-        roomId = payload.roomId;
-      } else {
-        roomId = payload;
-      }
+    // socket.on("joinRoom", async (payload) => {
+    //   let roomId;
+    //   if (typeof payload === 'object' && payload.roomId) {
+    //     roomId = payload.roomId;
+    //   } else {
+    //     roomId = payload;
+    //   }
 
+    //   const room = await ChatRoom.findById(roomId);
+    //   if (!room) return;  // <-- nothing happens if no room found
+
+    //   if (
+    //     room.organisation.toString() !== socket.userId &&
+    //     room.processor.toString() !== socket.userId
+    //   ) return;           // <-- nothing happens if userId not in room
+
+    //   socket.join(roomId);
+    //   console.log(`User ${socket.userId} joined room ${roomId}`);
+    // });
+    socket.on("joinRoom", async (payload) => {
+      const roomId = typeof payload === "object" ? payload.roomId : payload;
       const room = await ChatRoom.findById(roomId);
-      if (!room) return;  // <-- nothing happens if no room found
+      if (!room) return;
 
       if (
         room.organisation.toString() !== socket.userId &&
         room.processor.toString() !== socket.userId
-      ) return;           // <-- nothing happens if userId not in room
+      ) return;
 
       socket.join(roomId);
       console.log(`User ${socket.userId} joined room ${roomId}`);
-    });
 
+      // 👇 automatically mark unread as read for this user
+      await Message.updateMany(
+        { room: roomId, readBy: { $ne: socket.userId } },
+        { $push: { readBy: socket.userId } }
+      );
+
+      // optionally send updated unread count to this socket
+      const unreadCount = await Message.countDocuments({
+        room: roomId,
+        readBy: { $ne: socket.userId }
+      });
+      socket.emit("unreadCount", { roomId, unreadCount });
+    });
 
     socket.on("sendMessage", async (payload) => {
       console.log(payload);
-      const { roomId, content,attachments } = payload;
+      const { roomId, content, attachments } = payload;
       if (!socket.userId || !roomId) return;
 
       const room = await ChatRoom.findById(roomId);
@@ -49,35 +74,11 @@ module.exports = (io) => {
         sender: socket.userId,
         content,
         attachments,
+        readBy: [socket.userId]
       });
       console.log('newMessage to room', roomId, message);
       io.to(roomId).emit("newMessage", message);
-      // const { roomId, content, name, type, data } = payload;
-      // if (!socket.userId || !roomId) return;
 
-      // const room = await ChatRoom.findById(roomId);
-      // if (!room) return;
-
-      // // 1️⃣ save buffer to disk (or S3)
-      // const buffer = Buffer.from(new Uint8Array(data));
-      // const uploadDir = path.join(__dirname, "../uploads/chat");
-      // if (!fs.existsSync(uploadDir)) fs.mkdirSync(uploadDir, { recursive: true });
-
-      // const fileName = Date.now() + "-" + name;
-      // const filePath = path.join(uploadDir, fileName);
-      // fs.writeFileSync(filePath, buffer);
-
-      // // 2️⃣ create message with URL to saved file
-      // const attachmentUrl = "/uploads/chat/" + fileName; // you must serve this folder as static
-      // const message = await Message.create({
-      //   room: roomId,
-      //   sender: socket.userId,
-      //   content,
-      //   attachments: [{ url: attachmentUrl, type }]
-      // });
-
-      // 3️⃣ broadcast
-      io.to(roomId).emit("newMessage", message);
     });
 
 

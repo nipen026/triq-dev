@@ -9,7 +9,9 @@ const messageSchema = new mongoose.Schema({
       url: String,
       type: { type: String } // 'image' | 'video' | 'document'
     }
-  ]
+  ],
+  readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
+
 }, { timestamps: true });
 
 module.exports = mongoose.model("Message", messageSchema);
