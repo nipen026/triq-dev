@@ -26,24 +26,39 @@ router.post("/messages", sendMessage);
 // 🟢 Upload a chat attachment first
 const path = require("path");
 
-router.post("/upload/chat", uploadChat.single("file"), (req, res) => {
-  if (!req.file) return res.status(400).json({ message: "No file uploaded" });
+// in middleware: 
+// const uploadChat = require("../middleware/uploadChat.middleware");
 
-  // get extension, lowercased (without dot)
-  const ext = path.extname(req.file.originalname).toLowerCase().replace('.', '');
+// POST /api/chat/upload/chat (multipart/form-data with field name 'files')
+router.post("/upload/chat", uploadChat.array("files", 10), (req, res) => {
+  if (!req.files || req.files.length === 0) {
+    return res.status(400).json({ message: "No files uploaded" });
+  }
 
-  let type = "document";
-  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) type = "image";
-  if (["mp4", "mov", "avi"].includes(ext)) type = "video";
-  if (["pdf"].includes(ext)) type = "pdf";
+  const filesData = req.files.map((file) => {
+    const ext = path.extname(file.originalname)
+      .toLowerCase()
+      .replace(".", "");
 
+    let type = "document";
+    if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) type = "image";
+    if (["mp4", "mov", "avi"].includes(ext)) type = "video";
+    if (["pdf"].includes(ext)) type = "pdf";
+
+    return {
+      url: `${req.protocol}://${req.get("host")}/uploads/chat/${file.filename}`,
+      name: file.originalname,
+      ext,
+      type,
+    };
+  });
+
+  // respond with array of uploaded files metadata
   res.status(201).json({
-    url: `${req.protocol}://${req.get("host")}/uploads/chat/${req.file.filename}`,
-    name: req.file.originalname,
-    ext,    // optional: return the ext too
-    type,
+    files: filesData,
   });
 });
+
 
 
 module.exports = router;

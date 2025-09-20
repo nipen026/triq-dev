@@ -93,12 +93,37 @@ exports.getAllChats = async (req, res) => {
 
 
 // 🔹 GET /api/chat/messages/:roomId
+// GET /api/chat/messages/:roomId?page=1&limit=20
 exports.getMessages = async (req, res) => {
+  try {
+    // page/limit from query, defaults:
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+
+    const skip = (page - 1) * limit;
+
+    // fetch paginated messages newest first
     const messages = await Message.find({ room: req.params.roomId })
-        .populate("sender", "fullName email")
-        .sort({ createdAt: 1 });
-    res.json(messages);
+      .populate("sender", "fullName email") // newest first
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    // optionally total count for UI
+    const total = await Message.countDocuments({ room: req.params.roomId });
+
+    res.json({
+      page,
+      limit,
+      total,
+      messages
+    });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
 };
+
 
 // 🔹 POST /api/chat/messages
 exports.sendMessage = async (req, res) => {
