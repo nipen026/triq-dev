@@ -24,18 +24,26 @@ router.get("/getAllChats", auth, getAllChats);
 router.post("/messages", sendMessage);
 
 // 🟢 Upload a chat attachment first
+const path = require("path");
+
 router.post("/upload/chat", uploadChat.single("file"), (req, res) => {
   if (!req.file) return res.status(400).json({ message: "No file uploaded" });
 
+  // get extension, lowercased (without dot)
+  const ext = path.extname(req.file.originalname).toLowerCase().replace('.', '');
+
   let type = "document";
-  if (req.file.mimetype.startsWith("image")) type = "image";
-  if (req.file.mimetype.startsWith("video")) type = "video";
+  if (["jpg", "jpeg", "png", "gif", "webp"].includes(ext)) type = "image";
+  if (["mp4", "mov", "avi"].includes(ext)) type = "video";
+  if (["pdf"].includes(ext)) type = "pdf";
 
   res.status(201).json({
-    url: `${req.protocol}://${req.get('host')}/uploads/chat/${req.file.filename}`,
+    url: `${req.protocol}://${req.get("host")}/uploads/chat/${req.file.filename}`,
     name: req.file.originalname,
+    ext,    // optional: return the ext too
     type,
   });
 });
+
 
 module.exports = router;
