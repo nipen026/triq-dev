@@ -63,7 +63,8 @@ module.exports = (io) => {
       console.log(payload);
       const { roomId, content, attachments } = payload;
       if (!socket.userId || !roomId) return;
-
+      console.log(socket.userId,"!socket.userId || !roomId",roomId);
+      
       const room = await ChatRoom.findById(roomId);
       console.log(room);
 
