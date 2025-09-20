@@ -60,7 +60,7 @@ module.exports = (io) => {
     });
 
     socket.on("sendMessage", async (payload) => {
-      console.log(payload);
+      console.log(payload,socket.userId);
       const { roomId, content, attachments } = payload;
       if (!socket.userId || !roomId) return;
       console.log(socket.userId,"!socket.userId || !roomId",roomId);
