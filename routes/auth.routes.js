@@ -9,5 +9,6 @@ router.post("/verify-phone", auth.verifyPhone);
 router.post("/login", auth.login);
 router.get("/getOraganization", auth.getOrganizationUsers);
 router.get("/search-organization-user", verifyToken, auth.searchOrganizationUser);
+router.post("/logout",verifyToken, auth.logout);
 
 module.exports = router;

@@ -8,7 +8,7 @@ const firebaseAdmin = require("../config/firebase");
 
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password, phone, countryCode, role,organizationType } = req.body;
+    const { fullName, email, password, phone, countryCode, role,organizationType,fcmToken } = req.body;
 
     // 1️⃣ Required fields check
     if (!fullName || !email || !password || !phone || !countryCode || !role) {
@@ -64,6 +64,7 @@ exports.register = async (req, res) => {
       // organizationType,
       roles: [userRole._id],
       emailOTP:'123456',
+      fcmToken
     });
 
     await user.save();
@@ -138,9 +139,8 @@ exports.verifyPhone = async (req, res) => {
 
 
 exports.login = async (req, res) => {
-  const { email, password } = req.body;
+  const { email, password ,fcmToken} = req.body;
   const user = await User.findOne({ email }).populate("roles");
-  console.log(await bcrypt);
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
     return res.status(401).json({ msg: "Invalid credentials" });
@@ -149,6 +149,10 @@ exports.login = async (req, res) => {
 
   if (!user.isEmailVerified) {
     return res.status(403).json({ msg: "Please verify your account" });
+  }
+if (fcmToken) {
+    user.fcmToken = fcmToken; // or push into array
+    await user.save();
   }
 
   const token = jwt.sign({ id: user._id, roles: user.roles.map(r => r.name) }, process.env.JWT_SECRET, {
@@ -209,6 +213,16 @@ exports.searchOrganizationUser = async (req, res) => {
     }
 
     res.json({ success: true, count: users.length, data: users });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
+
+exports.logout = async (req, res) => {
+  try {
+    // req.user.id comes from your JWT middleware
+    await User.findByIdAndUpdate(req.user.id, { $unset: { fcmToken: "" } });
+    res.status(200).json({ success: true, msg: "Logged out and FCM token removed" });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

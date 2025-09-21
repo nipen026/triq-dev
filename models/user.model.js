@@ -11,6 +11,7 @@ const UserSchema = new mongoose.Schema({
   emailOTP: String,
   isEmailVerified: { type: Boolean, default: false },
   isPhoneVerified: { type: Boolean, default: false },
+  fcmToken: { type: String }
 });
 
 module.exports = mongoose.model("User", UserSchema);
