@@ -5,10 +5,14 @@ const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
 const sendEmailOTP = require("../utils/emailOtp");
 const firebaseAdmin = require("../config/firebase");
+const Customer = require("../models/customer.model");
+const { getCountryFromPhone } = require("../utils/phoneHelper");
+
+// Register new user
 
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password, phone, countryCode, role,organizationType,fcmToken } = req.body;
+    const { fullName, email, password, phone, countryCode, role, organizationType, fcmToken } = req.body;
 
     // 1️⃣ Required fields check
     if (!fullName || !email || !password || !phone || !countryCode || !role) {
@@ -63,7 +67,7 @@ exports.register = async (req, res) => {
       countryCode,
       // organizationType,
       roles: [userRole._id],
-      emailOTP:'123456',
+      emailOTP: '123456',
       fcmToken
     });
 
@@ -71,7 +75,21 @@ exports.register = async (req, res) => {
 
     // 9️⃣ Send OTP via email
     await sendEmailOTP(email, '123456');
+    if (role === 'processor') {
+      // You can use any logic for default customer fields
+      const customerData = {
+        customerName: fullName,
+        contactPerson: fullName,
+        email,
+        phoneNumber: phone,
+        organization: null, // or link to some organisation id if you have one
+        countryOrigin: getCountryFromPhone(countryCode + phone), // optional
+        users: [user._id] // link user to custoer
+      };
 
+      const customer = new Customer(customerData);
+      await customer.save();
+    }
     res.status(200).json({ msg: "Registered. Verify email and phone OTP." });
   } catch (err) {
     console.error("Registration error:", err);
@@ -139,7 +157,7 @@ exports.verifyPhone = async (req, res) => {
 
 
 exports.login = async (req, res) => {
-  const { email, password ,fcmToken} = req.body;
+  const { email, password, fcmToken } = req.body;
   const user = await User.findOne({ email }).populate("roles");
 
   if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -150,7 +168,7 @@ exports.login = async (req, res) => {
   if (!user.isEmailVerified) {
     return res.status(403).json({ msg: "Please verify your account" });
   }
-if (fcmToken) {
+  if (fcmToken) {
     user.fcmToken = fcmToken; // or push into array
     await user.save();
   }
@@ -197,6 +215,7 @@ exports.searchOrganizationUser = async (req, res) => {
       roles: orgRole._id,
       _id: { $ne: loggedInUserId } // exclude current user
     };
+    console.log(query);
 
     if (search) {
       query.$or = [
@@ -207,6 +226,7 @@ exports.searchOrganizationUser = async (req, res) => {
     }
 
     const users = await User.find(query).populate("roles", "name");
+    console.log(users, "users");
 
     if (!users.length) {
       return res.status(404).json({ message: "No organization users found" });
