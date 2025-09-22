@@ -5,7 +5,9 @@ const Role = require("../models/role.model");
 const ServicePricing = require("../models/servicePricing.model")
 const { getFlag } = require("../utils/flagHelper");
 const ChatRoom = require("../models/chatRoom.model");
-
+const admin = require("../config/firebase");
+const User = require("../models/user.model");
+const mongoose = require("mongoose");
 
 function generateTicketNumber() {
   return Math.floor(100000000000 + Math.random() * 900000000000).toString();
@@ -128,6 +130,23 @@ exports.createTicket = async (req, res) => {
         processor: user.id, // processor creating the ticket
       });
     }
+    // const otherUser = await User.findById(organisationId).select('fullName fcmToken');
+
+    // if (otherUser?.fcmToken) {
+    //   const notifPayload = {
+    //     notification: {
+    //       title: `New Ticket #${ticket.ticketNumber}`,
+    //       body: `Problem: ${ticket.problem}`
+    //     },
+    //     data: {
+    //       type: 'ticket_created',
+    //       ticketNumber: ticket.ticketNumber,
+    //       screenName: 'ticket'
+    //     }
+    //   };
+
+    //   await admin.messaging().sendToDevice(otherUser.fcmToken, notifPayload);
+    // }
     res.status(201).json({
       message: "Ticket created successfully",
       ticket,
@@ -170,7 +189,7 @@ exports.getTicketById = async (req, res) => {
     const user = req.user;
     const { id } = req.params;
 
-   const ticket = await Ticket.findById(id)
+    const ticket = await Ticket.findById(id)
       .populate("machine")
       .populate("processor", "fullName email phone countryCode")
       .populate("organisation", "fullName email phone countryCode");
