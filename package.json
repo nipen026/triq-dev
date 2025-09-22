@@ -23,6 +23,8 @@
     "libphonenumber-js": "^1.12.15",
     "mongoose": "^8.17.2",
     "multer": "^2.0.2",
+    "node-cron": "^4.2.1",
+    "node-schedule": "^2.1.1",
     "nodemailer": "^7.0.5",
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",

@@ -9,6 +9,8 @@ const io = socket.init(server);
 
 // load your socket event handlers
 require("./socket/chatSocket")(io);
+require("./cron/ticketStatusUpdater"); // just importing starts the cron
+
 
 const PORT = process.env.PORT || 4000;
 server.listen(PORT, () => console.log(`Server running on http://localhost:${PORT}`));
