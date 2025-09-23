@@ -36,7 +36,7 @@ const ticketSchema = new mongoose.Schema({
   // ✅ Payment Status
   paymentStatus: { type: String, enum: ["paid", "unpaid"], default: "paid" },
   reschedule_time: { type: String },
-
+  IsShowChatOption: { type: Boolean, default: true },
   engineerRemark: String,
 }, { timestamps: true });
 
