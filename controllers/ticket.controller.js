@@ -426,7 +426,8 @@ exports.getSummary = async (req, res) => {
         createdAt: ticket.createdAt,
         updatedAt: ticket.updatedAt,
         paymentStatus: ticket.paymentStatus,
-        media: ticket.media
+        media: ticket.media,
+        IsShowChatOption: ticket.IsShowChatOption
       },
       machineDetails: ticket.machine,
       customerMachineDetails,
