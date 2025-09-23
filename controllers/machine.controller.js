@@ -6,7 +6,7 @@ const pickMachineFields = (body) => {
     user:body.user,
     machineName: body.machineName,
     modelNumber: body.modelNumber,
-    serialNumber: body.serialNumber,
+    // serialNumber: body.serialNumber,
     machine_type: body.machine_type,
     processingDimensions: body.processingDimensions,
     totalPower: body.totalPower,

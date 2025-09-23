@@ -325,7 +325,7 @@ exports.getTicketsByStatus = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 });
-
+    
     const data = await Promise.all(
       tickets.map(async (t) => {
         const chatRoom = await ChatRoom.findOne({ ticket: t._id })

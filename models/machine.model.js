@@ -3,7 +3,7 @@ const mongoose = require("mongoose");
 const machineSchema = new mongoose.Schema({
   machineName: { type: String, required: true },      // "#1234 - Machine Name"
   modelNumber: { type: String, required: true },      // "#1234"
-  serialNumber: { type: String },       // Unique SN
+  // serialNumber: { type: String },       // Unique SN
   machine_type: { 
     type: String,
     required: true 

@@ -64,7 +64,7 @@ exports.getMachineOverview = async (req, res) => {
     const customers = await Customer.find({ users: userId, isActive: true })
       .populate({
         path: "machines.machine",
-        select: "machineName modelNumber serialNumber machine_type status isActive remarks",
+        select: "machineName modelNumber machine_type status isActive remarks",
       });
 
     if (!customers || customers.length === 0) {
@@ -77,7 +77,7 @@ exports.getMachineOverview = async (req, res) => {
         machineId: m.machine?._id,
         machineName: m.machine?.machineName,
         modelNumber: m.machine?.modelNumber,
-        serialNumber: m.machine?.serialNumber,
+        // serialNumber: m.machine?.serialNumber,
         machineType: m.machine?.machine_type,
         status: m.machine?.status,
         isActive: m.machine?.isActive,
