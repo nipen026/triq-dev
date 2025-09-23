@@ -1,25 +1,27 @@
-  const Customer = require("../models/customer.model");
-  const Machine = require("../models/machine.model");
-  const Role = require("../models/role.model");
-  const User = require("../models/user.model");
-  const bcrypt = require("bcryptjs");
-  const crypto = require("crypto");
-  const { getFlag } = require("../utils/flagHelper");
-  const sendMail = require("../utils/mailer");
+const Customer = require("../models/customer.model");
+const Machine = require("../models/machine.model");
+const Role = require("../models/role.model");
+const User = require("../models/user.model");
+const bcrypt = require("bcryptjs");
+const crypto = require("crypto");
+const { getFlag } = require("../utils/flagHelper");
+const sendMail = require("../utils/mailer");
 const { getCountryFromPhone } = require("../utils/phoneHelper");
-  // Helper: pick only allowed fields
-  const pickCustomerFields = (body) => {
-    return {
-      organization: body.organization,  // organization ID
-      phoneNumber: body.phoneNumber,
-      email: body.email,
-      contactPerson: body.contactPerson,
-      designation: body.designation,
-      customerName: body.customerName,
-      machines: body.machines,
-      countryOrigin: body.countryOrigin
-    };
+const QRCode = require("qrcode");
+
+// Helper: pick only allowed fields
+const pickCustomerFields = (body) => {
+  return {
+    organization: body.organization,  // organization ID
+    phoneNumber: body.phoneNumber,
+    email: body.email,
+    contactPerson: body.contactPerson,
+    designation: body.designation,
+    customerName: body.customerName,
+    machines: body.machines,
+    countryOrigin: body.countryOrigin
   };
+};
 
 exports.createCustomer = async (req, res) => {
   const session = await Customer.startSession();
@@ -156,9 +158,9 @@ exports.getCustomers = async (req, res) => {
 
     // Find only customers linked to this organization user
     let customers = await Customer.find({
-        isActive: true,
-        organization: userId   // ✅ filter by org user
-      })
+      isActive: true,
+      organization: userId   // ✅ filter by org user
+    })
       .populate("machines.machine")
       .populate("users", "fullName email");
 
@@ -167,6 +169,8 @@ exports.getCustomers = async (req, res) => {
       const obj = c.toObject();
       obj.flag = getFlag(c.countryOrigin);
       obj.userImage = 'https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D'
+      const qrPayload = JSON.stringify(c);
+      obj.qrCode = QRCode.toDataURL(qrPayload);
       return obj;
     });
 
@@ -177,7 +181,7 @@ exports.getCustomers = async (req, res) => {
 };
 
 
-  // ✅ Get Single Customer by ID
+// ✅ Get Single Customer by ID
 exports.getCustomerById = async (req, res) => {
   try {
     const id = req.params.id;
@@ -197,10 +201,13 @@ exports.getCustomerById = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: "Customer not found or inactive" });
     }
+    const qrCodeCustomer = await Customer.findOne({ _id: id, isActive: true }).populate("users", "fullName email");
 
     const obj = customer.toObject();
     obj.flag = getFlag(customer.countryOrigin);
     obj.userImage = 'https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' // attach flag svg
+    const qrPayload = JSON.stringify(qrCodeCustomer);
+    obj.qrCode = await QRCode.toDataURL(qrPayload);
 
     res.json(obj);
   } catch (err) {
@@ -208,41 +215,41 @@ exports.getCustomerById = async (req, res) => {
   }
 };
 
-  // ✅ Update Customer
-  exports.updateCustomer = async (req, res) => {
-    try {
-      const customerData = pickCustomerFields(req.body);
+// ✅ Update Customer
+exports.updateCustomer = async (req, res) => {
+  try {
+    const customerData = pickCustomerFields(req.body);
 
-      const customer = await Customer.findOneAndUpdate(
-        { _id: req.params.id, isActive: true },
-        customerData,
-        { new: true }
-      ).populate("machines.machine");
+    const customer = await Customer.findOneAndUpdate(
+      { _id: req.params.id, isActive: true },
+      customerData,
+      { new: true }
+    ).populate("machines.machine");
 
-      if (!customer) return res.status(404).json({ message: "Customer not found or inactive" });
+    if (!customer) return res.status(404).json({ message: "Customer not found or inactive" });
 
-      res.json({ message: "Customer updated successfully", data: customer });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  };
+    res.json({ message: "Customer updated successfully", data: customer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
-  // ✅ Soft Delete Customer
-  exports.deleteCustomer = async (req, res) => {
-    try {
-      const customer = await Customer.findByIdAndUpdate(
-        req.params.id,
-        { isActive: false },
-        { new: true }
-      );
+// ✅ Soft Delete Customer
+exports.deleteCustomer = async (req, res) => {
+  try {
+    const customer = await Customer.findByIdAndUpdate(
+      req.params.id,
+      { isActive: false },
+      { new: true }
+    );
 
-      if (!customer) return res.status(404).json({ message: "Customer not found" });
+    if (!customer) return res.status(404).json({ message: "Customer not found" });
 
-      res.json({ message: "Customer deactivated (soft deleted)", data: customer });
-    } catch (err) {
-      res.status(500).json({ error: err.message });
-    }
-  };
+    res.json({ message: "Customer deactivated (soft deleted)", data: customer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 // ✅ Search Customers by email or phone (only within the logged-in user's organization)
 exports.searchCustomers = async (req, res) => {
   try {
@@ -251,7 +258,7 @@ exports.searchCustomers = async (req, res) => {
 
     // ✅ Get logged-in user's organization
     const user = await User.findById(loggedInUserId).populate("roles", "name");
-    
+
     if (!user || !user.roles.map(r => r.name).includes("organization")) {
       return res.status(403).json({ message: "User does not belong to an organization" });
     }

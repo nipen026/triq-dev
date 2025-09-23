@@ -288,16 +288,28 @@ exports.DeleteTicket = async (req, res) => {
 exports.getTicketsByStatus = async (req, res) => {
   try {
     const user = req.user;
-    const { status } = req.params; // status from URL param
-    let { page = 1, limit = 10 } = req.query; // pagination
+    let { status } = req.params; // status from URL param
+    let { page = 1, limit = 10 } = req.query;
     page = parseInt(page);
     limit = parseInt(limit);
 
     const processorRole = await Role.findOne({ name: "processor" });
-    const organisationRole = await Role.findOne({ name: 'organization' });
+    const organisationRole = await Role.findOne({ name: "organization" });
 
-    let query = { status, isActive: true };
+    // ✅ base query
+    let query = { isActive: true };
 
+    if (!status || status === "all") {
+      // no filter – show all statuses
+    } else if (status === "active") {
+      // active tab → everything except resolved
+      query.status = { $ne: "resolved" };
+    } else {
+      // specific status
+      query.status = status;
+    }
+
+    // ✅ restrict by user role
     if (processorRole && user.roles.includes(processorRole.name)) {
       query.processor = user.id;
     } else if (organisationRole && user.roles.includes(organisationRole.name)) {
@@ -306,27 +318,38 @@ exports.getTicketsByStatus = async (req, res) => {
       return res.status(403).json({ message: "Not authorized" });
     }
 
-    // Count total documents
     const total = await Ticket.countDocuments(query);
 
-    // Paginated tickets
     const tickets = await Ticket.find(query)
       .populate("machine processor organisation")
       .skip((page - 1) * limit)
       .limit(limit)
-      .sort({ createdAt: -1 }); // latest first
+      .sort({ createdAt: -1 });
+
+    const data = await Promise.all(
+      tickets.map(async (t) => {
+        const chatRoom = await ChatRoom.findOne({ ticket: t._id })
+          .populate("organisation", "fullName email")
+          .populate("processor", "fullName email");
+        return {
+          ...t.toObject(),
+          chatRoom,
+        };
+      })
+    );
 
     res.json({
       total,
       page,
       pages: Math.ceil(total / limit),
-      count: tickets.length,
-      data: tickets
+      count: data.length,
+      data,
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // ======================== GET SUMMARY ========================
 
