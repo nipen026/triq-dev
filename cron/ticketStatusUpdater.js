@@ -8,15 +8,22 @@ cron.schedule("* * * * *", async () => {
   try {
     const now = new Date();
 
-    const tickets = await Ticket.find({
-      status: "On Hold",
-      reschedule_update_time: { $lte: now } // if now >= reschedule_update_time
-    });
+    const startOfMinute = new Date(now);
+    startOfMinute.setSeconds(0, 0);
 
-    for (const t of tickets) {
-      t.status = "In Progress";
-      await t.save();
-      console.log(`✅ Ticket ${t._id} moved to In Progress`);
+    const endOfMinute = new Date(now);
+    endOfMinute.setSeconds(59, 999);
+
+    // ✅ Get the earliest ticket matching this minute
+    const ticket = await Ticket.findOne({
+      status: "On Hold",
+      reschedule_update_time: { $gte: startOfMinute, $lte: endOfMinute }
+    }).sort({ reschedule_update_time: 1 }); // pick earliest
+
+    if (ticket) {
+      ticket.status = "In Progress";
+      await ticket.save();
+      console.log(`✅ Ticket ${ticket._id} moved to In Progress`);
     }
   } catch (err) {
     console.error("Cron error:", err);

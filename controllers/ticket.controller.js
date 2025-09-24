@@ -293,6 +293,70 @@ exports.DeleteTicket = async (req, res) => {
 };
 
 // ======================== GET TICKETS BY STATUS (with Pagination) ========================
+// exports.getTicketsByStatus = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     let { status } = req.params; // status from URL param
+//     let { page = 1, limit = 10 } = req.query;
+//     page = parseInt(page);
+//     limit = parseInt(limit);
+
+//     const processorRole = await Role.findOne({ name: "processor" });
+//     const organisationRole = await Role.findOne({ name: "organization" });
+
+//     // ✅ base query
+//     let query = { isActive: true };
+
+//     if (!status || status === "all") {
+//       // no filter – show all statuses
+//     } else if (status === "active" || status === "Active") {
+//       // active tab → everything except resolved
+//       query.status = { $ne: "resolved" };
+//     } else {
+//       // specific status
+//       query.status = status;
+//     }
+
+//     // ✅ restrict by user role
+//     if (processorRole && user.roles.includes(processorRole.name)) {
+//       query.processor = user.id;
+//     } else if (organisationRole && user.roles.includes(organisationRole.name)) {
+//       query.organisation = user.id;
+//     } else {
+//       return res.status(403).json({ message: "Not authorized" });
+//     }
+
+//     const total = await Ticket.countDocuments(query);
+
+//     const tickets = await Ticket.find(query)
+//       .populate("machine processor organisation")
+//       .skip((page - 1) * limit)
+//       .limit(limit)
+//       .sort({ createdAt: -1 });
+    
+//     const data = await Promise.all(
+//       tickets.map(async (t) => {
+//         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
+//           .populate("organisation", "fullName email")
+//           .populate("processor", "fullName email");
+//         return {
+//           ...t.toObject(),
+//           chatRoom,
+//         };
+//       })
+//     );
+
+//     res.json({
+//       total,
+//       page,
+//       pages: Math.ceil(total / limit),
+//       count: data.length,
+//       data,
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 exports.getTicketsByStatus = async (req, res) => {
   try {
     const user = req.user;
@@ -309,11 +373,9 @@ exports.getTicketsByStatus = async (req, res) => {
 
     if (!status || status === "all") {
       // no filter – show all statuses
-    } else if (status === "active" || status === "Active") {
-      // active tab → everything except resolved
+    } else if (status.toLowerCase() === "active") {
       query.status = { $ne: "resolved" };
     } else {
-      // specific status
       query.status = status;
     }
 
@@ -333,14 +395,33 @@ exports.getTicketsByStatus = async (req, res) => {
       .skip((page - 1) * limit)
       .limit(limit)
       .sort({ createdAt: -1 });
-    
+
     const data = await Promise.all(
       tickets.map(async (t) => {
+        // 🔍 find customerMachineDetails (to extract warrantyStatus)
+        const customer = await Customer.findOne({
+          users: t.processor._id,
+          "machines.machine": t.machine._id,
+        });
+
+        let warrantyStatus = null;
+        if (customer) {
+          const machineDetails = customer.machines.find(
+            (m) => m.machine.toString() === t.machine._id.toString()
+          );
+          if (machineDetails) {
+            warrantyStatus = machineDetails.warrantyStatus;
+          }
+        }
+
+        // 🔍 include chatRoom + warrantyStatus
         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
           .populate("organisation", "fullName email")
           .populate("processor", "fullName email");
+
         return {
           ...t.toObject(),
+          warrantyStatus, // ✅ added here
           chatRoom,
         };
       })
