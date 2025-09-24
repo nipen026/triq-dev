@@ -211,6 +211,7 @@ exports.getTicketById = async (req, res) => {
 
 // ======================== UPDATE TICKET ========================
 
+// controllers/ticket.controller.js
 exports.updateTicket = async (req, res) => {
   try {
     const user = req.user;
@@ -220,7 +221,7 @@ exports.updateTicket = async (req, res) => {
     const ticket = await Ticket.findById(id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
 
-    // ✅ only organisation can update ticket at all
+    // ✅ only organisation can update ticket
     if (ticket.organisation.toString() !== user.id.toString()) {
       return res.status(403).json({ message: "Only organization can update this ticket" });
     }
@@ -232,7 +233,13 @@ exports.updateTicket = async (req, res) => {
     if (paymentStatus) ticket.paymentStatus = paymentStatus;
 
     if (reschedule_time) {
-      ticket.reschedule_time = reschedule_time;
+      ticket.reschedule_time = reschedule_time; // e.g. "30" (minutes)
+
+      // calculate reschedule_update_time = now + reschedule_time
+      const now = new Date();
+      const rescheduleUpdate = new Date(now.getTime() + reschedule_time * 60 * 1000);
+      ticket.reschedule_update_time = rescheduleUpdate;
+
       ticket.status = "On Hold";
     }
 
@@ -242,6 +249,7 @@ exports.updateTicket = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 
 // ======================== DUMMY DATA FOR CREATE TICKET ========================
@@ -301,7 +309,7 @@ exports.getTicketsByStatus = async (req, res) => {
 
     if (!status || status === "all") {
       // no filter – show all statuses
-    } else if (status === "active") {
+    } else if (status === "active" || status === "Active") {
       // active tab → everything except resolved
       query.status = { $ne: "resolved" };
     } else {

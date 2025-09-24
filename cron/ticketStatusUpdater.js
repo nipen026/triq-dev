@@ -8,21 +8,17 @@ cron.schedule("* * * * *", async () => {
   try {
     const now = new Date();
 
-    // only change status if reschedule_time < now - 1 minute
-    const threshold = new Date(now.getTime() - 60 * 1000); // 1 min after
-
     const tickets = await Ticket.find({
       status: "On Hold",
-      reschedule_time: { $lte: threshold } // reschedule_time at least 1 min behind
+      reschedule_update_time: { $lte: now } // if now >= reschedule_update_time
     });
 
     for (const t of tickets) {
       t.status = "In Progress";
       await t.save();
-      console.log(`Ticket ${t._id} moved to In Progress`);
+      console.log(`✅ Ticket ${t._id} moved to In Progress`);
     }
   } catch (err) {
     console.error("Cron error:", err);
   }
 });
-
