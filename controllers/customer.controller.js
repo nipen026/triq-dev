@@ -216,70 +216,70 @@ exports.getCustomerById = async (req, res) => {
 };
 
 // ✅ Update Customer
-exports.updateCustomer = async (req, res) => {
-  try {
-    const customerData = pickCustomerFields(req.body);
-
-    const customer = await Customer.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
-      customerData,
-      { new: true }
-    ).populate("machines.machine");
-
-    if (!customer) return res.status(404).json({ message: "Customer not found or inactive" });
-
-    res.json({ message: "Customer updated successfully", data: customer });
-  } catch (err) {
-    res.status(500).json({ error: err.message });
-  }
-};
-// ✅ Update or Create Customer depending on organization
 // exports.updateCustomer = async (req, res) => {
 //   try {
 //     const customerData = pickCustomerFields(req.body);
-//     const newOrgId = req.user.id; // 👈 coming from token
 
-//     // ✅ Find the current customer
-//     const existingCustomer = await Customer.findOne({
-//       _id: req.params.id,
-//       isActive: true
-//     });
-
-//     if (!existingCustomer) {
-//       return res.status(404).json({ message: "Customer not found or inactive" });
-//     }
-
-//     // ✅ If organization has changed → create new customer
-//     if (String(existingCustomer.organization) !== String(newOrgId)) {
-//       // Keep same userId if existing one is not null
-//       const userIdToUse = existingCustomer.users ? existingCustomer.users : customerData.users;
-
-//       const newCustomer = new Customer({
-//         ...customerData,
-//         organization: newOrgId,
-//         users: userIdToUse
-//       });
-
-//       await newCustomer.save();
-
-//       return res.json({
-//         message: "Organization changed, new customer created under new organization",
-//         data: newCustomer
-//       });
-//     }
-
-//     // ✅ Otherwise normal update in same org
-//     const updatedCustomer = await Customer.findOneAndUpdate(
+//     const customer = await Customer.findOneAndUpdate(
 //       { _id: req.params.id, isActive: true },
 //       customerData,
 //       { new: true }
 //     ).populate("machines.machine");
 
-//     res.json({ message: "Customer updated successfully", data: updatedCustomer });
+//     if (!customer) return res.status(404).json({ message: "Customer not found or inactive" });
+
+//     res.json({ message: "Customer updated successfully", data: customer });
 //   } catch (err) {
 //     res.status(500).json({ error: err.message });
 //   }
 // };
+// ✅ Update or Create Customer depending on organization
+exports.updateCustomer = async (req, res) => {
+  try {
+    const customerData = pickCustomerFields(req.body);
+    const newOrgId = req.user.id; // 👈 coming from token
+
+    // ✅ Find the current customer
+    const existingCustomer = await Customer.findOne({
+      _id: req.params.id,
+      isActive: true
+    });
+
+    if (!existingCustomer) {
+      return res.status(404).json({ message: "Customer not found or inactive" });
+    }
+
+    // ✅ If organization has changed → create new customer
+    if (String(existingCustomer.organization) !== String(newOrgId)) {
+      // Keep same userId if existing one is not null
+      const userIdToUse = existingCustomer.users ? existingCustomer.users : customerData.users;
+
+      const newCustomer = new Customer({
+        ...customerData,
+        organization: newOrgId,
+        users: userIdToUse
+      });
+
+      await newCustomer.save();
+
+      return res.json({
+        message: "Organization changed, new customer created under new organization",
+        data: newCustomer
+      });
+    }
+
+    // ✅ Otherwise normal update in same org
+    const updatedCustomer = await Customer.findOneAndUpdate(
+      { _id: req.params.id, isActive: true },
+      customerData,
+      { new: true }
+    ).populate("machines.machine");
+
+    res.json({ message: "Customer updated successfully", data: updatedCustomer });
+  } catch (err) {
+    res.status(500).json({ error: err.message });
+  }
+};
 
 
 // ✅ Soft Delete Customer
