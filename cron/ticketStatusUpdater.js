@@ -22,6 +22,7 @@ cron.schedule("* * * * *", async () => {
 
     if (ticket) {
       ticket.status = "In Progress";
+      ticket.IsShowChatOption = true;
       await ticket.save();
       console.log(`✅ Ticket ${ticket._id} moved to In Progress`);
     }
