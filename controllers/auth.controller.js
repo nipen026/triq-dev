@@ -74,7 +74,7 @@ exports.register = async (req, res) => {
     await user.save();
 
     // 9️⃣ Send OTP via email
-    await sendEmailOTP(email, '123456');
+    // await sendEmailOTP(email, '123456');
     if (role === 'processor') {
       // You can use any logic for default customer fields
       const customerData = {
@@ -84,7 +84,7 @@ exports.register = async (req, res) => {
         phoneNumber: phone,
         organization: null, // or link to some organisation id if you have one
         countryOrigin: getCountryFromPhone(countryCode + phone), // optional
-        users: [user._id] // link user to custoer
+        users: [user._id] 
       };
 
       const customer = new Customer(customerData);
