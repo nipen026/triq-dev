@@ -375,7 +375,8 @@ exports.getTicketsByStatus = async (req, res) => {
     if (!status || status === "all") {
       // no filter – show all statuses
     } else if (status.toLowerCase() === "active") {
-      query.status = { $ne: "resolved" };
+      query.status = { $ne: "resolved"  };
+      query.status = { $ne: "Resolved"  };
     } else {
       query.status = status;
     }
