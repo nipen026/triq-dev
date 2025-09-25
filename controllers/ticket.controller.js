@@ -118,7 +118,8 @@ exports.createTicket = async (req, res) => {
       organisation: organisationId,
       engineerRemark,
       pricing: pricingData._id, // save pricing item id
-      paymentStatus: paymentStatus || "unpaid"
+      // paymentStatus: paymentStatus || "paid"
+      paymentStatus: "paid"
     });
 
     await ticket.save();
