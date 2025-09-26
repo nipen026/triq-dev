@@ -20,8 +20,8 @@ const ticketSchema = new mongoose.Schema({
   type: String,
   status: {
     type: String,
-    enum: ["Active", "In Progress", "Resolved", "Rejected", "On Hold"],
-    default: "Active"
+    enum: ["Active", "In Progress", "Resolved", "Rejected", "On Hold","Waiting for Accept"],
+    default: "Waiting for Accept"
   },
 
   isActive: { type: Boolean, default: true },
