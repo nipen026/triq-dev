@@ -93,7 +93,7 @@ exports.createCustomer = async (req, res) => {
 
       // ✅ Generate random password
       const plainPassword = crypto.randomBytes(6).toString("hex");
-      const hashedPassword = await bcrypt.hash('test123', 10);
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
       // ✅ Create linked user
       user = new User({
@@ -110,17 +110,17 @@ exports.createCustomer = async (req, res) => {
       await user.save({ session });
 
       // ✅ Send email only when new user created
-      // await sendMail({
-      //   to: customer.email,
-      //   subject: "Welcome! Your Processor Account is Ready",
-      //   html: `
-      //     <p>Hello ${customer.contactPerson || customer.customerName},</p>
-      //     <p>Your processor account has been created.</p>
-      //     <p><strong>Email:</strong> ${customer.email}</p>
-      //     <p><strong>Password:</strong> ${plainPassword}</p>
-      //     <p>Please log in and change your password immediately.</p>
-      //   `,
-      // });
+      await sendMail({
+        to: customer.email,
+        subject: "Welcome! Your Processor Account is Ready",
+        html: `
+          <p>Hello ${customer.contactPerson || customer.customerName},</p>
+          <p>Your processor account has been created.</p>
+          <p><strong>Email:</strong> ${customer.email}</p>
+          <p><strong>Password:</strong> ${plainPassword}</p>
+          <p>Please log in and change your password immediately.</p>
+        `,
+      });
     }
 
     // ✅ Link user to customer
