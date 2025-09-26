@@ -217,7 +217,7 @@ exports.updateTicket = async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
-    const { status, notes, paymentStatus, reschedule_time, isActive } = req.body;
+    const { status, notes, paymentStatus, reschedule_time, isActive, engineerRemark } = req.body;
 
     const ticket = await Ticket.findById(id);
     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
@@ -232,7 +232,7 @@ exports.updateTicket = async (req, res) => {
     if (typeof isActive === "boolean") ticket.isActive = isActive;
     if (notes) ticket.notes = notes;
     if (paymentStatus) ticket.paymentStatus = paymentStatus;
-
+    if (engineerRemark) ticket.engineerRemark = engineerRemark;
     if (reschedule_time) {
       ticket.reschedule_time = reschedule_time; // e.g. "30" (minutes)
 
@@ -334,7 +334,7 @@ exports.DeleteTicket = async (req, res) => {
 //       .skip((page - 1) * limit)
 //       .limit(limit)
 //       .sort({ createdAt: -1 });
-    
+
 //     const data = await Promise.all(
 //       tickets.map(async (t) => {
 //         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
@@ -375,7 +375,7 @@ exports.getTicketsByStatus = async (req, res) => {
     if (!status || status === "all") {
       // no filter – show all statuses
     } else if (status.toLowerCase() === "active") {
-      query.status = { $ne: "Resolved"  };
+      query.status = { $ne: "Resolved" };
     } else {
       query.status = status;
     }
