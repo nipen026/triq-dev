@@ -447,7 +447,9 @@ exports.getTicketsByStatus = async (req, res) => {
 exports.getSummary = async (req, res) => {
   try {
     const { id } = req.params;
-
+    const user = req.user;
+    console.log(user.roles[0],"user");
+    
     const ticket = await Ticket.findById(id)
       .populate("machine")
       .populate("processor", "fullName email phone countryCode")
@@ -524,7 +526,8 @@ exports.getSummary = async (req, res) => {
       processorDetails, // ✅ includes flag + image
       organisationDetails, // ✅ includes flag + image
       pricingDetails,
-      chatRoom
+      chatRoom,
+      role:user.roles[0]
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
