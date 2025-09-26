@@ -111,12 +111,20 @@ exports.getMessages = async (req, res) => {
 
     // optionally total count for UI
     const total = await Message.countDocuments({ room: req.params.roomId });
-
+     const room = await ChatRoom.findById(req.params.roomId).populate("ticket");
+    if (!room) return res.status(404).json({ message: "Room not found" });
+    console.log(room);
+    
+    const isResolvedTicket = room.ticket?.status === "Resolved";
+const formattedMessages = messages.map((msg) => ({
+      ...msg.toObject(),
+      isResolvedTicket,
+    }));
     res.json({
       page,
       limit,
       total,
-      messages
+      messages:formattedMessages
     });
   } catch (err) {
     console.error(err);
