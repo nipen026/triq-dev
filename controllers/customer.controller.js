@@ -201,14 +201,15 @@ exports.getCustomerById = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: "Customer not found or inactive" });
     }
-    const qrCodeCustomer = await Customer.findOne({ _id: id, isActive: true }).populate("users", "fullName email");
-
+    // let qrCodeCustomer = await Customer.findOne({ id: id, isActive: true }).populate("users", "fullName email");
+    // if (!qrCodeCustomer) {
+    //   qrCodeCustomer = await Customer.findOne({ users: id, isActive: true })
+    //     .populate("users", "fullName email");
+    // }
     const obj = customer.toObject();
     obj.flag = getFlag(customer.countryOrigin);
     obj.userImage = 'https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' // attach flag svg
-    const qrPayload = JSON.stringify(qrCodeCustomer);
-    obj.qrCode = await QRCode.toDataURL(qrPayload);
-
+    obj.qrCode = await QRCode.toDataURL(id);
     res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });
