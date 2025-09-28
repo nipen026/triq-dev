@@ -10,6 +10,7 @@ const machineSupplierRoute = require("./routes/machineSupplier.routes");
 const ticketRoutes = require("./routes/ticket.routes");
 const servicePricingRoutes = require("./routes/servicePricing.routes");
 const ChatRoutes = require("./routes/chat.route");
+const profileRoutes = require("./routes/profile.route");
 const path = require("path");
 
 const app = express();
@@ -27,6 +28,8 @@ app.use("/api/machinesupplier", machineSupplierRoute);
 app.use("/api/ticket", ticketRoutes);
 app.use("/api/servicePricing", servicePricingRoutes);
 app.use("/api/chat", ChatRoutes);
+app.use("/api/profile", profileRoutes);
+
 
 // Static
 app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Serve uploaded files
