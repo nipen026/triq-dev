@@ -162,7 +162,8 @@ exports.getCustomers = async (req, res) => {
       organization: userId   // ✅ filter by org user
     })
       .populate("machines.machine")
-      .populate("users", "fullName email");
+      .populate("users", "fullName email")
+      .populate("organization", "fullName email phone");
 
     // Add flag for each customer
     customers = customers.map(c => {
@@ -189,13 +190,17 @@ exports.getCustomerById = async (req, res) => {
     // Try finding by customerId first
     let customer = await Customer.findOne({ _id: id, isActive: true })
       .populate("machines.machine")
-      .populate("users", "fullName email");
+      .populate("users", "fullName email")
+      .populate("organization", "fullName email phone");
+
 
     // If not found, maybe it's a userId (processor)
     if (!customer) {
       customer = await Customer.findOne({ users: id, isActive: true })
         .populate("machines.machine")
-        .populate("users", "fullName email");
+        .populate("users", "fullName email")
+      .populate("organization", "fullName email phone");
+
     }
 
     if (!customer) {
