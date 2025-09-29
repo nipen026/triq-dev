@@ -7,7 +7,7 @@ const sendEmailOTP = require("../utils/emailOtp");
 const firebaseAdmin = require("../config/firebase");
 const Customer = require("../models/customer.model");
 const { getCountryFromPhone } = require("../utils/phoneHelper");
-
+const Profile = require("../models/profile.model");
 // Register new user
 
 exports.register = async (req, res) => {
@@ -72,7 +72,35 @@ exports.register = async (req, res) => {
     });
 
     await user.save();
+   await Profile.create({
+  user: user._id,
 
+  // 👇 fill all profile fields so frontend sees them
+  organizationName: "",
+  unitName: "",
+  designation: "",
+
+  // if you also want to store duplicates of email/phone here
+  email: user.email,
+  phone: user.phone,
+
+  corporateAddress: {
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    country: "",
+    pincode: ""
+  },
+  factoryAddress: {
+    addressLine1: "",
+    addressLine2: "",
+    city: "",
+    state: "",
+    country: "",
+    pincode: ""
+  }
+});
     // 9️⃣ Send OTP via email
     // await sendEmailOTP(email, '123456');
     if (role === 'processor') {
@@ -84,7 +112,7 @@ exports.register = async (req, res) => {
         phoneNumber: phone,
         organization: null, // or link to some organisation id if you have one
         countryOrigin: getCountryFromPhone(countryCode + phone), // optional
-        users: [user._id] 
+        users: [user._id]
       };
 
       const customer = new Customer(customerData);
