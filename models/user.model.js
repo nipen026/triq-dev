@@ -11,7 +11,10 @@ const UserSchema = new mongoose.Schema({
   emailOTP: String,
   isEmailVerified: { type: Boolean, default: false },
   isPhoneVerified: { type: Boolean, default: false },
-  fcmToken: { type: String }
+  fcmToken: { type: String },
+  resetPasswordOTP: { type: String, default: null },
+  resetPasswordExpires: { type: Date, default: null },
+  isOtpVerifiedForReset: { type: Boolean, default: false },
 });
 
 module.exports = mongoose.model("User", UserSchema);

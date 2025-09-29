@@ -10,5 +10,8 @@ router.post("/login", auth.login);
 router.get("/getOraganization", auth.getOrganizationUsers);
 router.get("/search-organization-user", verifyToken, auth.searchOrganizationUser);
 router.post("/logout",verifyToken, auth.logout);
+router.post("/forgot-password", auth.forgotPassword);
+router.post("/verify-forgot-otp", auth.verifyForgotOTP);
+router.post("/reset-password", auth.resetPassword);
 
 module.exports = router;
