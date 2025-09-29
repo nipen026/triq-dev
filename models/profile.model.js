@@ -16,7 +16,7 @@ const ProfileSchema = new mongoose.Schema(
 
     unitName: String,
     designation: String,
-
+    organizationName: String,
     // personal info duplicates allowed (or you can pull from User directly)
 
     corporateAddress: AddressSchema,
