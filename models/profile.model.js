@@ -12,15 +12,17 @@ const AddressSchema = new mongoose.Schema({
 
 const ProfileSchema = new mongoose.Schema(
   {
-    user: { type: mongoose.Schema.Types.ObjectId, ref: "User"},
+    user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 
     unitName: String,
     designation: String,
     organizationName: String,
-    // personal info duplicates allowed (or you can pull from User directly)
-
     corporateAddress: AddressSchema,
-    factoryAddress: AddressSchema
+    factoryAddress: AddressSchema,
+    profileImage: {
+      type: String, // store URL or filename
+      default: ""   // keep blank if not uploaded
+    },
   },
   { timestamps: true }
 );

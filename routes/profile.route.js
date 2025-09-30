@@ -2,10 +2,13 @@ const express = require("express");
 const router = express.Router();
 const profileController = require("../controllers/profile.controller");
 const auth = require("../middleware/auth.middleware"); // JWT or session middleware
+const upload = require("../middleware/uploadProfileImage.middleware");
 
-router.post("/create-profile", auth, profileController.createProfile);
+// Profile routes
+// All routes are protected and require authentication
+router.post("/create-profile", auth, upload.single("profileImage"), profileController.createProfile);
 router.get("/get-profile", auth, profileController.getProfile);
-router.put("/update-profile", auth, profileController.updateProfile);
+router.put("/update-profile", auth, upload.single("profileImage"), profileController.updateProfile);
 router.delete("/delete-profile", auth, profileController.deleteProfile);
 
 module.exports = router;

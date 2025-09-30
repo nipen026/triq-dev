@@ -72,35 +72,35 @@ exports.register = async (req, res) => {
     });
 
     await user.save();
-   await Profile.create({
-  user: user._id,
+    await Profile.create({
+      user: user._id,
 
-  // 👇 fill all profile fields so frontend sees them
-  organizationName: "",
-  unitName: "",
-  designation: "",
+      // 👇 fill all profile fields so frontend sees them
+      organizationName: "",
+      unitName: "",
+      designation: "",
 
-  // if you also want to store duplicates of email/phone here
-  email: user.email,
-  phone: user.phone,
+      // if you also want to store duplicates of email/phone here
+      email: user.email,
+      phone: user.phone,
 
-  corporateAddress: {
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    country: "",
-    pincode: ""
-  },
-  factoryAddress: {
-    addressLine1: "",
-    addressLine2: "",
-    city: "",
-    state: "",
-    country: "",
-    pincode: ""
-  }
-});
+      corporateAddress: {
+        addressLine1: "",
+        addressLine2: "",
+        city: "",
+        state: "",
+        country: "",
+        pincode: ""
+      },
+      factoryAddress: {
+        addressLine1: "",
+        addressLine2: "",
+        city: "",
+        state: "",
+        country: "",
+        pincode: ""
+      }
+    });
     // 9️⃣ Send OTP via email
     // await sendEmailOTP(email, '123456');
     if (role === 'processor') {
