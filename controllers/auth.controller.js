@@ -83,7 +83,7 @@ exports.register = async (req, res) => {
       // if you also want to store duplicates of email/phone here
       email: user.email,
       phone: user.phone,
-
+      profileImage: "",
       corporateAddress: {
         addressLine1: "",
         addressLine2: "",
