@@ -225,7 +225,7 @@ exports.login = async (req, res) => {
     // 3️⃣ Check if role matches (optional: allow multiple roles per user)
     const userRoles = user.roles.map(r => r.name);
     if (role && !userRoles.includes(role)) {
-      return res.status(403).json({ msg: `Role mismatch. You do not have '${role}' access.` });
+      return res.status(403).json({ msg: `Invalid Role` });
     }
 
     // 4️⃣ Update FCM token if provided
