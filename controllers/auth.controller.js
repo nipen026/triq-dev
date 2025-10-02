@@ -184,28 +184,72 @@ exports.verifyPhone = async (req, res) => {
 };
 
 
+// exports.login = async (req, res) => {
+//   const { email, password, fcmToken,role } = req.body;
+//   const user = await User.findOne({ email }).populate("roles");
+
+//   if (!user || !(await bcrypt.compare(password, user.password))) {
+//     return res.status(401).json({ msg: "Invalid credentials" });
+//   }
+//   console.log(user, "user2");
+
+//   if (!user.isEmailVerified) {
+//     return res.status(403).json({ msg: "Please verify your account" });
+//   }
+//   if (fcmToken) {
+//     user.fcmToken = fcmToken; // or push into array
+//     await user.save();
+//   }
+
+//   const token = jwt.sign({ id: user._id, roles: user.roles.map(r => r.name) }, process.env.JWT_SECRET, {
+//     expiresIn: "7d",
+//   });
+
+//   res.status(200).json({ success: true, token, user });
+// };
 exports.login = async (req, res) => {
-  const { email, password, fcmToken } = req.body;
-  const user = await User.findOne({ email }).populate("roles");
+  try {
+    const { email, password, fcmToken, role } = req.body;
 
-  if (!user || !(await bcrypt.compare(password, user.password))) {
-    return res.status(401).json({ msg: "Invalid credentials" });
+    // 1️⃣ Find user with roles
+    const user = await User.findOne({ email }).populate("roles");
+    if (!user || !(await bcrypt.compare(password, user.password))) {
+      return res.status(401).json({ msg: "Invalid credentials" });
+    }
+
+    // 2️⃣ Email verification check
+    if (!user.isEmailVerified) {
+      return res.status(403).json({ msg: "Please verify your account" });
+    }
+
+    // 3️⃣ Check if role matches (optional: allow multiple roles per user)
+    const userRoles = user.roles.map(r => r.name);
+    if (role && !userRoles.includes(role)) {
+      return res.status(403).json({ msg: `Role mismatch. You do not have '${role}' access.` });
+    }
+
+    // 4️⃣ Update FCM token if provided
+    if (fcmToken) {
+      user.fcmToken = fcmToken; // or push into array if multiple allowed
+      await user.save();
+    }
+
+    // 5️⃣ Create JWT token
+    const token = jwt.sign(
+      { id: user._id, roles: userRoles },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    res.status(200).json({
+      success: true,
+      token,
+      user
+    });
+  } catch (err) {
+    console.error("Login error:", err);
+    res.status(500).json({ error: "Server error, please try again." });
   }
-  console.log(user, "user2");
-
-  if (!user.isEmailVerified) {
-    return res.status(403).json({ msg: "Please verify your account" });
-  }
-  if (fcmToken) {
-    user.fcmToken = fcmToken; // or push into array
-    await user.save();
-  }
-
-  const token = jwt.sign({ id: user._id, roles: user.roles.map(r => r.name) }, process.env.JWT_SECRET, {
-    expiresIn: "7d",
-  });
-
-  res.status(200).json({ success: true, token, user });
 };
 
 
