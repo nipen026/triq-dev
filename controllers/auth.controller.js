@@ -124,7 +124,49 @@ exports.register = async (req, res) => {
     res.status(500).json({ error: "Server error, please try again." });
   }
 };
+exports.sendOtp = async (req, res) => {
+  try {
+    const { email, phone, type } = req.body; // type = "email" | "phone"
 
+    if (!email && !phone) {
+      return res.status(400).json({ error: "Email or Phone is required" });
+    }
+
+    // Generate 6-digit OTP
+    // const otp = Math.floor(100000 + Math.random() * 900000).toString();
+    const otp = 123456
+
+    if (type === "email" && email) {
+      // Save OTP to DB (temporary collection or User if already created)
+      await User.findOneAndUpdate(
+        { email },
+        { emailOTP: otp, otpExpiry: Date.now() + 5 * 60 * 1000 }, // 5 min expiry
+        { new: true, upsert: true }
+      );
+
+      // Send email OTP
+      // await sendMail(email, "Your OTP Code", `Your OTP is: ${otp}`);
+      return res.json({ msg: "OTP sent to email" });
+    }
+
+    if (type === "phone" && phone) {
+      await User.findOneAndUpdate(
+        { phone },
+        { phoneOTP: otp, otpExpiry: Date.now() + 5 * 60 * 1000 },
+        { new: true, upsert: true }
+      );
+
+      // TODO: integrate SMS provider like Twilio / MSG91
+      console.log(`OTP for ${phone}: ${otp}`);
+      return res.json({ msg: "OTP sent to phone" });
+    }
+
+    res.status(400).json({ error: "Invalid request" });
+  } catch (err) {
+    console.error("sendOtp error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
 exports.verifyEmail = async (req, res) => {
   try {
     const { email, otp } = req.body;
