@@ -305,41 +305,77 @@ exports.deleteCustomer = async (req, res) => {
   }
 };
 // ✅ Search Customers by email or phone (only within the logged-in user's organization)
+// exports.searchCustomers = async (req, res) => {
+//   try {
+//     const { search } = req.query; // one query param
+//     const loggedInUserId = req.user?.id;
+
+//     // ✅ Get logged-in user's organization
+//     const user = await User.findById(loggedInUserId).populate("roles", "name");
+
+//     if (!user || !user.roles.map(r => r.name).includes("organization")) {
+//       return res.status(403).json({ message: "User does not belong to an organization" });
+//     }
+
+//     // Build query
+//     const query = {
+//       // organization: user.organization,  // only same org
+//       isActive: true,
+//     };
+
+//     if (search) {
+//       query.$or = [
+//         { email: { $regex: search, $options: "i" } },
+//         { phoneNumber: { $regex: search, $options: "i" } },
+//       ];
+//     }
+
+//     let customers = await Customer.find(query)
+//       .populate("machines.machine")
+//       .populate("users", "fullName email");
+
+//     // Add flags
+//     customers = customers.map(c => {
+//       const obj = c.toObject();
+//       obj.flag = getFlag(c.countryOrigin);
+//       return obj;
+//     });
+
+//     res.json({ count: customers.length, data: customers });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 exports.searchCustomers = async (req, res) => {
   try {
-    const { search } = req.query; // one query param
+    const { search } = req.query;
     const loggedInUserId = req.user?.id;
 
-    // ✅ Get logged-in user's organization
+    // ✅ Check org role
     const user = await User.findById(loggedInUserId).populate("roles", "name");
-
     if (!user || !user.roles.map(r => r.name).includes("organization")) {
       return res.status(403).json({ message: "User does not belong to an organization" });
     }
 
-    // Build query
-    const query = {
-      // organization: user.organization,  // only same org
-      isActive: true,
-    };
-
+    // Build match query
+    const match = { isActive: true };
     if (search) {
-      query.$or = [
+      match.$or = [
         { email: { $regex: search, $options: "i" } },
         { phoneNumber: { $regex: search, $options: "i" } },
       ];
     }
 
-    let customers = await Customer.find(query)
-      .populate("machines.machine")
-      .populate("users", "fullName email");
-
-    // Add flags
-    customers = customers.map(c => {
-      const obj = c.toObject();
-      obj.flag = getFlag(c.countryOrigin);
-      return obj;
-    });
+    const customers = await Customer.aggregate([
+      { $match: match },
+      {
+        $group: {
+          _id: "$email",               // group by email
+          doc: { $first: "$$ROOT" },   // take the first document
+        },
+      },
+      { $replaceRoot: { newRoot: "$doc" } }, // flatten back
+    ]);
 
     res.json({ count: customers.length, data: customers });
   } catch (err) {

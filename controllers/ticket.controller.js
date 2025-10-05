@@ -536,3 +536,29 @@ exports.getSummary = async (req, res) => {
 
 
 
+exports.reportTicket = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { reportTitle, reportDescription } = req.body;
+
+    // Validate input
+    if (!reportTitle || !reportDescription) {
+      return res.status(400).json({ message: "Title and description are required" });
+    }
+
+    // Find the ticket
+    const ticket = await Ticket.findById(id);
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    // Update the ticket with report details
+    ticket.reportTitle = reportTitle;
+    ticket.reportDescription = reportDescription;
+    await ticket.save();
+
+    res.json({ message: "Ticket reported successfully", ticket });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}

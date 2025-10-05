@@ -39,6 +39,8 @@ const ticketSchema = new mongoose.Schema({
   IsShowChatOption: { type: Boolean, default: true },
   reschedule_update_time: { type: Date },
   engineerRemark: String,
+  reportTitle: String,
+  reportDescription: String,
 }, { timestamps: true });
 
 module.exports = mongoose.model("Ticket", ticketSchema);
