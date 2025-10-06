@@ -14,13 +14,31 @@ const storage = multer.diskStorage({
   }
 });
 
+const allowedMimes = [
+  "image/jpeg",
+  "image/png",
+  "image/jpg",
+  "image/webp",
+  "image/svg+xml",
+  "video/mp4",
+  "video/mpeg",
+  "video/quicktime"
+];
+const allowedExtensions = [".jpg", ".jpeg", ".png", ".webp", ".svg", ".mp4", ".mov"];
+
 const fileFilter = (req, file, cb) => {
-  if (file.mimetype.startsWith("image/") || file.mimetype.startsWith("video/")) {
+  const ext = path.extname(file.originalname).toLowerCase();
+  const mime = file.mimetype;
+
+  console.log("File info:", { name: file.originalname, mime, ext });
+
+  if (allowedMimes.includes(mime) && allowedExtensions.includes(ext)) {
     cb(null, true);
   } else {
-    cb(new Error("Unsupported file type"), false);
+    cb(new Error(`Unsupported file type: ${mime} (${ext})`), false);
   }
 };
+
 
 const upload = multer({ storage, fileFilter });
 module.exports = upload;
