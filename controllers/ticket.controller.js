@@ -240,7 +240,7 @@ exports.updateTicket = async (req, res) => {
       const now = new Date();
       const rescheduleUpdate = new Date(now.getTime() + reschedule_time * 60 * 1000);
       ticket.reschedule_update_time = rescheduleUpdate;
-      ticket.IsShowChatOption = false; // hide chat when rescheduled
+      ticket.IsShowChatOption = true; // hide chat when rescheduled
       ticket.status = "On Hold";
     }
 
