@@ -35,10 +35,13 @@ exports.getMachineSupplierList = async (req, res) => {
     if (!customers || customers.length === 0) {
       return res.status(404).json({ message: "No customers with organization found for this processor" });
     }
+    const result = customers.map(cust => ({
+      customer: cust,
+      // organization: cust.organization,
+      // machines: cust.machines.map(m => m.machine),
+    }));
 
-    // ✅ Build result
-   
-    res.json({ data: customers });
+    res.json({ data: result });
   } catch (err) {
     console.error("Error in getMachineSupplierList:", err);
     res.status(500).json({ error: err.message });
