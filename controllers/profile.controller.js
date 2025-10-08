@@ -1,5 +1,6 @@
 const Profile = require("../models/profile.model");
-
+const Customer = require("../models/customer.model");
+const QRCode = require("qrcode");
 // CREATE profile
 exports.createProfile = async (req, res) => {
   try {
@@ -21,7 +22,9 @@ exports.getProfile = async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.user.id }).populate("user");
     if (!profile) return res.status(404).json({ message: "Profile not found" });
-    res.json(profile);
+    const customer = await Customer.findOne({ users: req.user.id });
+    const qrCode = await QRCode.toDataURL(customer.id);
+    res.json({ profile, qrCode });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
