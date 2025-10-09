@@ -119,7 +119,14 @@ exports.register = async (req, res) => {
       const customer = new Customer(customerData);
       await customer.save();
     }
-    res.status(200).json({ msg: "Registered. Verify email and phone OTP." });
+    const userData = await User.findOne({ _id: user._id }).populate("roles");
+    
+    const token = jwt.sign(
+      { id: user._id, roles: userRole.name },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+    res.status(200).json({ msg: "Registered. Verify email and phone OTP.", token, userData });
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Server error, please try again." });
