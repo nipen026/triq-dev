@@ -87,7 +87,7 @@ module.exports = (io) => {
       io.to(roomId).emit("newMessage", message);
       // const chatWith =
       //   socket.userId === room.organisation.id ? room.processor : room.organisation;
-      const UserData = await User.findById(chatWith);
+      const UserData = await User.findById(socket.userId);
 
 
       const notificationPayload = {
