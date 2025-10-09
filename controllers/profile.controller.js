@@ -21,10 +21,18 @@ exports.createProfile = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.user.id }).populate("user");
+    console.log(req.user.id,"profile");
+
     if (!profile) return res.status(404).json({ message: "Profile not found" });
     const customer = await Customer.findOne({ users: req.user.id });
-    const qrCode = await QRCode.toDataURL(customer.id);
-    res.json({ profile, qrCode });
+    console.log(customer,"customer");
+    if(!customer){
+    res.json({ profile });
+    }else{
+      const qrCode = await QRCode.toDataURL(customer.id);
+      res.json({ profile, qrCode });
+    }
+    
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -102,7 +102,8 @@ module.exports = (io) => {
           screenName: 'chat'
         }
       };
-
+      console.log(UserData.fcmToken,"UserData.fcmToken");
+      
       // 🟢 send FCM to the *other* user
       if (UserData.fcmToken) {
         // await admin.messaging().sendToDevice(UserData.fcmToken, notificationPayload).then(response => {
@@ -112,7 +113,7 @@ module.exports = (io) => {
         //   }
         // })
         //   .catch(err => console.error('FCM error', err));
-
+        
         await admin.messaging().sendEachForMulticast({
           tokens: [UserData.fcmToken],
           notification: notificationPayload.notification,
