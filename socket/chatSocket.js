@@ -87,7 +87,7 @@ module.exports = (io) => {
       io.to(roomId).emit("newMessage", message);
       // const chatWith =
       //   socket.userId === room.organisation.id ? room.processor : room.organisation;
-      // const UserData = await User.findById(chatWith);
+      const UserData = await User.findById(chatWith);
 
 
       const notificationPayload = {
@@ -105,13 +105,25 @@ module.exports = (io) => {
 
       // 🟢 send FCM to the *other* user
       if (UserData.fcmToken) {
-        await admin.messaging().sendToDevice(UserData.fcmToken, notificationPayload).then(response => {
+        // await admin.messaging().sendToDevice(UserData.fcmToken, notificationPayload).then(response => {
+        //   console.log('Notification sent:', response.successCount, 'success', response.failureCount, 'failures');
+        //   if (response.failureCount > 0) {
+        //     console.log('Errors:', response.results);
+        //   }
+        // })
+        //   .catch(err => console.error('FCM error', err));
+
+        await admin.messaging().sendEachForMulticast({
+          tokens: [UserData.fcmToken],
+          notification: notificationPayload.notification,
+          data: notificationPayload.data,
+        }).then(response => {
           console.log('Notification sent:', response.successCount, 'success', response.failureCount, 'failures');
           if (response.failureCount > 0) {
             console.log('Errors:', response.results);
           }
         })
-          .catch(err => console.error('FCM error', err));;
+          .catch(err => console.error('FCM error', err));
       }
     });
 
