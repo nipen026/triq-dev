@@ -126,7 +126,12 @@ exports.register = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    res.status(200).json({ msg: "Registered. Verify email and phone OTP.", token, userData });
+    res.status(200).json({
+      success: true,
+      token,
+      user: userData
+    });
+    // res.status(200).json({ success:true, token, userData });
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Server error, please try again." });
