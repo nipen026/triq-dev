@@ -90,29 +90,29 @@ module.exports = (io) => {
       // const UserData = await User.findById(chatWith);
 
 
-      // const notificationPayload = {
-      //   notification: {
-      //     title: `New message from ${socket.userId === room.organisation.id ? room.organisation.fullName : room.processor.fullName}`,
-      //     body: content || 'Attachment'
-      //   },
-      //   data: {
-      //     type: 'chat_message',
-      //     chatWithName: UserData.fullName,
-      //     chatRoomId: room.id,
-      //     screenName: 'chat'
-      //   }
-      // };
+      const notificationPayload = {
+        notification: {
+          title: `New message from ${socket.userId === room.organisation.id ? room.organisation.fullName : room.processor.fullName}`,
+          body: content || 'Attachment'
+        },
+        data: {
+          type: 'chat_message',
+          chatWithName: UserData.fullName,
+          chatRoomId: room.id,
+          screenName: 'chat'
+        }
+      };
 
-      // // 🟢 send FCM to the *other* user
-      // if (UserData.fcmToken) {
-      //   await admin.messaging().sendToDevice(UserData.fcmToken, notificationPayload).then(response => {
-      //     console.log('Notification sent:', response.successCount, 'success', response.failureCount, 'failures');
-      //     if (response.failureCount > 0) {
-      //       console.log('Errors:', response.results);
-      //     }
-      //   })
-      //     .catch(err => console.error('FCM error', err));;
-      // }
+      // 🟢 send FCM to the *other* user
+      if (UserData.fcmToken) {
+        await admin.messaging().sendToDevice(UserData.fcmToken, notificationPayload).then(response => {
+          console.log('Notification sent:', response.successCount, 'success', response.failureCount, 'failures');
+          if (response.failureCount > 0) {
+            console.log('Errors:', response.results);
+          }
+        })
+          .catch(err => console.error('FCM error', err));;
+      }
     });
 
 

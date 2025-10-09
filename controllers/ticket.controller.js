@@ -131,23 +131,27 @@ exports.createTicket = async (req, res) => {
         processor: user.id, // processor creating the ticket
       });
     }
-    // const otherUser = await User.findById(organisationId).select('fullName fcmToken');
+    const otherUser = await User.findById(organisationId).select('fullName fcmToken');
 
-    // if (otherUser?.fcmToken) {
-    //   const notifPayload = {
-    //     notification: {
-    //       title: `New Ticket #${ticket.ticketNumber}`,
-    //       body: `Problem: ${ticket.problem}`
-    //     },
-    //     data: {
-    //       type: 'ticket_created',
-    //       ticketNumber: ticket.ticketNumber,
-    //       screenName: 'ticket'
-    //     }
-    //   };
+    if (otherUser?.fcmToken) {
+      const notifPayload = {
+        notification: {
+          title: `New Ticket #${ticket.ticketNumber}`,
+          body: `Problem: ${ticket.problem}`
+        },
+        data: {
+          type: 'ticket_created',
+          ticketNumber: ticket.ticketNumber,
+          screenName: 'ticket'
+        }
+      };
 
-    //   await admin.messaging().sendToDevice(otherUser.fcmToken, notifPayload);
-    // }
+      await admin.messaging().sendEachForMulticast({
+        tokens: [otherUser.fcmToken],
+        notification: notifPayload.notification,
+        data: notifPayload.data,
+      });
+    }
     res.status(201).json({
       message: "Ticket created successfully",
       ticket,
@@ -448,8 +452,8 @@ exports.getSummary = async (req, res) => {
   try {
     const { id } = req.params;
     const user = req.user;
-    console.log(user.roles[0],"user");
-    
+    console.log(user.roles[0], "user");
+
     const ticket = await Ticket.findById(id)
       .populate("machine")
       .populate("processor", "fullName email phone countryCode")
@@ -527,7 +531,7 @@ exports.getSummary = async (req, res) => {
       organisationDetails, // ✅ includes flag + image
       pricingDetails,
       chatRoom,
-      role:user.roles[0]
+      role: user.roles[0]
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
