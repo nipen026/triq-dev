@@ -1,5 +1,7 @@
 const Profile = require("../models/profile.model");
 const Customer = require("../models/customer.model");
+const User = require("../models/user.model");
+const Role = require("../models/role.model");
 const QRCode = require("qrcode");
 // CREATE profile
 exports.createProfile = async (req, res) => {
@@ -21,18 +23,26 @@ exports.createProfile = async (req, res) => {
 exports.getProfile = async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.user.id }).populate("user");
-    console.log(req.user.id,"profile");
+    console.log(req.user.id, "profile");
 
     if (!profile) return res.status(404).json({ message: "Profile not found" });
     const customer = await Customer.findOne({ users: req.user.id });
-    console.log(customer,"customer");
-    if(!customer){
-    res.json({ profile });
-    }else{
+    console.log(customer, "customer");
+    if (!customer) {
+      const orgRole = await Role.findOne({ name: "organization" });
+      console.log(orgRole, "orgRole");
+
+      const users = await User.findOne({ _id: req.user.id })
+        .populate("roles", "name"); // optional populate
+      console.log(users, "users");
+
+      const qrCode = await QRCode.toDataURL(users.id);
+      res.json({ profile, qrCode });
+    } else {
       const qrCode = await QRCode.toDataURL(customer.id);
       res.json({ profile, qrCode });
     }
-    
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
