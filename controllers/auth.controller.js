@@ -210,75 +210,133 @@ exports.register = async (req, res) => {
 //   }
 // };
 
+// exports.sendOtp = async (req, res) => {
+//   try {
+//     const { email, phone, type } = req.body;
+//     if (!type || (!email && !phone)) {
+//       return res.status(400).json({ msg: "Email or phone required" });
+//     }
+
+//     // const code = Math.floor(100000 + Math.random() * 900000).toString();
+// const code = '123456'; // for testing
+//     // Delete any old OTP for this user/type
+//     await VerifyCode.deleteMany({ $or: [{ email }, { phone }], type });
+
+//     // Save new OTP
+//     await VerifyCode.create({ email, phone, code, type });
+
+//     console.log(`OTP for ${type}: ${email || phone} => ${code}`);
+
+//     return res.status(200).json({ msg: "OTP sent successfully" });
+//   } catch (err) {
+//     console.error("sendOtp error:", err);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// };
 exports.sendOtp = async (req, res) => {
   try {
     const { email, phone, type } = req.body;
+
     if (!type || (!email && !phone)) {
       return res.status(400).json({ msg: "Email or phone required" });
     }
 
-    // const code = Math.floor(100000 + Math.random() * 900000).toString();
-const code = '123456'; // for testing
-    // Delete any old OTP for this user/type
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
+
+    // Remove any previous OTP for same user/type
     await VerifyCode.deleteMany({ $or: [{ email }, { phone }], type });
 
     // Save new OTP
-    await VerifyCode.create({ email, phone, code, type });
+    await VerifyCode.create({ email, phone, type, code });
 
-    console.log(`OTP for ${type}: ${email || phone} => ${code}`);
+    // Send OTP (email or SMS)
+    if (type === "email" && email) {
+      await sendEmailOTP(email, code);
+    }
 
-    return res.status(200).json({ msg: "OTP sent successfully" });
+    console.log(`OTP sent to ${email || phone}: ${code}`);
+
+    res.status(200).json({ success: true, msg: "OTP sent successfully" });
   } catch (err) {
     console.error("sendOtp error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
-
 // ===================== VERIFY OTP =====================
+// exports.verifyOtp = async (req, res) => {
+//   try {
+//     const { email, phone, type, code } = req.body;
+//     if (!type || !email || !code) {
+//       return res.status(400).json({ msg: "Email, type, and code required" });
+//     }
+
+//     const otpDoc = await VerifyCode.findOne({ $or: [{ email }, { phone }], type });
+//     if (!otpDoc || otpDoc.code !== code) {
+//       return res.status(400).json({ msg: "Invalid or expired OTP" });
+//     }
+
+//     // OTP verified → delete record
+//     await VerifyCode.deleteOne({ _id: otpDoc._id });
+//     console.log(email,"email");
+    
+//     // Optionally mark user verified
+//     let user = await User.findOne({email:email}).populate("roles");
+//     if (!user) {
+//       return res.status(404).json({ msg: "User not found" });
+//     }
+//     console.log(email,"user");
+    
+//     if (type === "email") user.isEmailVerified = true;
+//     if (type === "phone") user.isPhoneVerified = true;
+//     await user.save();
+
+//     // Generate token if needed
+//     const token = jwt.sign(
+//       { id: user._id, roles: user.roles.map(r => r.name) },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" }
+//     );
+
+//     res.status(200).json({
+//       success: true,
+//       msg: "OTP verified successfully",
+//       token,
+//       user,
+//     });
+//   } catch (err) {
+//     console.error("verifyOtp error:", err);
+//     res.status(500).json({ error: "Server error" });
+//   }
+// };
+
 exports.verifyOtp = async (req, res) => {
   try {
-    const { email, phone, type, code } = req.body;
-    if (!type || !email || !code) {
-      return res.status(400).json({ msg: "Email, type, and code required" });
+    const { email, type, code } = req.body;
+
+    // if (!code || (!email) || !type) {
+    //   return res.status(400).json({ msg: "Missing required fields" });
+    // }
+
+    const verifyData = await VerifyCode.findOne({ $or: [{ email }], type });
+
+    if (!verifyData) {
+      return res.status(400).json({ msg: "OTP not found or expired" });
     }
 
-    const otpDoc = await VerifyCode.findOne({ $or: [{ email }, { phone }], type });
-    if (!otpDoc || otpDoc.code !== code) {
-      return res.status(400).json({ msg: "Invalid or expired OTP" });
+    if (verifyData.code !== code) {
+      return res.status(400).json({ msg: "Invalid OTP" });
     }
 
-    // OTP verified → delete record
-    await VerifyCode.deleteOne({ _id: otpDoc._id });
+    // ✅ OTP verified → delete record to prevent reuse
+    await VerifyCode.deleteOne({ _id: verifyData._id });
 
-    // Optionally mark user verified
-    let user = await User.findOne({email:email}).populate("roles");
-    if (!user) {
-      return res.status(404).json({ msg: "User not found" });
-    }
-    console.log(email,"user");
-    
-    if (type === "email") user.isEmailVerified = true;
-    if (type === "phone") user.isPhoneVerified = true;
-    await user.save();
-
-    // Generate token if needed
-    const token = jwt.sign(
-      { id: user._id, roles: user.roles.map(r => r.name) },
-      process.env.JWT_SECRET,
-      { expiresIn: "7d" }
-    );
-
-    res.status(200).json({
-      success: true,
-      msg: "OTP verified successfully",
-      token,
-      user,
-    });
+    res.status(200).json({ success: true, msg: "OTP verified successfully" });
   } catch (err) {
     console.error("verifyOtp error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 exports.verifyPhone = async (req, res) => {
   const { phone, firebaseToken } = req.body;
