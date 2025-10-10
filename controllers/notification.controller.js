@@ -1,6 +1,5 @@
-const { Profiler } = require("react");
 const Notification = require("../models/notification.model");
-const profileModel = require("../models/profile.model");
+const Profile = require("../models/profile.model");
 const User = require("../models/user.model");
 const admin = require("firebase-admin"); // optional (for FCM push)
 
@@ -12,7 +11,7 @@ exports.sendOrganizationRequest = async (req, res) => {
         // 1️⃣ Check if organization user exists
         const organization = await User.findById(organizationId).populate("roles");
         const processorData = await User.findById(processorId).populate("roles");
-        const ProfileProcessorData = await profileModel.findOne({user:processorId})
+        const ProfileProcessorData = await Profile.findOne({user:processorId})
         if (!organization) {
             return res.status(404).json({ msg: "Organization not found" });
         }
