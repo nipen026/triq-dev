@@ -69,7 +69,8 @@ exports.register = async (req, res) => {
       // organizationType,
       roles: [userRole._id],
       emailOTP: '123456',
-      fcmToken
+      fcmToken,
+      isEmailVerified:true
     });
 
     await user.save();
