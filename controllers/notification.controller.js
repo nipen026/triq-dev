@@ -39,7 +39,7 @@ exports.sendOrganizationRequest = async (req, res) => {
             body: `${processorData.fullName} has requested to join your organization.`,
             sender: processorId,
             receiver: organizationId,
-            userImage:ProfileProcessorData.profileImage,
+            userImage:ProfileProcessorData?.profileImage ?? "",
             type: "organizationRequest",
             data: {
                 action: "organization_request",
