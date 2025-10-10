@@ -12,6 +12,7 @@ const servicePricingRoutes = require("./routes/servicePricing.routes");
 const ChatRoutes = require("./routes/chat.route");
 const profileRoutes = require("./routes/profile.route");
 const reportRoutes = require("./routes/report.routes");
+const notificationRoutes = require("./routes/notification.route")
 const path = require("path");
 
 const app = express();
@@ -31,6 +32,7 @@ app.use("/api/servicePricing", servicePricingRoutes);
 app.use("/api/chat", ChatRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/report", reportRoutes);
+app.use("/api/notification",notificationRoutes)
 
 
 // Static
