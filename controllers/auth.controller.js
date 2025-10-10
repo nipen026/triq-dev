@@ -251,11 +251,12 @@ exports.verifyOtp = async (req, res) => {
     await VerifyCode.deleteOne({ _id: otpDoc._id });
 
     // Optionally mark user verified
-    let user = await User.findOne({ $or: [{ email }, { phone }] }).populate("roles");
+    let user = await User.findOne({email:email}).populate("roles");
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
     }
-
+    console.log(email,"user");
+    
     if (type === "email") user.isEmailVerified = true;
     if (type === "phone") user.isPhoneVerified = true;
     await user.save();
