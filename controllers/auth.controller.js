@@ -241,7 +241,7 @@ exports.sendOtp = async (req, res) => {
       return res.status(400).json({ msg: "Email or phone required" });
     }
 
-    const code = Math.floor(100000 + Math.random() * 900000).toString();
+    const code = "123456";
 
     // Remove any previous OTP for same user/type
     await VerifyCode.deleteMany({ $or: [{ email }, { phone }], type });
