@@ -8,6 +8,7 @@ const notificationSchema = new mongoose.Schema({
     receiver: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     isRead: { type: Boolean, default: false },
     isActive: { type: Boolean, default: true },
+    userImage:String,
     data: Object,
 }, { timestamps: true });
 
