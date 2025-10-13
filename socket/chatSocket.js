@@ -268,47 +268,20 @@ const fs = require("fs");
 const path = require("path");
 const User = require("../models/user.model");
 const mongoose = require("mongoose");
-const axios = require("axios");
+const axios = require('axios')
 
 async function translateText(text, targetLang = "en") {
-  if (!text) return text;
-
   try {
-    // Step 1: Detect language automatically
-    const detectRes = await axios.post(
-      "https://libretranslate.de/detect",
-      { q: text },
-      { headers: { "Content-Type": "application/json" } }
-    );
+    const res = await axios.get("https://api.mymemory.translated.net/get", {
+      params: { q: text, langpair: `auto|${targetLang}` },
+    });
 
-    const detectedLang = detectRes.data[0]?.language || "auto";
-
-    // Step 2: If source and target are the same, skip translation
-    if (detectedLang === targetLang) {
-      return text;
-    }
-
-    // Step 3: Translate
-    const translateRes = await axios.post(
-      "https://libretranslate.de/translate",
-      {
-        q: text,
-        source: detectedLang,
-        target: targetLang,
-        format: "text",
-      },
-      { headers: { "Content-Type": "application/json" } }
-    );
-
-    return translateRes.data?.translatedText || text;
-  } catch (err) {
-    console.error("Translation error:", err.message);
-    return text;
+    return res.data?.responseData?.translatedText || text;
+  } catch (error) {
+    console.error("Translation error:", error.message);
+    return text; // fallback to original message if translation fails
   }
 }
-
-
-
 module.exports = (io) => {
   io.on("connection", (socket) => {
     console.log("Socket connected", socket.id);
@@ -379,15 +352,16 @@ module.exports = (io) => {
 
         // 🌐 Translate text using LibreTranslate (free API)
         let translatedText = content;
-        // if (content && targetLang) {
+        if (content && targetLang) {
        const translatedContent = await translateText(content, targetLang);
-        // }
-
-        // 🟣 Emit to both sender and receiver
         io.to(roomId).emit("newMessage", {
           ...message.toObject(),
           translatedContent: translatedContent,
         });
+        }
+
+        // 🟣 Emit to both sender and receiver
+       
 
         // 🔔 Send notification via FCM
         if (receiver?.fcmToken) {
