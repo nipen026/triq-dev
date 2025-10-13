@@ -2,6 +2,7 @@ const Customer = require("../models/customer.model");
 const Machine = require("../models/machine.model");
 const Role = require("../models/role.model");
 const User = require("../models/user.model");
+const Notification = require("../models/notification.model");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { getFlag } = require("../utils/flagHelper");
@@ -126,6 +127,28 @@ exports.createCustomer = async (req, res) => {
     // ✅ Link user to customer
     customer.users = [user._id];
     await customer.save({ session });
+    const notificationMessage = `New customer "${customer.customerName}" has been created.`;
+
+    // If you have a Notification model
+    const notification = new Notification({
+      title: "New Customer Created",
+      body: notificationMessage,
+      type:'message',
+      user: req.user ? req.user.id : null, // who triggered the notification
+      sender: customer._id,
+      read: false,
+      createdAt: new Date()
+    });
+    await notification.save();
+
+    // Optional: Push via FCM / WebSocket if needed
+    if (user.fcmToken) {
+      sendPushNotification(user.fcmToken, {
+        title: "New Customer Created",
+        body: notificationMessage,
+        data: { customerId: customer._id.toString() }
+      });
+    }
 
     // ✅ Commit transaction
     await session.commitTransaction();
@@ -199,7 +222,7 @@ exports.getCustomerById = async (req, res) => {
       customer = await Customer.findOne({ users: id, isActive: true })
         .populate("machines.machine")
         .populate("users", "fullName email")
-      .populate("organization", "fullName email phone");
+        .populate("organization", "fullName email phone");
 
     }
 
@@ -259,12 +282,34 @@ exports.updateCustomer = async (req, res) => {
     if (String(existingCustomer.organization) !== String(newOrgId)) {
       // Keep same userId if existing one is not null
       const userIdToUse = existingCustomer.users ? existingCustomer.users : customerData.users;
-
+      const UserData = User.findById(existingCustomer.user)
       const newCustomer = new Customer({
         ...customerData,
         organization: newOrgId,
         users: userIdToUse
       });
+      const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
+
+      // If you have a Notification model
+      const notification = new Notification({
+        title: "New Customer Created",
+        body: notificationMessage,
+        type:'message',
+        user: req.user ? req.user.id : null, // who triggered the notification
+        sender: UserData.id,
+        read: false,
+        createdAt: new Date()
+      });
+      await notification.save();
+
+      // Optional: Push via FCM / WebSocket if needed
+      if (UserData.fcmToken) {
+        sendPushNotification(UserData.fcmToken, {
+          title: "New Customer Created",
+          body: notificationMessage,
+          data: { customerId: UserData.id.toString() }
+        });
+      }
 
       await newCustomer.save();
 

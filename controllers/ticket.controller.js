@@ -7,6 +7,7 @@ const { getFlag } = require("../utils/flagHelper");
 const ChatRoom = require("../models/chatRoom.model");
 const admin = require("../config/firebase");
 const User = require("../models/user.model");
+const Notification = require('../models/notification.model')
 const mongoose = require("mongoose");
 
 function generateTicketNumber() {
@@ -133,8 +134,8 @@ exports.createTicket = async (req, res) => {
     }
     const otherUser = await User.findById(organisationId).select('fullName fcmToken');
 
-    console.log(otherUser?.fcmToken,"otherUser?.fcmToken");
-    
+    console.log(otherUser?.fcmToken, "otherUser?.fcmToken");
+
     if (otherUser?.fcmToken) {
       const notifPayload = {
         notification: {
@@ -147,6 +148,17 @@ exports.createTicket = async (req, res) => {
           screenName: 'ticket'
         }
       };
+      const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been assigned.`;
+      const notification = new Notification({
+        title: "Ticket Created Successfully",
+        body: notificationMessage,
+        type: 'message',
+        user: organisationId, // who triggered the notification
+        sender: req.user.id,
+        read: false,
+        createdAt: new Date()
+      });
+      await notification.save();
 
       await admin.messaging().sendEachForMulticast({
         tokens: [otherUser.fcmToken],
@@ -248,6 +260,36 @@ exports.updateTicket = async (req, res) => {
       ticket.reschedule_update_time = rescheduleUpdate;
       ticket.IsShowChatOption = true; // hide chat when rescheduled
       ticket.status = "On Hold";
+    }
+    const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been updated.`;
+    const notification = new Notification({
+      title: "Ticket updated Successfully",
+      body: notificationMessage,
+      type: 'message',
+      user: ticket.processor, // who triggered the notification
+      sender: ticket.organisation,
+      read: false,
+      createdAt: new Date()
+    });
+    await notification.save();
+    const otherUser = await User.findById(ticket.organisation).select('fullName fcmToken');
+    if (otherUser?.fcmToken) {
+      const notifPayload = {
+        notification: {
+          title: `Update Ticket #${ticket.ticketNumber}`,
+          body: `Problem: ${ticket.problem}`
+        },
+        data: {
+          type: 'ticket_updated',
+          ticketNumber: ticket.ticketNumber,
+          screenName: 'ticket'
+        }
+      };
+      await admin.messaging().sendEachForMulticast({
+        tokens: [otherUser.fcmToken],
+        notification: notifPayload.notification,
+        data: notifPayload.data,
+      });
     }
 
     await ticket.save();
