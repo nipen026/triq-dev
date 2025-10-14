@@ -153,7 +153,7 @@ exports.createTicket = async (req, res) => {
         title: "Ticket Created Successfully",
         body: notificationMessage,
         type: 'message',
-        user: organisationId, // who triggered the notification
+        receiver: organisationId, // who triggered the notification
         sender: req.user.id,
         read: false,
         createdAt: new Date()
@@ -266,7 +266,7 @@ exports.updateTicket = async (req, res) => {
       title: "Ticket updated Successfully",
       body: notificationMessage,
       type: 'message',
-      user: ticket.processor, // who triggered the notification
+      receiver: ticket.processor, // who triggered the notification
       sender: ticket.organisation,
       read: false,
       createdAt: new Date()
