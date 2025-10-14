@@ -143,7 +143,8 @@ const ServicePricing = require('../models/servicePricing.model')
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password, phone, countryCode, role, fcmToken } = req.body;
-
+    console.log(fcmToken,"fcmToken in register");
+    
     // 1️⃣ Required fields check
     if (!fullName || !email || !password || !phone || !countryCode || !role) {
       return res.status(400).json({ error: "All fields are required" });
@@ -193,6 +194,8 @@ exports.register = async (req, res) => {
       fcmToken,
       isEmailVerified: true,
     });
+    console.log(user,"user create time");
+    
     await user.save();
 
     // 8️⃣ Create default profile
