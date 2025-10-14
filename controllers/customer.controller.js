@@ -134,7 +134,7 @@ exports.createCustomer = async (req, res) => {
       title: "New Customer Created",
       body: notificationMessage,
       type:'message',
-      user: req.user ? req.user.id : null, // who triggered the notification
+      receiver: req.user ? req.user.id : null, // who triggered the notification
       sender: customer._id,
       read: false,
       createdAt: new Date()
@@ -295,7 +295,7 @@ exports.updateCustomer = async (req, res) => {
         title: "New Customer Created",
         body: notificationMessage,
         type:'message',
-        user: req.user ? req.user.id : null, // who triggered the notification
+        receiver: req.user ? req.user.id : null, // who triggered the notification
         sender: UserData.id,
         read: false,
         createdAt: new Date()

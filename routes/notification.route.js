@@ -10,5 +10,6 @@ router.post("/sendorganizationrequest", auth, notificationController.sendOrganiz
 router.get('/getnotification',auth, notificationController.getNotifications);
 router.get('/markNotificationAsRead/:id',auth, notificationController.markNotificationAsRead)
 router.get('/deleteNotification/:id',auth, notificationController.deleteNotification)
+router.post("/updateticketnotification",auth,notificationController.updateNotificationTicket)
 
 module.exports = router;
