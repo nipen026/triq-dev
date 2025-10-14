@@ -143,7 +143,7 @@ const ServicePricing = require('../models/servicePricing.model')
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password, phone, countryCode, role, fcmToken } = req.body;
-    console.log(fcmToken,"fcmToken in register");
+    console.log(fcmToken,"frontend side fcmtoken");
     
     // 1️⃣ Required fields check
     if (!fullName || !email || !password || !phone || !countryCode || !role) {
@@ -548,7 +548,7 @@ exports.verifyPhone = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, fcmToken, role } = req.body;
-
+    console.log(fcmToken,"frontend side thi login ma")
     // 1️⃣ Find user with roles
     const user = await User.findOne({ email }).populate("roles");
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -578,7 +578,8 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-
+    console.log(user,"login time user data");
+    
     res.status(200).json({
       success: true,
       token,
