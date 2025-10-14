@@ -128,16 +128,39 @@ exports.deleteNotification = async (req, res) => {
 exports.updateNotificationTicket = async (req, res) => {
   try {
     const { ticketId, type } = req.body;
-    const ticketData = await Ticket.findById(ticketId);
-    if (type == "accept") {
-      ticketData.status = "In Progress"
-      res.status(200).json({ success: true, msg: "ticket status update successfully" });
-    } if (type == "reject") {
-      ticketData.status = "Rejected"
-      res.status(200).json({ success: true, msg: "ticket status update successfully" });
+
+    // ✅ Validate input
+    if (!ticketId || !type) {
+      return res.status(400).json({ success: false, msg: "ticketId and type are required" });
     }
 
+    const ticketData = await Ticket.findById(ticketId);
+    if (!ticketData) {
+      return res.status(404).json({ success: false, msg: "Ticket not found" });
+    }
+
+    console.log("Ticket:", ticketData._id, "Type:", type);
+
+    // ✅ Update status based on type
+    if (type === "accept") {
+      ticketData.status = "In Progress";
+    } else if (type === "reject") {
+      ticketData.status = "Rejected";
+    } else {
+      return res.status(400).json({ success: false, msg: "Invalid type value" });
+    }
+
+    // ✅ Save changes
+    await ticketData.save();
+
+    return res.status(200).json({
+      success: true,
+      msg: `Ticket status updated successfully`,
+      data: ticketData,
+    });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("Error updating ticket:", err);
+    return res.status(500).json({ success: false, msg: err.message });
   }
 };
