@@ -284,14 +284,16 @@ exports.updateCustomer = async (req, res) => {
     if (String(existingCustomer.organization) !== String(newOrgId)) {
       // Keep same userId if existing one is not null
       const userIdToUse = existingCustomer.users ? existingCustomer.users : customerData.users;
-      const UserData = User.findById(existingCustomer.users)
+      const UserData = User.findById(customerData.users)
       const newCustomer = new Customer({
         ...customerData,
         organization: newOrgId,
         users: userIdToUse
       });
       const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
-    console.log(UserData,existingCustomer.users,newCustomer,"customerData");
+    console.log(newCustomer,"newCustomer");
+    console.log(customerData.users,"customerData.users");
+    console.log(UserData,"UserData");
       // If you have a Notification model
       const notification = new Notification({
         title: "New Customer Created",
