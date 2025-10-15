@@ -378,7 +378,7 @@ exports.updateCustomer = async (req, res) => {
 
       // ✅ Create notification in DB
       const notification = new Notification({
-        title: "New Customer Created",
+        title: "New Customer Created in update time",
         body: notificationMessage,
         type: "message",
         receiver: UserData?._id || null,
@@ -386,11 +386,14 @@ exports.updateCustomer = async (req, res) => {
         read: false,
         createdAt: new Date()
       });
+      console.log(notification,"notification");
+      
       await notification.save();
 
       // ✅ Save the new customer
       await newCustomer.save();
-
+      console.log(UserData,"UserData");
+      
       // ✅ Send FCM notification if token available
       if (UserData?.fcmToken) {
         try {
