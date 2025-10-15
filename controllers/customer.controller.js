@@ -130,12 +130,14 @@ exports.createCustomer = async (req, res) => {
     const notificationMessage = `New customer "${customer.customerName}" has been created.`;
 
     // If you have a Notification model
+    console.log(customer,"customerData");
+    
     const notification = new Notification({
       title: "New Customer Created",
       body: notificationMessage,
       type:'message',
-      receiver: req.user ? req.user.id : null, // who triggered the notification
-      sender: customer._id,
+      receiver: customer.id, // who triggered the notification
+      sender: req.user.id,
       read: false,
       createdAt: new Date()
     });
@@ -282,14 +284,14 @@ exports.updateCustomer = async (req, res) => {
     if (String(existingCustomer.organization) !== String(newOrgId)) {
       // Keep same userId if existing one is not null
       const userIdToUse = existingCustomer.users ? existingCustomer.users : customerData.users;
-      const UserData = User.findById(existingCustomer.user)
+      const UserData = User.findById(existingCustomer.users)
       const newCustomer = new Customer({
         ...customerData,
         organization: newOrgId,
         users: userIdToUse
       });
       const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
-
+    console.log(UserData,"customerData");
       // If you have a Notification model
       const notification = new Notification({
         title: "New Customer Created",
@@ -304,7 +306,6 @@ exports.updateCustomer = async (req, res) => {
 
       // Optional: Push via FCM / WebSocket if needed
       if (UserData.fcmToken) {
-       
              const notifPayload = {
                notification: {
                  title: `Customer Assigned`,
