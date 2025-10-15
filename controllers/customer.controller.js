@@ -265,12 +265,94 @@ exports.getCustomerById = async (req, res) => {
 //   }
 // };
 // ✅ Update or Create Customer depending on organization
+
+// exports.updateCustomer = async (req, res) => {
+//   try {
+//     const customerData = pickCustomerFields(req.body);
+//     const newOrgId = req.user.id; // 👈 coming from token
+
+//     // ✅ Find the current customer
+//     const existingCustomer = await Customer.findOne({
+//       _id: req.params.id,
+//       isActive: true
+//     });
+
+//     if (!existingCustomer) {
+//       return res.status(404).json({ message: "Customer not found or inactive" });
+//     }
+
+//     // ✅ If organization has changed → create new customer
+//     if (String(existingCustomer.organization) !== String(newOrgId)) {
+//       // Keep same userId if existing one is not null
+//       const userIdToUse = existingCustomer.users ? existingCustomer.users : customerData.users;
+//       const newCustomer = new Customer({
+//         ...customerData,
+//         organization: newOrgId,
+//         users: userIdToUse
+//       });
+//       const UserData = User.findOne({_id:newCustomer.users})
+//       const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
+//     console.log(newCustomer,"newCustomer");
+//     console.log(customerData.users,"customerData.users");
+//     console.log(UserData,"UserData");
+//       // If you have a Notification model
+//       const notification = new Notification({
+//         title: "New Customer Created",
+//         body: notificationMessage,
+//         type:'message',
+//         receiver: newCustomer._id, // who triggered the notification
+//         sender: req.user ? req.user.id : null,
+//         read: false,
+//         createdAt: new Date()
+//       });
+//       await notification.save();
+
+//       // Optional: Push via FCM / WebSocket if needed
+//       if (UserData.fcmToken) {
+//              const notifPayload = {
+//                notification: {
+//                  title: `Customer Assigned`,
+//                  body: notificationMessage
+//                },
+//                data: {
+//                  type: 'customer_assigned',
+//                  customer_id: UserData.id,
+//                  screenName: 'customer'
+//                }
+//              };
+//              await admin.messaging().sendEachForMulticast({
+//                tokens: [UserData.fcmToken],
+//                notification: notifPayload.notification,
+//                data: notifPayload.data,
+//              });
+//            }
+   
+
+//       await newCustomer.save();
+
+//       return res.json({
+//         message: "Organization changed, new customer created under new organization",
+//         data: newCustomer
+//       });
+//     }
+
+//     // ✅ Otherwise normal update in same org
+//     const updatedCustomer = await Customer.findOneAndUpdate(
+//       { _id: req.params.id, isActive: true },
+//       customerData,
+//       { new: true }
+//     ).populate("machines.machine");
+
+//     res.json({ message: "Customer updated successfully", data: updatedCustomer });
+//   } catch (err) {
+//     res.status(500).json({ error: err.message });
+//   }
+// };
 exports.updateCustomer = async (req, res) => {
   try {
     const customerData = pickCustomerFields(req.body);
-    const newOrgId = req.user.id; // 👈 coming from token
+    const newOrgId = req.user.id; // from token
 
-    // ✅ Find the current customer
     const existingCustomer = await Customer.findOne({
       _id: req.params.id,
       isActive: true
@@ -280,62 +362,69 @@ exports.updateCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer not found or inactive" });
     }
 
-    // ✅ If organization has changed → create new customer
+    // 🧠 Case: Organization changed
     if (String(existingCustomer.organization) !== String(newOrgId)) {
-      // Keep same userId if existing one is not null
-      const userIdToUse = existingCustomer.users ? existingCustomer.users : customerData.users;
+      const userIdToUse = existingCustomer.users || customerData.users;
+
       const newCustomer = new Customer({
         ...customerData,
         organization: newOrgId,
         users: userIdToUse
       });
-      const UserData = User.findOne({_id:newCustomer.users})
+
+      // ✅ Fetch user properly
+      const UserData = await User.findById(userIdToUse);
       const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
-    console.log(newCustomer,"newCustomer");
-    console.log(customerData.users,"customerData.users");
-    console.log(UserData,"UserData");
-      // If you have a Notification model
+
+      // ✅ Create notification in DB
       const notification = new Notification({
         title: "New Customer Created",
         body: notificationMessage,
-        type:'message',
-        receiver: newCustomer._id, // who triggered the notification
+        type: "message",
+        receiver: UserData?._id || null,
         sender: req.user ? req.user.id : null,
         read: false,
         createdAt: new Date()
       });
       await notification.save();
 
-      // Optional: Push via FCM / WebSocket if needed
-      if (UserData.fcmToken) {
-             const notifPayload = {
-               notification: {
-                 title: `Customer Assigned`,
-                 body: notificationMessage
-               },
-               data: {
-                 type: 'customer_assigned',
-                 customer_id: UserData.id,
-                 screenName: 'customer'
-               }
-             };
-             await admin.messaging().sendEachForMulticast({
-               tokens: [UserData.fcmToken],
-               notification: notifPayload.notification,
-               data: notifPayload.data,
-             });
-           }
-   
-
+      // ✅ Save the new customer
       await newCustomer.save();
 
-      return res.json({
+      // ✅ Send FCM notification if token available
+      if (UserData?.fcmToken) {
+        try {
+          const notifPayload = {
+            notification: {
+              title: "Customer Assigned",
+              body: notificationMessage
+            },
+            data: {
+              type: "customer_assigned",
+              customer_id: String(UserData._id),
+              screenName: "customer"
+            }
+          };
+
+          const response = await admin.messaging().sendEachForMulticast({
+            tokens: [UserData.fcmToken],
+            notification: notifPayload.notification,
+            data: notifPayload.data
+          });
+
+          console.log("FCM sent:", response.successCount, "success,", response.failureCount, "failures");
+        } catch (fcmErr) {
+          console.error("FCM send error:", fcmErr);
+        }
+      }
+
+     return res.json({
         message: "Organization changed, new customer created under new organization",
         data: newCustomer
       });
     }
 
-    // ✅ Otherwise normal update in same org
+    // 🧩 Otherwise normal update
     const updatedCustomer = await Customer.findOneAndUpdate(
       { _id: req.params.id, isActive: true },
       customerData,
@@ -344,6 +433,7 @@ exports.updateCustomer = async (req, res) => {
 
     res.json({ message: "Customer updated successfully", data: updatedCustomer });
   } catch (err) {
+    console.error("updateCustomer error:", err);
     res.status(500).json({ error: err.message });
   }
 };
