@@ -272,7 +272,7 @@ exports.updateTicket = async (req, res) => {
       createdAt: new Date()
     });
     await notification.save();
-    const otherUser = await User.findById(ticket.organisation).select('fullName fcmToken');
+    const otherUser = await User.findById(ticket.processor).select('fullName fcmToken');
     if (otherUser?.fcmToken) {
       const notifPayload = {
         notification: {
