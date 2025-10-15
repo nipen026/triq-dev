@@ -130,7 +130,7 @@ exports.createCustomer = async (req, res) => {
     const notificationMessage = `New customer "${customer.customerName}" has been created.`;
 
     // If you have a Notification model
-    console.log(customer,"customerData");
+    console.log(customer,"customerData create time");
     
     const notification = new Notification({
       title: "New Customer Created",
@@ -291,7 +291,7 @@ exports.updateCustomer = async (req, res) => {
         users: userIdToUse
       });
       const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
-    console.log(UserData,"customerData");
+    console.log(UserData,existingCustomer.users,newCustomer,"customerData");
       // If you have a Notification model
       const notification = new Notification({
         title: "New Customer Created",
