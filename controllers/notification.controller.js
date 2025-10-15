@@ -127,7 +127,7 @@ exports.deleteNotification = async (req, res) => {
 
 exports.updateNotificationTicket = async (req, res) => {
   try {
-    const { ticketId, type } = req.body;
+    const { ticketId, type, notificationId } = req.body;
 
     // ✅ Validate input
     if (!ticketId || !type) {
@@ -152,7 +152,27 @@ exports.updateNotificationTicket = async (req, res) => {
 
     // ✅ Save changes
     await ticketData.save();
+    if (notificationId) {
+      const notif = await Notification.findOneAndUpdate(
+        { _id: notificationId, receiver: req.user.id, isActive: true },
+        { isActive: false },
+        { new: true }
+      );
 
+      if (notif) {
+        console.log(`🔕 Notification ${notificationId} marked inactive`);
+      }
+    } else {
+      // fallback if notificationId not passed
+      await Notification.updateMany(
+        {
+          receiver: req.user.id,
+          "data.ticketId": ticketId,
+          isActive: true,
+        },
+        { isActive: false }
+      );
+    }
     return res.status(200).json({
       success: true,
       msg: `Ticket status updated successfully`,

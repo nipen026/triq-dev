@@ -295,8 +295,8 @@ exports.updateCustomer = async (req, res) => {
         title: "New Customer Created",
         body: notificationMessage,
         type:'message',
-        receiver: req.user ? req.user.id : null, // who triggered the notification
-        sender: UserData.id,
+        receiver: UserData.id, // who triggered the notification
+        sender: req.user ? req.user.id : null,
         read: false,
         createdAt: new Date()
       });
@@ -304,12 +304,25 @@ exports.updateCustomer = async (req, res) => {
 
       // Optional: Push via FCM / WebSocket if needed
       if (UserData.fcmToken) {
-        sendPushNotification(UserData.fcmToken, {
-          title: "New Customer Created",
-          body: notificationMessage,
-          data: { customerId: UserData.id.toString() }
-        });
-      }
+       
+             const notifPayload = {
+               notification: {
+                 title: `Customer Assigned`,
+                 body: notificationMessage
+               },
+               data: {
+                 type: 'customer_assigned',
+                 customer_id: UserData.id,
+                 screenName: 'customer'
+               }
+             };
+             await admin.messaging().sendEachForMulticast({
+               tokens: [UserData.fcmToken],
+               notification: notifPayload.notification,
+               data: notifPayload.data,
+             });
+           }
+   
 
       await newCustomer.save();
 

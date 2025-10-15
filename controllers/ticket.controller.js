@@ -154,7 +154,7 @@ exports.createTicket = async (req, res) => {
         body: notificationMessage,
         type: 'ticket_request',
         receiver: organisationId, // who triggered the notification
-        sender: req.user.id,
+        sender:user.id,
         read: false,
         createdAt: new Date()
       });

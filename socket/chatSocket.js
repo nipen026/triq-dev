@@ -9,22 +9,7 @@ const User = require("../models/user.model");
 const { translate } = require('libretranslate');
 const mongoose = require("mongoose");
 
-// async function translateText(text, targetLang) {
-//   try {
-//     const result = await translate({
-//       q: text,
-//       source: "auto",
-//       target: targetLang,
-//       format: "text",
-//       api_key: "", // optional
-//       url: "https://libretranslate.com/translate",
-//     });
-//     return result.translatedText;
-//   } catch (err) {
-//     console.error("LibreTranslate error:", err);
-//     return text;
-//   }
-// }
+
 
 module.exports = (io) => {
   io.on("connection", (socket) => {
@@ -151,68 +136,62 @@ module.exports = (io) => {
     // const translate = require("@vitalets/google-translate-api");
 
     // inside sendMessage event
-    socket.on("sendMessage", async (payload) => {
-      console.log(payload, socket.userId);
-      const { roomId, content, attachments, targetLang } = payload;
-      if (!socket.userId || !roomId) return;
+   socket.on("sendMessage", async (payload) => {
+  const { roomId, content, attachments } = payload;
+  if (!socket.userId || !roomId) return;
 
-      const room = await ChatRoom.findById(roomId).populate("organisation processor");
-      if (!room) return;
+  const room = await ChatRoom.findById(roomId).populate("organisation processor");
+  if (!room) return;
 
-      const message = await Message.create({
-        room: roomId,
-        sender: socket.userId,
-        content,
-        attachments,
-        readBy: [socket.userId],
-      });
+  const message = await Message.create({
+    room: roomId,
+    sender: socket.userId,
+    content,
+    attachments,
+    readBy: [socket.userId],
+  });
 
-      console.log("newMessage to room", roomId, message);
+  io.to(roomId).emit("newMessage", message);
 
-      // 🧠 Determine recipient
-      const receiverId =
-        socket.userId === room.organisation.id ? room.processor.id : room.organisation.id;
-      const receiver = await User.findById(receiverId);
+  // 🧠 Identify receiver
+  const receiverId =
+    socket.userId === room.organisation.id ? room.processor.id : room.organisation.id;
+  const receiver = await User.findById(receiverId);
 
-      // 🌐 Translate message in real-time (optional targetLang or user's preferredLang)
-      // let translatedText = content;
-      // if (content && targetLang) {
-      //   try {
-      //     const result = await translateText(content, { to: targetLang });
-      //     translatedText = result.text;
-      //   } catch (err) {
-      //     console.error("Translation error:", err);
-      //   }
-      // }
+  // 🚫 Skip FCM if receiver is already viewing the chat (joined the same room)
+  const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
+  if (isReceiverInRoom) {
+    console.log(`🔕 No FCM sent — ${receiverId} is active in room ${roomId}`);
+    return;
+  }
 
-      // 🟢 Emit to both sender and receiver
-      io.to(roomId).emit("newMessage", {
-        ...message.toObject(),
-        // translatedContent: translatedText,
-      });
+  // 🔔 Otherwise, send FCM notification
+  if (receiver?.fcmToken) {
+    await admin
+      .messaging()
+      .sendEachForMulticast({
+        tokens: [receiver.fcmToken],
+        notification: {
+          title: `New message from ${
+            socket.userId === room.organisation.id
+              ? room.organisation.fullName
+              : room.processor.fullName
+          }`,
+          body: content || "Attachment",
+        },
+        data: {
+          type: "chat_message",
+          chatRoomId: room.id,
+          screenName: "chat",
+        },
+      })
+      .then((response) =>
+        console.log("📨 Notification sent:", response.successCount, "success")
+      )
+      .catch((err) => console.error("FCM error", err));
+  }
+});
 
-      // 🔔 Send notification
-      if (receiver?.fcmToken) {
-        await admin
-          .messaging()
-          .sendEachForMulticast({
-            tokens: [receiver.fcmToken],
-            notification: {
-              title: `New message from ${message.sender}`,
-              body: content || "Attachment",
-            },
-            data: {
-              type: "chat_message",
-              chatRoomId: room.id,
-              screenName: "chat",
-            },
-          })
-          .then((response) => {
-            console.log("Notification sent:", response.successCount, "success");
-          })
-          .catch((err) => console.error("FCM error", err));
-      }
-    });
 
     socket.on("updateTicketStatus", async ({ ticketId, status }) => {
       try {
