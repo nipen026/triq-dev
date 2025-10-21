@@ -155,7 +155,7 @@ exports.createTicket = async (req, res) => {
         body: notificationMessage,
         type: 'ticketRequest',
         receiver: organisationId, // who triggered the notification
-        sender:user.id,
+        sender: user.id,
         read: false,
         data: {
           type: 'ticket_created',
@@ -613,6 +613,57 @@ exports.reportTicket = async (req, res) => {
     await ticket.save();
 
     res.json({ message: "Ticket reported successfully", ticket });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+}
+
+exports.getResolvedTickets = async (req, res) => {
+  try {
+    const user = req.user;
+    const tickets = await Ticket.find({
+      organisation: user.id,
+      status: "Resolved",
+      isActive: true
+    }).populate("machine processor organisation");
+
+    res.json(tickets);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
+exports.updateTicketRating = async (req, res) => {
+  try {
+    const user = req.user;
+    const { id } = req.params;
+    const { rating, feedback } = req.body;
+
+    // Validate input
+    if (!rating) {
+      return res.status(400).json({ message: "Rating is required" });
+    }
+
+    // Find the ticket
+    const ticket = await Ticket.findById(id);
+    //Proccessor can rate only organisation tickets
+
+    const processorRole = await Role.findOne({ name: "processor" });
+    if (!user.roles.includes(processorRole.name)) {
+      return res.status(403).json({ message: "Only processor can add rating" });
+    }
+
+
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    // Update the ticket with rating and feedback
+    ticket.rating = rating;
+    ticket.feedback = feedback;
+    await ticket.save();
+
+    res.json({ message: "Ticket rating updated successfully", ticket });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
