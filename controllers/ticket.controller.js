@@ -145,6 +145,7 @@ exports.createTicket = async (req, res) => {
         data: {
           type: 'ticket_created',
           ticketNumber: ticket.ticketNumber,
+          ticketId: ticket._id.toString(),
           screenName: 'ticket'
         }
       };
@@ -156,6 +157,13 @@ exports.createTicket = async (req, res) => {
         receiver: organisationId, // who triggered the notification
         sender:user.id,
         read: false,
+        data: {
+          type: 'ticket_created',
+          ticketNumber: ticket.ticketNumber,
+          screenName: 'ticket',
+          ticketId: ticket._id.toString()
+
+        },
         createdAt: new Date()
       });
       await notification.save();
