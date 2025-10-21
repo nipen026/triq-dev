@@ -152,7 +152,7 @@ exports.createTicket = async (req, res) => {
       const notification = new Notification({
         title: "Ticket Created Successfully",
         body: notificationMessage,
-        type: 'ticket_request',
+        type: 'ticketRequest',
         receiver: organisationId, // who triggered the notification
         sender:user.id,
         read: false,
