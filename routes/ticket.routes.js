@@ -17,7 +17,7 @@ router.put("/delete/:id", auth, ticketController.DeleteTicket);
 router.get("/getticket/:status", auth, ticketController.getTicketsByStatus);
 router.get("/getTicketSummary/:id", auth, ticketController.getSummary);
 router.post("/report/:id", auth, ticketController.reportTicket);
-router.get("/getResolvedTickets", auth, ticketController.getResolvedTickets);
+router.get("/getReviewTickets", auth, ticketController.getResolvedTickets);
 router.post("/rateFeedback/:id", auth, ticketController.updateTicketRating);
 
 

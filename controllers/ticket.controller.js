@@ -618,14 +618,42 @@ exports.reportTicket = async (req, res) => {
   }
 }
 
+// exports.getResolvedTickets = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     const tickets = await Ticket.find({
+//       organisation: user.id,
+//       status: "Resolved",
+//       isActive: true
+//     }).populate("machine processor organisation");
+
+//     res.json(tickets);
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 exports.getResolvedTickets = async (req, res) => {
   try {
     const user = req.user;
+    let { page = 1, limit = 10 } = req.query;
+
+    page = parseInt(page);
+    limit = parseInt(limit);
+
+    const skip = (page - 1) * limit;
+
+    // ✅ Only resolved + active + has rating & feedback
     const tickets = await Ticket.find({
       organisation: user.id,
       status: "Resolved",
-      isActive: true
-    }).populate("machine processor organisation");
+      isActive: true,
+      rating: { $exists: true, $ne: "" },
+      feedback: { $exists: true, $ne: "" }
+    })
+      .populate("machine processor organisation")
+      .skip(skip)
+      .limit(limit)
+      .sort({ updatedAt: -1 }); // newest first
 
     res.json(tickets);
   } catch (err) {
