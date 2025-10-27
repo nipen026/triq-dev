@@ -185,7 +185,9 @@ exports.createTicket = async (req, res) => {
           ticketId: String(ticket._id),
           screenName: 'ticket',
         },
-      });
+      }).then((response) =>
+        console.log("📨 Notification sent:", response.successCount, "success")
+      );
 
     }
     res.status(201).json({
