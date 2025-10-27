@@ -50,6 +50,8 @@ exports.getProfile = async (req, res) => {
 
 // UPDATE profile
 exports.updateProfile = async (req, res) => {
+  console.log(req.body, "body");
+  
   try {
     const updateData = {
       ...req.body,
