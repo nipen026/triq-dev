@@ -132,7 +132,7 @@ exports.createTicket = async (req, res) => {
         processor: user.id, // processor creating the ticket
       });
     }
-    const otherUser = await User.findById(user.id).select('fullName fcmToken');
+    const otherUser = await User.findById(organisationId).select('fullName fcmToken');
 
     console.log(otherUser?.fcmToken, "otherUser?.fcmToken");
 
