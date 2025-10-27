@@ -22,7 +22,8 @@ exports.createTicket = async (req, res) => {
       problem, errorCode, notes, ticketType, machineId, organisationId,
       type, engineerRemark, paymentStatus
     } = req.body;
-
+    console.log(organisationId, "organisationId");
+    
     // ✅ ensure processor role
     const processorRole = await Role.findOne({ name: "processor" });
     if (!user.roles.includes(processorRole.name)) {
