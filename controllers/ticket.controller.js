@@ -23,7 +23,7 @@ exports.createTicket = async (req, res) => {
       type, engineerRemark, paymentStatus
     } = req.body;
     console.log(organisationId, "organisationId");
-    
+
     // ✅ ensure processor role
     const processorRole = await Role.findOne({ name: "processor" });
     if (!user.roles.includes(processorRole.name)) {
@@ -138,18 +138,18 @@ exports.createTicket = async (req, res) => {
     console.log(otherUser, "otherUser?.fcmToken");
 
     if (otherUser?.fcmToken) {
-      const notifPayload = {
-        notification: {
-          title: `New Ticket #${ticket.ticketNumber}`,
-          body: `Problem: ${ticket.problem}`
-        },
-        data: {
-          type: 'ticket_created',
-          ticketNumber: ticket.ticketNumber,
-          ticketId: ticket._id.toString(),
-          screenName: 'ticket'
-        }
-      };
+      // const notifPayload = {
+      //   notification: {
+      //     title: `New Ticket #${ticket.ticketNumber}`,
+      //     body: `Problem: ${ticket.problem}`
+      //   },
+      //   data: {
+      //     type: 'ticket_created',
+      //     ticketNumber: ticket.ticketNumber,
+      //     ticketId: ticket._id.toString(),
+      //     screenName: 'ticket'
+      //   }
+      // };
       const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been assigned.`;
       const notification = new Notification({
         title: "Ticket Created Successfully",
@@ -168,11 +168,25 @@ exports.createTicket = async (req, res) => {
       });
       await notification.save();
 
+      // await admin.messaging().sendEachForMulticast({
+      //   tokens: [otherUser.fcmToken],
+      //   notification: notifPayload.notification,
+      //   data: notifPayload.data,
+      // });
       await admin.messaging().sendEachForMulticast({
         tokens: [otherUser.fcmToken],
-        notification: notifPayload.notification,
-        data: notifPayload.data,
+        notification: {
+          title: `New Ticket #${ticket.ticketNumber}`,
+          body: `Problem: ${ticket.problem}`,
+        },
+        data: {
+          type: 'ticket_created',
+          ticketNumber: String(ticket.ticketNumber),
+          ticketId: String(ticket._id),
+          screenName: 'ticket',
+        },
       });
+
     }
     res.status(201).json({
       message: "Ticket created successfully",
