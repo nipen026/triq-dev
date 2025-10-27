@@ -50,13 +50,25 @@ exports.getProfile = async (req, res) => {
 
 // UPDATE profile
 exports.updateProfile = async (req, res) => {
-  console.log(req.body, "body");
-  
+
+
   try {
     const updateData = {
       ...req.body,
     };
-
+      console.log(updateData, "body");
+    if (req.body.fullName) {
+      // const userData = await User.findByIdAndUpdate(
+      //   req.user.id,
+      //   { fullName },
+      //   { new: true }
+      // );
+      const userData = await User.findOne({ _id: req.user.id });
+      userData.fullName = req.body.fullName;
+      await userData.save();
+    console.log(userData, "userData");
+    
+    }
     if (req.file) {
       updateData.profileImage = `/uploads/profile/${req.file.filename}`;
     }
