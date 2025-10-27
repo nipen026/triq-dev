@@ -9,7 +9,8 @@ const Customer = require("../models/customer.model");
 const { getCountryFromPhone } = require("../utils/phoneHelper");
 const Profile = require("../models/profile.model");
 const VerifyCode = require("../models/verifyCode.model");
-const ServicePricing = require('../models/servicePricing.model')
+const ServicePricing = require('../models/servicePricing.model');
+const sendSMS = require("../utils/smsOtp");
 // Register new user
 
 // exports.register = async (req, res) => {
@@ -122,7 +123,7 @@ const ServicePricing = require('../models/servicePricing.model')
 //       await customer.save();
 //     }
 //     const userData = await User.findOne({ _id: user._id }).populate("roles");
-    
+
 //     const token = jwt.sign(
 //       { id: user._id, roles: userRole.name },
 //       process.env.JWT_SECRET,
@@ -143,8 +144,8 @@ const ServicePricing = require('../models/servicePricing.model')
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password, phone, countryCode, role, fcmToken } = req.body;
-    console.log(fcmToken,"frontend side fcmtoken");
-    
+    console.log(fcmToken, "frontend side fcmtoken");
+
     // 1️⃣ Required fields check
     if (!fullName || !email || !password || !phone || !countryCode || !role) {
       return res.status(400).json({ error: "All fields are required" });
@@ -194,8 +195,8 @@ exports.register = async (req, res) => {
       fcmToken,
       isEmailVerified: true,
     });
-    console.log(user,"user create time");
-    
+    console.log(user, "user create time");
+
     await user.save();
 
     // 8️⃣ Create default profile
@@ -409,6 +410,8 @@ exports.sendOtp = async (req, res) => {
     // Send OTP (email or SMS)
     if (type === "email" && email) {
       await sendEmailOTP(email, code);
+    } if (type === "phone" && phone) {
+      sendSMS(phone, code);
     }
 
     console.log(`OTP sent to ${email || phone}: ${code}`);
@@ -435,14 +438,14 @@ exports.sendOtp = async (req, res) => {
 //     // OTP verified → delete record
 //     await VerifyCode.deleteOne({ _id: otpDoc._id });
 //     console.log(email,"email");
-    
+
 //     // Optionally mark user verified
 //     let user = await User.findOne({email:email}).populate("roles");
 //     if (!user) {
 //       return res.status(404).json({ msg: "User not found" });
 //     }
 //     console.log(email,"user");
-    
+
 //     if (type === "email") user.isEmailVerified = true;
 //     if (type === "phone") user.isPhoneVerified = true;
 //     await user.save();
@@ -468,13 +471,13 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   try {
-    const { email, type, code } = req.body;
+    const { email, type, code, phone } = req.body;
 
     // if (!code || (!email) || !type) {
     //   return res.status(400).json({ msg: "Missing required fields" });
     // }
 
-    const verifyData = await VerifyCode.findOne({ $or: [{ email }], type });
+    const verifyData = await VerifyCode.findOne({ $or: [{ email }, { phone }], type });
 
     if (!verifyData) {
       return res.status(400).json({ msg: "OTP not found or expired" });
@@ -548,7 +551,7 @@ exports.verifyPhone = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, fcmToken, role } = req.body;
-    console.log(fcmToken,"frontend side thi login ma")
+    console.log(fcmToken, "frontend side thi login ma")
     // 1️⃣ Find user with roles
     const user = await User.findOne({ email }).populate("roles");
     if (!user || !(await bcrypt.compare(password, user.password))) {
@@ -578,8 +581,8 @@ exports.login = async (req, res) => {
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    console.log(user,"login time user data");
-    
+    console.log(user, "login time user data");
+
     res.status(200).json({
       success: true,
       token,

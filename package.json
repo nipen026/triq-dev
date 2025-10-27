@@ -33,6 +33,7 @@
     "socket.io": "^4.8.1",
     "socket.io-client": "^4.8.1",
     "svg-country-flags": "^1.2.10",
+    "twilio": "^5.10.3",
     "ws": "^8.18.3"
   },
   "devDependencies": {

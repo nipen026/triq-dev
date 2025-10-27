@@ -1,21 +1,32 @@
 const admin = require("firebase-admin");
+const twilio = require("twilio");
 
-/**
- * Sends OTP to a mobile number using Firebase's SMS gateway
- * Note: Firebase Admin SDK doesn't directly support sending SMS manually,
- * so this is a simulated version for your case.
- */
+const serviceAccount = require("../services/serviceAccountKey.json");
+
+// Initialize Firebase Admin only once
+if (!admin.apps.length) {
+  admin.initializeApp({
+    credential: admin.credential.cert(serviceAccount)
+  });
+}
+
+// Twilio setup
+const client = twilio(process.env.TWILLO_SID, process.env.TWILLO_ACCESS_TOKEN);
+
 const sendSMS = async (phoneNumber, otp) => {
-  // You will need a third-party provider like Twilio, MSG91, etc.
-  // Since Firebase Admin doesn't support sending SMS OTP directly from server,
-  // you either:
-  // - use Firebase Client SDK (signInWithPhoneNumber on frontend)
-  // - or use a custom SMS provider here.
+  try {
+    const message = await client.messages.create({
+      body: `Your OTP is ${otp}`,
+      from: "+19786789226", // Replace with your Twilio phone number
+      to: phoneNumber,
+    });
 
-  // Simulating SMS via console.log
-  console.log(`Sending SMS OTP to ${phoneNumber}: ${otp}`);
-
-  // If using Twilio or similar, replace with actual SMS send code
+    console.log("✅ SMS sent successfully:", message.sid);
+    return message.sid;
+  } catch (error) {
+    console.error("❌ Error sending SMS:", error.message);
+    throw error;
+  }
 };
 
 module.exports = sendSMS;
