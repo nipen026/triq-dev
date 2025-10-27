@@ -173,7 +173,22 @@ exports.createTicket = async (req, res) => {
       //   notification: notifPayload.notification,
       //   data: notifPayload.data,
       // });
-      await admin.messaging().sendEachForMulticast({
+      // await admin.messaging().sendEachForMulticast({
+      //   tokens: [otherUser.fcmToken],
+      //   notification: {
+      //     title: `New Ticket #${ticket.ticketNumber}`,
+      //     body: `Problem: ${ticket.problem}`,
+      //   },
+      //   data: {
+      //     type: 'ticket_created',
+      //     ticketNumber: String(ticket.ticketNumber),
+      //     ticketId: String(ticket._id),
+      //     screenName: 'ticket',
+      //   },
+      // }).then((response) =>
+      //   console.log("📨 Notification sent:", response.successCount, "success")
+      // );
+      const response = await admin.messaging().sendEachForMulticast({
         tokens: [otherUser.fcmToken],
         notification: {
           title: `New Ticket #${ticket.ticketNumber}`,
@@ -185,9 +200,11 @@ exports.createTicket = async (req, res) => {
           ticketId: String(ticket._id),
           screenName: 'ticket',
         },
-      }).then((response) =>
-        console.log("📨 Notification sent:", response.successCount, "success")
-      );
+      });
+
+      response.responses.forEach((r, i) => {
+        if (!r.success) console.log("❌ FCM Error:", r.error?.message);
+      });
 
     }
     res.status(201).json({
