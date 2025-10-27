@@ -135,7 +135,7 @@ exports.createTicket = async (req, res) => {
     }
     const otherUser = await User.findById(organisationId).select('fullName fcmToken');
 
-    console.log(otherUser?.fcmToken, "otherUser?.fcmToken");
+    console.log(otherUser, "otherUser?.fcmToken");
 
     if (otherUser?.fcmToken) {
       const notifPayload = {
