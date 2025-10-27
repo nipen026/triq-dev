@@ -126,6 +126,8 @@ exports.deleteNotification = async (req, res) => {
 };
 
 exports.updateNotificationTicket = async (req, res) => {
+  console.log(req.body, "body in updateNotificationTicket");
+  
   try {
     const { ticketId, type, notificationId } = req.body;
 
