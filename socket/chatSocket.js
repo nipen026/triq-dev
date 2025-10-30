@@ -229,7 +229,7 @@ const receiverId =
               // translatedContent: translatedContent,
             });
         }
-  // io.to(roomId).emit("newMessage", message);
+  io.to(roomId).emit("newMessage", message);
 
   // 🧠 Identify receiver
   
