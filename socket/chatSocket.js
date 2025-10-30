@@ -10,7 +10,18 @@ const { translate } = require('libretranslate');
 const mongoose = require("mongoose");
 
 
+async function translateText(text, targetLang = "en") {
+  try {
+    const res = await axios.get("https://api.mymemory.translated.net/get", {
+      params: { q: text, langpair: `auto|${targetLang}` },
+    });
 
+    return res.data?.responseData?.translatedText || text;
+  } catch (error) {
+    console.error("Translation error:", error.message);
+    return text; // fallback to original message if translation fails
+  }
+}
 module.exports = (io) => {
   const userRooms = new Map(); 
   io.on("connection", (socket) => {
@@ -204,13 +215,24 @@ socket.on("disconnect", () => {
     attachments,
     readBy: [socket.userId],
   });
-
-  io.to(roomId).emit("newMessage", message);
-
-  // 🧠 Identify receiver
-  const receiverId =
+const receiverId =
     socket.userId === room.organisation.id ? room.processor.id : room.organisation.id;
   const receiver = await User.findById(receiverId);
+      
+
+        // 🌐 Translate text using LibreTranslate (free API)
+        let translatedText = content;
+        if (content && targetLang) {
+          const translatedContent = await translateText(content, targetLang);
+            io.to(roomId).emit("newMessage", {
+              ...message.toObject(),
+              // translatedContent: translatedContent,
+            });
+        }
+  // io.to(roomId).emit("newMessage", message);
+
+  // 🧠 Identify receiver
+  
 
   // 🚫 Skip FCM if receiver is already viewing the chat (joined the same room)
   const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
