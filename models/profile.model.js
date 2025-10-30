@@ -17,6 +17,7 @@ const ProfileSchema = new mongoose.Schema(
     unitName: String,
     designation: String,
     organizationName: String,
+    chatLanguage:{type:String,default:'en'},
     corporateAddress: AddressSchema,
     factoryAddress: AddressSchema,
     profileImage: {

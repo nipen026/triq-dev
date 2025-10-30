@@ -205,6 +205,7 @@ exports.register = async (req, res) => {
       email: user.email,
       phone: user.phone,
       profileImage: "",
+      chatLanguage:'en',
       corporateAddress: {},
       factoryAddress: {},
     });
