@@ -9,6 +9,7 @@ const UserSchema = new mongoose.Schema({
   roles: [{ type: mongoose.Schema.Types.ObjectId, ref: "Role" }],
   // organizationType:String,
   emailOTP: String,
+  processorType:String,
   isEmailVerified: { type: Boolean, default: false },
   isPhoneVerified: { type: Boolean, default: false },
   fcmToken: { type: String },

@@ -13,137 +13,9 @@ const ServicePricing = require('../models/servicePricing.model');
 const sendSMS = require("../utils/smsOtp");
 // Register new user
 
-// exports.register = async (req, res) => {
-//   try {
-//     const { fullName, email, password, phone, countryCode, role, organizationType, fcmToken } = req.body;
-
-//     // 1️⃣ Required fields check
-//     if (!fullName || !email || !password || !phone || !countryCode || !role) {
-//       return res.status(400).json({ error: "All fields are required" });
-//     }
-
-//     // 2️⃣ Email format validation
-//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-//     if (!emailRegex.test(email)) {
-//       return res.status(400).json({ error: "Invalid email format" });
-//     }
-
-//     // 3️⃣ Password strength validation
-//     if (password.length < 6) {
-//       return res.status(400).json({ error: "Password must be at least 6 characters long" });
-//     }
-
-//     // 4️⃣ Phone validation (basic: numeric + length check)
-//     const phoneRegex = /^[0-9]{7,15}$/;
-//     if (!phoneRegex.test(phone)) {
-//       return res.status(400).json({ error: "Invalid phone number" });
-//     }
-
-//     // 5️⃣ Check if email already exists
-//     const existingUser = await User.findOne({ email });
-//     if (existingUser) {
-//       return res.status(400).json({ error: "Email already registered" });
-//     }
-
-//     // 6️⃣ Check if phone already exists
-//     const existingPhone = await User.findOne({ phone });
-//     if (existingPhone) {
-//       return res.status(400).json({ error: "Phone number already registered" });
-//     }
-
-//     // 🔑 Hash password
-//     const hash = await bcrypt.hash(password, 10);
-//     const emailOTP = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-
-//     // 7️⃣ Check if role exists; if not, create it
-//     let userRole = await Role.findOne({ name: role });
-//     if (!userRole) {
-//       userRole = await Role.create({ name: role });
-//     }
-
-//     // 8️⃣ Create user
-//     const user = new User({
-//       fullName,
-//       email,
-//       password: hash,
-//       phone,
-//       countryCode,
-//       // organizationType,
-//       roles: [userRole._id],
-//       emailOTP: '123456',
-//       fcmToken,
-//       isEmailVerified:true
-//     });
-
-//     await user.save();
-//     await Profile.create({
-//       user: user._id,
-
-//       // 👇 fill all profile fields so frontend sees them
-//       organizationName: "",
-//       unitName: "",
-//       designation: "",
-
-//       // if you also want to store duplicates of email/phone here
-//       email: user.email,
-//       phone: user.phone,
-//       profileImage: "",
-//       corporateAddress: {
-//         addressLine1: "",
-//         addressLine2: "",
-//         city: "",
-//         state: "",
-//         country: "",
-//         pincode: ""
-//       },
-//       factoryAddress: {
-//         addressLine1: "",
-//         addressLine2: "",
-//         city: "",
-//         state: "",
-//         country: "",
-//         pincode: ""
-//       }
-//     });
-//     // 9️⃣ Send OTP via email
-//     // await sendEmailOTP(email, '123456');
-//     if (role === 'processor') {
-//       // You can use any logic for default customer fields
-//       const customerData = {
-//         customerName: fullName,
-//         contactPerson: fullName,
-//         email,
-//         phoneNumber: phone,
-//         organization: null, // or link to some organisation id if you have one
-//         countryOrigin: getCountryFromPhone(countryCode + phone), // optional
-//         users: [user._id]
-//       };
-
-//       const customer = new Customer(customerData);
-//       await customer.save();
-//     }
-//     const userData = await User.findOne({ _id: user._id }).populate("roles");
-
-//     const token = jwt.sign(
-//       { id: user._id, roles: userRole.name },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "7d" }
-//     );
-//     res.status(200).json({
-//       success: true,
-//       token,
-//       user: userData
-//     });
-//     // res.status(200).json({ success:true, token, userData });
-//   } catch (err) {
-//     console.error("Registration error:", err);
-//     res.status(500).json({ error: "Server error, please try again." });
-//   }
-// };
-
 exports.register = async (req, res) => {
   try {
-    const { fullName, email, password, phone, countryCode, role, fcmToken } = req.body;
+    const { fullName, email, password, phone, countryCode, role, fcmToken, processorType } = req.body;
     console.log(fcmToken, "frontend side fcmtoken");
 
     // 1️⃣ Required fields check
@@ -195,8 +67,12 @@ exports.register = async (req, res) => {
       fcmToken,
       isEmailVerified: true,
     });
-    console.log(user, "user create time");
-
+    if (role === "processor") {
+      if (!processorType) {
+        return res.status(400).json({ error: "Processor type is required for processor role" });
+      }
+      user.processorType = processorType; // 👈 Add field dynamically
+    }
     await user.save();
 
     // 8️⃣ Create default profile
@@ -205,7 +81,7 @@ exports.register = async (req, res) => {
       email: user.email,
       phone: user.phone,
       profileImage: "",
-      chatLanguage:'en',
+      chatLanguage: 'en',
       corporateAddress: {},
       factoryAddress: {},
     });
