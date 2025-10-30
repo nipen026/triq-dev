@@ -272,6 +272,74 @@ exports.getTicketById = async (req, res) => {
 // ======================== UPDATE TICKET ========================
 
 // controllers/ticket.controller.js
+// exports.updateTicket = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     const { id } = req.params;
+//     const { status, notes, paymentStatus, reschedule_time, isActive, engineerRemark } = req.body;
+
+//     const ticket = await Ticket.findById(id);
+//     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
+
+//     // ✅ only organisation can update ticket
+//     if (ticket.organisation.toString() !== user.id.toString()) {
+//       return res.status(403).json({ message: "Only organization can update this ticket" });
+//     }
+
+//     // ✅ update allowed fields
+//     if (status) ticket.status = status;
+//     if (typeof isActive === "boolean") ticket.isActive = isActive;
+//     if (notes) ticket.notes = notes;
+//     if (paymentStatus) ticket.paymentStatus = paymentStatus;
+//     if (engineerRemark) ticket.engineerRemark = engineerRemark;
+//     if (reschedule_time) {
+//       ticket.reschedule_time = reschedule_time; // e.g. "30" (minutes)
+
+//       // calculate reschedule_update_time = now + reschedule_time
+//       const now = new Date();
+//       const rescheduleUpdate = new Date(now.getTime() + reschedule_time * 60 * 1000);
+//       ticket.reschedule_update_time = rescheduleUpdate;
+//       ticket.IsShowChatOption = true; // hide chat when rescheduled
+//       ticket.status = "On Hold";
+//     }
+//     const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been updated.`;
+//     const notification = new Notification({
+//       title: "Ticket updated Successfully",
+//       body: notificationMessage,
+//       type: 'message',
+//       receiver: ticket.processor, // who triggered the notification
+//       sender: ticket.organisation,
+//       read: false,
+//       createdAt: new Date()
+//     });
+//     await notification.save();
+//     const otherUser = await User.findById(ticket.processor).select('fullName fcmToken');
+//     if (otherUser?.fcmToken) {
+      
+//       const notifPayload = {
+//         notification: {
+//           title: `Update Ticket #${ticket.ticketNumber} ${req.body}`,
+//           body: `Problem: ${ticket.problem}`
+//         },
+//         data: {
+//           type: 'ticket_updated',
+//           ticketNumber: ticket.ticketNumber,
+//           screenName: 'ticket'
+//         }
+//       };
+//       await admin.messaging().sendEachForMulticast({
+//         tokens: [otherUser.fcmToken],
+//         notification: notifPayload.notification,
+//         data: notifPayload.data,
+//       });
+//     }
+
+//     await ticket.save();
+//     res.json({ message: "Ticket updated successfully", ticket });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 exports.updateTicket = async (req, res) => {
   try {
     const user = req.user;
@@ -286,46 +354,77 @@ exports.updateTicket = async (req, res) => {
       return res.status(403).json({ message: "Only organization can update this ticket" });
     }
 
-    // ✅ update allowed fields
-    if (status) ticket.status = status;
-    if (typeof isActive === "boolean") ticket.isActive = isActive;
-    if (notes) ticket.notes = notes;
-    if (paymentStatus) ticket.paymentStatus = paymentStatus;
-    if (engineerRemark) ticket.engineerRemark = engineerRemark;
-    if (reschedule_time) {
-      ticket.reschedule_time = reschedule_time; // e.g. "30" (minutes)
+    // 🔍 Track field updates
+    const updatedFields = [];
 
-      // calculate reschedule_update_time = now + reschedule_time
+    if (status && ticket.status !== status) {
+      updatedFields.push(`Status changed to "${status}"`);
+      ticket.status = status;
+    }
+    if (typeof isActive === "boolean" && ticket.isActive !== isActive) {
+      updatedFields.push(`Active status changed to "${isActive}"`);
+      ticket.isActive = isActive;
+    }
+    if (notes && ticket.notes !== notes) {
+      updatedFields.push(`Notes updated`);
+      ticket.notes = notes;
+    }
+    if (paymentStatus && ticket.paymentStatus !== paymentStatus) {
+      updatedFields.push(`Payment status updated to "${paymentStatus}"`);
+      ticket.paymentStatus = paymentStatus;
+    }
+    if (engineerRemark && ticket.engineerRemark !== engineerRemark) {
+      updatedFields.push(`Engineer remark updated`);
+      ticket.engineerRemark = engineerRemark;
+    }
+
+    if (reschedule_time) {
+      updatedFields.push(`Ticket rescheduled by ${reschedule_time} minutes`);
+      ticket.reschedule_time = reschedule_time;
+
       const now = new Date();
       const rescheduleUpdate = new Date(now.getTime() + reschedule_time * 60 * 1000);
       ticket.reschedule_update_time = rescheduleUpdate;
-      ticket.IsShowChatOption = true; // hide chat when rescheduled
+      ticket.IsShowChatOption = true;
       ticket.status = "On Hold";
     }
-    const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been updated.`;
+
+    // 🧠 If no field actually updated
+    if (updatedFields.length === 0) {
+      return res.status(400).json({ message: "No changes detected in the ticket" });
+    }
+
+    // 📨 Prepare dynamic notification message
+    const changes = updatedFields.join(", ");
+    const notificationMessage = `Ticket #${ticket.ticketNumber} has been updated: ${changes}.`;
+
+    // 🛎️ Save notification in DB
     const notification = new Notification({
-      title: "Ticket updated Successfully",
+      title: "Ticket Updated",
       body: notificationMessage,
-      type: 'message',
-      receiver: ticket.processor, // who triggered the notification
+      type: "message",
+      receiver: ticket.processor,
       sender: ticket.organisation,
       read: false,
-      createdAt: new Date()
+      createdAt: new Date(),
     });
     await notification.save();
-    const otherUser = await User.findById(ticket.processor).select('fullName fcmToken');
+
+    // 📲 Send FCM notification
+    const otherUser = await User.findById(ticket.processor).select("fullName fcmToken");
     if (otherUser?.fcmToken) {
       const notifPayload = {
         notification: {
-          title: `Update Ticket #${ticket.ticketNumber}`,
-          body: `Problem: ${ticket.problem}`
+          title: `Ticket #${ticket.ticketNumber} has been updated: ${changes}.`,
+          body: changes,
         },
         data: {
-          type: 'ticket_updated',
+          type: "ticket_updated",
           ticketNumber: ticket.ticketNumber,
-          screenName: 'ticket'
-        }
+          screenName: "ticket",
+        },
       };
+
       await admin.messaging().sendEachForMulticast({
         tokens: [otherUser.fcmToken],
         notification: notifPayload.notification,
@@ -334,7 +433,7 @@ exports.updateTicket = async (req, res) => {
     }
 
     await ticket.save();
-    res.json({ message: "Ticket updated successfully", ticket });
+    res.json({ message: "Ticket updated successfully", updatedFields, ticket });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

@@ -48,19 +48,33 @@ exports.getProfile = async (req, res) => {
   }
 };
 
+exports.getProfileDetail = async (req, res) => {
+  try {
+    const id = req.params.id;
+    const profile = await Profile.findOne({ user: id }).populate("user");
+
+    if (!profile) return res.status(404).json({ message: "Profile not found" });
+
+    res.json({ profile });
+
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+
 // UPDATE profile
 exports.updateProfile = async (req, res) => {
   try {
     const updateData = {
       ...req.body,
     };
-      console.log(updateData, "body");
+    console.log(updateData, "body");
     if (req.body.fullName) {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
       await userData.save();
-    console.log(userData, "userData");
-    
+      console.log(userData, "userData");
+
     }
     if (req.file) {
       updateData.profileImage = `/uploads/profile/${req.file.filename}`;
