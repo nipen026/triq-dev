@@ -669,25 +669,45 @@ exports.autoVerify = async (req, res) => {
     if (!user) return res.status(404).send("User not found");
 
     if (user.isEmailVerified) {
-      return res.send(`<h2>Email already verified ✅</h2>`);
+      return res.send(`
+        <div style="text-align:center;padding:40px;font-family:sans-serif">
+          <h2>Email already verified ✅</h2>
+          <script>
+            setTimeout(() => window.close(), 10000);
+          </script>
+        </div>
+      `);
     }
 
     // Mark verified
     user.isEmailVerified = true;
     await user.save();
 
-    // Return a simple HTML confirmation
+    // Return a simple HTML confirmation + auto-close after 10 sec
     res.send(`
       <div style="text-align:center;padding:40px;font-family:sans-serif">
         <h2>🎉 Email Verified Successfully!</h2>
         <p>You can now close this tab and return to the app.</p>
+        <script>
+          setTimeout(() => window.close(), 10000);
+        </script>
       </div>
     `);
   } catch (err) {
     console.error("autoVerify error:", err);
     if (err.name === "TokenExpiredError") {
-      return res.status(400).send("<h3>Verification link expired ⏰</h3>");
+      return res.status(400).send(`
+        <div style="text-align:center;padding:40px;font-family:sans-serif">
+          <h3>Verification link expired ⏰</h3>
+          <script>setTimeout(() => window.close(), 10000);</script>
+        </div>
+      `);
     }
-    res.status(400).send("<h3>Invalid or expired link ❌</h3>");
+    res.status(400).send(`
+      <div style="text-align:center;padding:40px;font-family:sans-serif">
+        <h3>Invalid or expired link ❌</h3>
+        <script>setTimeout(() => window.close(), 10000);</script>
+      </div>
+    `);
   }
 };
