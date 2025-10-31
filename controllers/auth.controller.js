@@ -11,6 +11,7 @@ const Profile = require("../models/profile.model");
 const VerifyCode = require("../models/verifyCode.model");
 const ServicePricing = require('../models/servicePricing.model');
 const sendSMS = require("../utils/smsOtp");
+const sendMail = require("../utils/mailer");
 // Register new user
 
 exports.register = async (req, res) => {
@@ -273,7 +274,7 @@ exports.register = async (req, res) => {
 exports.sendOtp = async (req, res) => {
   try {
     const { email, phone, type } = req.body;
-    console.log(req.body,"send otp body");
+    console.log(req.body, "send otp body");
 
     if (!type || (!email && !phone)) {
       return res.status(400).json({ msg: "Email or phone required" });
@@ -614,3 +615,78 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// exports.sendVerifyEmail = async (req, res) => {
+//   try {
+//     const { email } = req.body;
+//     if (!email) return res.status(400).json({ msg: "Email required" });
+
+//     const user = await User.findOne({ email });
+//     if (!user) return res.status(404).json({ msg: "User not found" });
+
+//     if (user.isEmailVerified)
+//       return res.status(400).json({ msg: "Email already verified" });
+
+//     // 1️⃣ Create JWT token valid for 1 day
+//     const token = jwt.sign(
+//       { userId: user._id, email: user.email },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "1d" }
+//     );
+
+//     // 2️⃣ Create Firebase Dynamic Link
+//     const dynamicLinkApi = `https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=${process.env.FIREBASE_API_KEY}`;
+//     const verifyUrl = `${process.env.APP_BASE_URL}/auth/verify-email?token=${token}`;
+
+//     const { data } = await axios.post(dynamicLinkApi, {
+//       dynamicLinkInfo: {
+//         domainUriPrefix: process.env.DYNAMIC_LINK_DOMAIN, // e.g. https://myapp.page.link
+//         link: verifyUrl,
+//         androidInfo: { androidPackageName: process.env.ANDROID_PACKAGE_NAME },
+//         iosInfo: { iosBundleId: process.env.IOS_BUNDLE_ID },
+//       },
+//     });
+
+//     const shortLink = data.shortLink;
+
+//     // 3️⃣ Email content
+//     const subject = "Verify your email address";
+//     const html = `
+//       <h3>Hello ${user.fullName || "User"},</h3>
+//       <p>Click below to verify your account:</p>
+//       <a href="${shortLink}" 
+//          style="background:#4CAF50;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;">
+//          Verify Email
+//       </a>
+//       <p>Or copy this link: ${shortLink}</p>
+//     `;
+
+//     await sendMail(email, subject, html);
+
+//     res.json({ success: true, msg: "Verification email sent" });
+//   } catch (err) {
+//     console.error("sendVerifyEmail error:", err.response?.data || err);
+//     res.status(500).json({ msg: "Failed to send verification email" });
+//   }
+// };
+
+// // ✅ Verify Email Link
+// exports.verifyEmailLink = async (req, res) => {
+//   try {
+//     const { token } = req.query;
+//     if (!token) return res.status(400).json({ msg: "Token required" });
+
+//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
+//     const user = await User.findById(decoded.userId);
+
+//     if (!user) return res.status(404).json({ msg: "User not found" });
+//     if (user.isEmailVerified)
+//       return res.status(200).json({ msg: "Already verified" });
+
+//     user.isEmailVerified = true;
+//     await user.save();
+
+//     res.status(200).json({ msg: "Email verified successfully" });
+//   } catch (err) {
+//     res.status(400).json({ msg: "Invalid or expired token" });
+//   }
+// };
