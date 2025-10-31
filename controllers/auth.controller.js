@@ -615,78 +615,79 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// exports.sendVerifyEmail = async (req, res) => {
-//   try {
-//     const { email } = req.body;
-//     if (!email) return res.status(400).json({ msg: "Email required" });
+exports.sendVerifyEmail = async (req, res) => {
+  try {
+    const { email } = req.body;
+    if (!email) return res.status(400).json({ msg: "Email is required" });
 
-//     const user = await User.findOne({ email });
-//     if (!user) return res.status(404).json({ msg: "User not found" });
+    const user = await User.findOne({ email });
+    if (!user) return res.status(404).json({ msg: "User not found" });
 
-//     if (user.isEmailVerified)
-//       return res.status(400).json({ msg: "Email already verified" });
+    if (user.isEmailVerified) {
+      return res.status(400).json({ msg: "Email already verified" });
+    }
 
-//     // 1️⃣ Create JWT token valid for 1 day
-//     const token = jwt.sign(
-//       { userId: user._id, email: user.email },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "1d" }
-//     );
+    // Generate token valid for 1 day
+    const token = jwt.sign(
+      { userId: user._id, email: user.email },
+      process.env.JWT_SECRET,
+      { expiresIn: "1d" }
+    );
 
-//     // 2️⃣ Create Firebase Dynamic Link
-//     const dynamicLinkApi = `https://firebasedynamiclinks.googleapis.com/v1/shortLinks?key=${process.env.FIREBASE_API_KEY}`;
-//     const verifyUrl = `${process.env.APP_BASE_URL}/auth/verify-email?token=${token}`;
+    // Create verification link (same backend route)
+    const verifyUrl = `${process.env.API_BASE_URL}/auth/auto-verify?token=${token}`;
 
-//     const { data } = await axios.post(dynamicLinkApi, {
-//       dynamicLinkInfo: {
-//         domainUriPrefix: process.env.DYNAMIC_LINK_DOMAIN, // e.g. https://myapp.page.link
-//         link: verifyUrl,
-//         androidInfo: { androidPackageName: process.env.ANDROID_PACKAGE_NAME },
-//         iosInfo: { iosBundleId: process.env.IOS_BUNDLE_ID },
-//       },
-//     });
+    // Email content
+    const subject = "Verify your email address";
+    const html = `
+      <h3>Hello ${user.fullName || "User"},</h3>
+      <p>Click below to verify your email:</p>
+      <a href="${verifyUrl}"
+         style="background:#28a745;color:#fff;padding:10px 18px;text-decoration:none;border-radius:6px;">
+         Verify My Email
+      </a>
+    `;
 
-//     const shortLink = data.shortLink;
+    await sendMail(email, subject, html);
+    res.json({ success: true, msg: "Verification email sent successfully" });
+  } catch (err) {
+    console.error("sendVerifyEmail error:", err);
+    res.status(500).json({ msg: "Error sending verification email" });
+  }
+};
 
-//     // 3️⃣ Email content
-//     const subject = "Verify your email address";
-//     const html = `
-//       <h3>Hello ${user.fullName || "User"},</h3>
-//       <p>Click below to verify your account:</p>
-//       <a href="${shortLink}" 
-//          style="background:#4CAF50;color:#fff;padding:10px 20px;text-decoration:none;border-radius:6px;">
-//          Verify Email
-//       </a>
-//       <p>Or copy this link: ${shortLink}</p>
-//     `;
+// 🔹 Auto verify directly when link clicked
+exports.autoVerify = async (req, res) => {
+  try {
+    const { token } = req.query;
+    if (!token) return res.status(400).send("Invalid verification link");
 
-//     await sendMail(email, subject, html);
+    // Decode and verify token
+    const decoded = jwt.verify(token, process.env.JWT_SECRET);
+    const user = await User.findById(decoded.userId);
 
-//     res.json({ success: true, msg: "Verification email sent" });
-//   } catch (err) {
-//     console.error("sendVerifyEmail error:", err.response?.data || err);
-//     res.status(500).json({ msg: "Failed to send verification email" });
-//   }
-// };
+    if (!user) return res.status(404).send("User not found");
 
-// // ✅ Verify Email Link
-// exports.verifyEmailLink = async (req, res) => {
-//   try {
-//     const { token } = req.query;
-//     if (!token) return res.status(400).json({ msg: "Token required" });
+    if (user.isEmailVerified) {
+      return res.send(`<h2>Email already verified ✅</h2>`);
+    }
 
-//     const decoded = jwt.verify(token, process.env.JWT_SECRET);
-//     const user = await User.findById(decoded.userId);
+    // Mark verified
+    user.isEmailVerified = true;
+    await user.save();
 
-//     if (!user) return res.status(404).json({ msg: "User not found" });
-//     if (user.isEmailVerified)
-//       return res.status(200).json({ msg: "Already verified" });
-
-//     user.isEmailVerified = true;
-//     await user.save();
-
-//     res.status(200).json({ msg: "Email verified successfully" });
-//   } catch (err) {
-//     res.status(400).json({ msg: "Invalid or expired token" });
-//   }
-// };
+    // Return a simple HTML confirmation
+    res.send(`
+      <div style="text-align:center;padding:40px;font-family:sans-serif">
+        <h2>🎉 Email Verified Successfully!</h2>
+        <p>You can now close this tab and return to the app.</p>
+      </div>
+    `);
+  } catch (err) {
+    console.error("autoVerify error:", err);
+    if (err.name === "TokenExpiredError") {
+      return res.status(400).send("<h3>Verification link expired ⏰</h3>");
+    }
+    res.status(400).send("<h3>Invalid or expired link ❌</h3>");
+  }
+};

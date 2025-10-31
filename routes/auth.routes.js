@@ -14,5 +14,8 @@ router.post("/logout",verifyToken, auth.logout);
 router.post("/forgot-password", auth.forgotPassword);
 router.post("/verify-forgot-otp", auth.verifyForgotOTP);
 router.post("/reset-password", auth.resetPassword);
+router.post("/send-verify-email", auth.sendVerifyEmail);
+router.get("/auto-verify", auth.autoVerify);
+
 
 module.exports = router;

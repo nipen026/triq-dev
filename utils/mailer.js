@@ -8,21 +8,13 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-/**
- * Send email
- * @param {Object} options
- * @param {string} options.to - Recipient email
- * @param {string} options.subject - Email subject
- * @param {string} options.html - HTML body
- * @param {string} [options.text] - Plain text fallback
- */
-async function sendMail({ to, subject, html, text }) {
+async function sendMail(to, subject, html, text = "") {
   try {
     const info = await transporter.sendMail({
-      from: `"TRIQ" <${process.env.SMTP_USER}>`,
+      from: `"TRIQ" <${process.env.EMAIL_USER}>`,
       to,
       subject,
-      text: text || "",
+      text,
       html,
     });
 
@@ -33,5 +25,6 @@ async function sendMail({ to, subject, html, text }) {
     throw error;
   }
 }
+
 
 module.exports = sendMail;
