@@ -9,7 +9,7 @@ const admin = require("../config/firebase");
 const User = require("../models/user.model");
 const Notification = require('../models/notification.model')
 const mongoose = require("mongoose");
-
+const socket = require("../socket/socketInstance"); // import socket utility
 function generateTicketNumber() {
   return Math.floor(100000000000 + Math.random() * 900000000000).toString();
 }
@@ -271,75 +271,6 @@ exports.getTicketById = async (req, res) => {
 
 // ======================== UPDATE TICKET ========================
 
-// controllers/ticket.controller.js
-// exports.updateTicket = async (req, res) => {
-//   try {
-//     const user = req.user;
-//     const { id } = req.params;
-//     const { status, notes, paymentStatus, reschedule_time, isActive, engineerRemark } = req.body;
-
-//     const ticket = await Ticket.findById(id);
-//     if (!ticket) return res.status(404).json({ message: "Ticket not found" });
-
-//     // ✅ only organisation can update ticket
-//     if (ticket.organisation.toString() !== user.id.toString()) {
-//       return res.status(403).json({ message: "Only organization can update this ticket" });
-//     }
-
-//     // ✅ update allowed fields
-//     if (status) ticket.status = status;
-//     if (typeof isActive === "boolean") ticket.isActive = isActive;
-//     if (notes) ticket.notes = notes;
-//     if (paymentStatus) ticket.paymentStatus = paymentStatus;
-//     if (engineerRemark) ticket.engineerRemark = engineerRemark;
-//     if (reschedule_time) {
-//       ticket.reschedule_time = reschedule_time; // e.g. "30" (minutes)
-
-//       // calculate reschedule_update_time = now + reschedule_time
-//       const now = new Date();
-//       const rescheduleUpdate = new Date(now.getTime() + reschedule_time * 60 * 1000);
-//       ticket.reschedule_update_time = rescheduleUpdate;
-//       ticket.IsShowChatOption = true; // hide chat when rescheduled
-//       ticket.status = "On Hold";
-//     }
-//     const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been updated.`;
-//     const notification = new Notification({
-//       title: "Ticket updated Successfully",
-//       body: notificationMessage,
-//       type: 'message',
-//       receiver: ticket.processor, // who triggered the notification
-//       sender: ticket.organisation,
-//       read: false,
-//       createdAt: new Date()
-//     });
-//     await notification.save();
-//     const otherUser = await User.findById(ticket.processor).select('fullName fcmToken');
-//     if (otherUser?.fcmToken) {
-
-//       const notifPayload = {
-//         notification: {
-//           title: `Update Ticket #${ticket.ticketNumber} ${req.body}`,
-//           body: `Problem: ${ticket.problem}`
-//         },
-//         data: {
-//           type: 'ticket_updated',
-//           ticketNumber: ticket.ticketNumber,
-//           screenName: 'ticket'
-//         }
-//       };
-//       await admin.messaging().sendEachForMulticast({
-//         tokens: [otherUser.fcmToken],
-//         notification: notifPayload.notification,
-//         data: notifPayload.data,
-//       });
-//     }
-
-//     await ticket.save();
-//     res.json({ message: "Ticket updated successfully", ticket });
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 exports.updateTicket = async (req, res) => {
   try {
     const user = req.user;
@@ -434,7 +365,8 @@ exports.updateTicket = async (req, res) => {
         data: notifPayload.data,
       });
     }
-
+    const io = socket.getIO();
+  io.emit("ticketStatusUpdated", ticket);
     await ticket.save();
     res.json({ message: "Ticket updated successfully", updatedFields, ticket });
   } catch (err) {
@@ -445,18 +377,7 @@ exports.updateTicket = async (req, res) => {
 
 
 // ======================== DUMMY DATA FOR CREATE TICKET ========================
-/*
-Example request body for POST /tickets:
 
-{
-  "problem": "Machine overheating frequently",
-  "errorCode": "E-101",
-  "notes": "Check cooling system",
-  "ticketType": "General Check Up",
-  "machineId": "64f7a2f7b8c9a2b3c1d4e567",
-  "organisationId": "64f7a2f7b8c9a2b3c1d4e890"
-}
-*/
 
 
 exports.DeleteTicket = async (req, res) => {
@@ -485,70 +406,7 @@ exports.DeleteTicket = async (req, res) => {
 };
 
 // ======================== GET TICKETS BY STATUS (with Pagination) ========================
-// exports.getTicketsByStatus = async (req, res) => {
-//   try {
-//     const user = req.user;
-//     let { status } = req.params; // status from URL param
-//     let { page = 1, limit = 10 } = req.query;
-//     page = parseInt(page);
-//     limit = parseInt(limit);
 
-//     const processorRole = await Role.findOne({ name: "processor" });
-//     const organisationRole = await Role.findOne({ name: "organization" });
-
-//     // ✅ base query
-//     let query = { isActive: true };
-
-//     if (!status || status === "all") {
-//       // no filter – show all statuses
-//     } else if (status === "active" || status === "Active") {
-//       // active tab → everything except resolved
-//       query.status = { $ne: "resolved" };
-//     } else {
-//       // specific status
-//       query.status = status;
-//     }
-
-//     // ✅ restrict by user role
-//     if (processorRole && user.roles.includes(processorRole.name)) {
-//       query.processor = user.id;
-//     } else if (organisationRole && user.roles.includes(organisationRole.name)) {
-//       query.organisation = user.id;
-//     } else {
-//       return res.status(403).json({ message: "Not authorized" });
-//     }
-
-//     const total = await Ticket.countDocuments(query);
-
-//     const tickets = await Ticket.find(query)
-//       .populate("machine processor organisation")
-//       .skip((page - 1) * limit)
-//       .limit(limit)
-//       .sort({ createdAt: -1 });
-
-//     const data = await Promise.all(
-//       tickets.map(async (t) => {
-//         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
-//           .populate("organisation", "fullName email")
-//           .populate("processor", "fullName email");
-//         return {
-//           ...t.toObject(),
-//           chatRoom,
-//         };
-//       })
-//     );
-
-//     res.json({
-//       total,
-//       page,
-//       pages: Math.ceil(total / limit),
-//       count: data.length,
-//       data,
-//     });
-//   } catch (err) {
-//     res.status(500).json({ message: err.message });
-//   }
-// };
 exports.getTicketsByStatus = async (req, res) => {
   try {
     const user = req.user;
@@ -710,7 +568,8 @@ exports.getSummary = async (req, res) => {
         updatedAt: ticket.updatedAt,
         paymentStatus: ticket.paymentStatus,
         media: ticket.media,
-        IsShowChatOption: ticket.IsShowChatOption
+        IsShowChatOption: ticket.IsShowChatOption,
+        isFirstTimeServiceDone: ticket.isFirstTimeServiceDone
       },
       machineDetails: ticket.machine,
       customerMachineDetails,
