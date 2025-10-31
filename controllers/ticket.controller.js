@@ -315,7 +315,7 @@ exports.getTicketById = async (req, res) => {
 //     await notification.save();
 //     const otherUser = await User.findById(ticket.processor).select('fullName fcmToken');
 //     if (otherUser?.fcmToken) {
-      
+
 //       const notifPayload = {
 //         notification: {
 //           title: `Update Ticket #${ticket.ticketNumber} ${req.body}`,
@@ -360,6 +360,9 @@ exports.updateTicket = async (req, res) => {
     if (status && ticket.status !== status) {
       updatedFields.push(`Status changed to "${status}"`);
       ticket.status = status;
+      if (status === "Resolved") {
+        ticket.isFirstTimeServiceDone = true;
+      }
     }
     if (typeof isActive === "boolean" && ticket.isActive !== isActive) {
       updatedFields.push(`Active status changed to "${isActive}"`);
@@ -807,6 +810,7 @@ exports.updateTicketRating = async (req, res) => {
 
     // Find the ticket
     const ticket = await Ticket.findById(id);
+    ticket.isFirstTimeServiceDone = false;
     //Proccessor can rate only organisation tickets
 
     const processorRole = await Role.findOne({ name: "processor" });

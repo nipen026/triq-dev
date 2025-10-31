@@ -43,6 +43,7 @@ const ticketSchema = new mongoose.Schema({
   reportDescription: String,
   rating: { type: String},
   feedback: { type: String},
+  isFirstTimeServiceDone: { type: Boolean, default: false },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Ticket", ticketSchema);
