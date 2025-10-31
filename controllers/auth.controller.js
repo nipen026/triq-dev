@@ -65,7 +65,7 @@ exports.register = async (req, res) => {
       roles: [userRole._id],
       emailOTP: "123456",
       fcmToken,
-      isEmailVerified: true,
+      isPhoneVerified: true,
     });
     if (role === "processor") {
       if (!processorType) {
