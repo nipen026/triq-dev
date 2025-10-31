@@ -84,6 +84,8 @@ exports.register = async (req, res) => {
       chatLanguage: 'en',
       corporateAddress: {},
       factoryAddress: {},
+      designation: "",
+      unitName: "",
     });
 
     // 9️⃣ If role is processor, create customer entry
