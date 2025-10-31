@@ -271,6 +271,7 @@ exports.register = async (req, res) => {
 exports.sendOtp = async (req, res) => {
   try {
     const { email, phone, type } = req.body;
+    console.log(req.body,"send otp body");
 
     if (!type || (!email && !phone)) {
       return res.status(400).json({ msg: "Email or phone required" });
