@@ -141,7 +141,7 @@ exports.updateProfile = async (req, res) => {
     const user = await User.findById(req.user.id);
     const completionPercentage = calculateProfileCompletion(updated, user);
 
-    res.json({ updated, completionPercentage });
+    res.json({ updated });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
