@@ -3,6 +3,44 @@ const Customer = require("../models/customer.model");
 const User = require("../models/user.model");
 const Role = require("../models/role.model");
 const QRCode = require("qrcode");
+
+function calculateProfileCompletion(profile, user) {
+  let totalFields = 0;
+  let filledFields = 0;
+
+  // ✅ Profile fields to consider
+  const profileFields = [
+    "profileImage",
+    "dob",
+    "gender",
+    "address",
+    "city",
+    "state",
+    "country",
+    "zipcode",
+    "bio",
+  ];
+
+  // ✅ User fields to consider
+  const userFields = ["fullName", "email", "phone"];
+
+  // Check profile fields
+  profileFields.forEach((field) => {
+    totalFields++;
+    if (profile && profile[field]) filledFields++;
+  });
+
+  // Check user fields
+  userFields.forEach((field) => {
+    totalFields++;
+    if (user && user[field]) filledFields++;
+  });
+
+  // ✅ Calculate percentage
+  const percentage = Math.round((filledFields / totalFields) * 100);
+  return percentage;
+}
+
 // CREATE profile
 exports.createProfile = async (req, res) => {
   try {
@@ -24,7 +62,6 @@ exports.getProfile = async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.user.id }).populate("user");
     console.log(req.user.id, "profile");
-
     if (!profile) return res.status(404).json({ message: "Profile not found" });
     const customer = await Customer.findOne({ users: req.user.id });
     console.log(customer, "customer");
@@ -35,9 +72,9 @@ exports.getProfile = async (req, res) => {
       const users = await User.findOne({ _id: req.user.id })
         .populate("roles", "name"); // optional populate
       console.log(users, "users");
-
+      const completionPercentage = calculateProfileCompletion(profile, users);
       const qrCode = await QRCode.toDataURL(users.id);
-      res.json({ profile, qrCode });
+      res.json({ profile, qrCode, completionPercentage });
     } else {
       const qrCode = await QRCode.toDataURL(customer.id);
       res.json({ profile, qrCode });
@@ -85,8 +122,10 @@ exports.updateProfile = async (req, res) => {
       updateData,
       { new: true, upsert: true }
     );
+    const user = await User.findById(req.user.id);
+    const completionPercentage = calculateProfileCompletion(updated, user);
 
-    res.json(updated);
+    res.json({ updated, completionPercentage });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
