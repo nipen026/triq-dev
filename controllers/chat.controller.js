@@ -1,6 +1,7 @@
 const ChatRoom = require("../models/chatRoom.model");
 const Message = require("../models/message.model");
 const { getIO } = require("../socket/socketInstance");
+const { getFlagWithCountryCode } = require("../utils/flagHelper");
 // 🔹 POST /api/chat/rooms  → create a chat room manually
 exports.createChatRoomForTicket = async (req, res) => {
     try {
@@ -58,30 +59,38 @@ exports.getAllChats = async (req, res) => {
 
         // fetch all rooms
         const rooms = await ChatRoom.find(query)
-            .populate('organisation', 'fullName email')
-            .populate('processor', 'fullName email')
+            .populate('organisation', 'fullName email countryCode')
+            .populate('processor', 'fullName email countryCode')
             .populate('ticket');
 
         // now map the rooms so that only “other side” user is returned as `chatWith`
         const formatted = await Promise.all(
-            rooms.map(async (room) => {
-                const chatWith =
-                    currentRole === "organization" ? room.processor : room.organisation;
+      rooms.map(async (room) => {
+        const chatWith =
+          currentRole === "organization" ? room.processor : room.organisation;
 
-                const unreadCount = await Message.countDocuments({
-                    room: room._id,
-                    sender: { $ne: userId },
-                    readBy: { $ne: userId }
-                });
+        // ✅ Add flag dynamically (no response structure change)
+        const flag = getFlagWithCountryCode(chatWith?.countryCode);
 
-                return {
-                    _id: room._id,
-                    ticket: room.ticket,
-                    chatWith,
-                    unreadCount
-                };
-            })
-        );
+        const unreadCount = await Message.countDocuments({
+          room: room._id,
+          sender: { $ne: userId },
+          readBy: { $ne: userId }
+        });
+
+        return {
+          _id: room._id,
+          ticket: room.ticket,
+          chatWith: {
+            ...chatWith._doc, // retain existing fields
+            flag // 🏳️ added here
+          },
+          unreadCount
+        };
+      })
+    );
+
+    res.json(formatted);
 
 
         res.json(formatted);
