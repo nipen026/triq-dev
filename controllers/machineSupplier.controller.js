@@ -1,6 +1,7 @@
 const Customer = require("../models/customer.model");
 const Machine = require("../models/machine.model");
 const User = require("../models/user.model");
+const { getFlag } = require("../utils/flagHelper");
 
 exports.getMachineSupplierList = async (req, res) => {
   try {
@@ -35,11 +36,16 @@ exports.getMachineSupplierList = async (req, res) => {
     if (!customers || customers.length === 0) {
       return res.status(404).json({ message: "No customers with organization found for this processor" });
     }
-    const result = customers.map(cust => ({
-      customer: cust,
-      // organization: cust.organization,
-      // machines: cust.machines.map(m => m.machine),
-    }));
+    // const result = customers.map(cust => ({
+    //   customer: cust,
+    //   // organization: cust.organization,
+    //   // machines: cust.machines.map(m => m.machine),
+    // }));
+    const result = customers.map(cust => {
+      const customerObj = cust.toObject(); // Convert Mongoose doc → plain JS
+      customerObj.flag = getFlag(customerObj.countryOrigin);
+      return { customer: customerObj };
+    });
 
     res.json({ data: result });
   } catch (err) {

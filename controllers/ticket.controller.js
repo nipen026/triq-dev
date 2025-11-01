@@ -3,7 +3,7 @@ const Machine = require("../models/machine.model");
 const Customer = require("../models/customer.model");
 const Role = require("../models/role.model");
 const ServicePricing = require("../models/servicePricing.model")
-const { getFlag } = require("../utils/flagHelper");
+const { getFlag, getFlagWithCountryCode } = require("../utils/flagHelper");
 const ChatRoom = require("../models/chatRoom.model");
 const admin = require("../config/firebase");
 const User = require("../models/user.model");
@@ -366,7 +366,7 @@ exports.updateTicket = async (req, res) => {
       });
     }
     const io = socket.getIO();
-  io.emit("ticketStatusUpdated", ticket);
+    io.emit("ticketStatusUpdated", ticket);
     await ticket.save();
     res.json({ message: "Ticket updated successfully", updatedFields, ticket });
   } catch (err) {
@@ -466,13 +466,19 @@ exports.getTicketsByStatus = async (req, res) => {
 
         // 🔍 include chatRoom + warrantyStatus
         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
-          .populate("organisation", "fullName email")
+          .populate("organisation", "fullName email ")
           .populate("processor", "fullName email");
-
+        let flag = null;
+        if (t.organisation?.countryCode || t.processor?.countryCode) {
+          const phone =
+            t.organisation?.countryCode || t.processor?.countryCode; // pick whichever available
+          flag = getFlagWithCountryCode(phone); // e.g. +91 → "in"
+        }
         return {
           ...t.toObject(),
           warrantyStatus, // ✅ added here
           chatRoom,
+          flag
         };
       })
     );
@@ -536,7 +542,7 @@ exports.getSummary = async (req, res) => {
     const processorDetails = ticket.processor
       ? {
         ...ticket.processor.toObject(),
-        flag: getFlag(customer.countryOrigin),
+        flag: getFlagWithCountryCode(ticket.processor.countryCode),
         userImage:
           "https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0"
       }
@@ -545,7 +551,7 @@ exports.getSummary = async (req, res) => {
     const organisationDetails = ticket.organisation
       ? {
         ...ticket.organisation.toObject(),
-        flag: getFlag(customer.countryOrigin),
+        flag: getFlagWithCountryCode(ticket.organisation.countryCode),
         userImage:
           "https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0"
       }
