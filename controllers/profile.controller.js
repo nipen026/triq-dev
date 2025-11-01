@@ -5,10 +5,6 @@ const Role = require("../models/role.model");
 const QRCode = require("qrcode");
 
 function calculateProfileCompletion(profile, user) {
-  let totalFields = 0;
-  let filledFields = 0;
-
-  // ✅ Profile fields to consider
   const profileFields = [
     "profileImage",
     "dob",
@@ -19,27 +15,44 @@ function calculateProfileCompletion(profile, user) {
     "country",
     "zipcode",
     "bio",
+    "designation",
+    "organizationName",
   ];
-
-  // ✅ User fields to consider
   const userFields = ["fullName", "email", "phone"];
 
-  // Check profile fields
-  profileFields.forEach((field) => {
-    totalFields++;
-    if (profile && profile[field]) filledFields++;
+  let totalProfileFields = profileFields.length;
+  let filledProfileFields = 0;
+  profileFields.forEach((f) => {
+    if (profile && profile[f] && profile[f].toString().trim() !== "") {
+      filledProfileFields++;
+    }
   });
 
-  // Check user fields
-  userFields.forEach((field) => {
-    totalFields++;
-    if (user && user[field]) filledFields++;
+  let totalUserFields = userFields.length;
+  let filledUserFields = 0;
+  userFields.forEach((f) => {
+    if (user && user[f] && user[f].toString().trim() !== "") {
+      filledUserFields++;
+    }
   });
 
-  // ✅ Calculate percentage
-  const percentage = Math.round((filledFields / totalFields) * 100);
-  return percentage;
+  // 80% weight to profile, 20% to user
+  const profilePercent = (filledProfileFields / totalProfileFields) * 80;
+  const userPercent = (filledUserFields / totalUserFields) * 20;
+  const totalPercent = Math.round(profilePercent + userPercent);
+
+  if (filledProfileFields === 0 && filledUserFields === 0) return 0;
+  if (
+    filledProfileFields === totalProfileFields &&
+    filledUserFields === totalUserFields
+  )
+    return 100;
+
+  return totalPercent;
 }
+
+
+
 
 // CREATE profile
 exports.createProfile = async (req, res) => {
@@ -76,8 +89,11 @@ exports.getProfile = async (req, res) => {
       const qrCode = await QRCode.toDataURL(users.id);
       res.json({ profile, qrCode, completionPercentage });
     } else {
+      const users = await User.findOne({ _id: req.user.id })
+        .populate("roles", "name"); // optional populate
+      const completionPercentage = calculateProfileCompletion(profile, users);
       const qrCode = await QRCode.toDataURL(customer.id);
-      res.json({ profile, qrCode });
+      res.json({ profile, qrCode, completionPercentage });
     }
 
   } catch (err) {
