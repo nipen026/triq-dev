@@ -125,9 +125,9 @@ exports.updateProfile = async (req, res) => {
     if (req.body.fullName) {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
+      userData.processorType = req.body.processorType;
       await userData.save();
       console.log(userData, "userData");
-
     }
     if (req.file) {
       updateData.profileImage = `/uploads/profile/${req.file.filename}`;
