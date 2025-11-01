@@ -131,7 +131,7 @@ exports.createCustomer = async (req, res) => {
 
     // If you have a Notification model
     console.log(customer,"customerData create time");
-    
+     const validUser = await User.findById(req.user.id, "fullName email");
     const notification = new Notification({
       title: "New Customer Created",
       body: notificationMessage,
@@ -139,7 +139,10 @@ exports.createCustomer = async (req, res) => {
       receiver: customer.id, // who triggered the notification
       sender: req.user.id,
       read: false,
-      createdAt: new Date()
+      createdAt: new Date(),
+      data:{
+        manufacture_name:validUser.fullName || '',
+      }
     });
     await notification.save();
 
@@ -375,7 +378,7 @@ exports.updateCustomer = async (req, res) => {
       // ✅ Fetch user properly
       const UserData = await User.findById(userIdToUse);
       const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
-
+      const ValidUser = await User.findById(req.user.id, "fullName email");
       // ✅ Create notification in DB
       const notification = new Notification({
         title: "New Customer Created in update time",
@@ -384,7 +387,10 @@ exports.updateCustomer = async (req, res) => {
         receiver: UserData?._id || null,
         sender: req.user ? req.user.id : null,
         read: false,
-        createdAt: new Date()
+        createdAt: new Date(),
+        data: {
+          manufacture_name: ValidUser.fullName || '',
+        }
       });
       console.log(notification,"notification");
       
