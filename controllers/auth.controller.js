@@ -440,7 +440,7 @@ exports.login = async (req, res) => {
     }
 
     // 2️⃣ Email verification check
-    if (!user.isEmailVerified) {
+    if (!user.isEmailVerified && !user.isPhoneVerified) {
       return res.status(403).json({ msg: "Please verify your account" });
     }
 
