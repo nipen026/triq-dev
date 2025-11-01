@@ -65,13 +65,13 @@ module.exports = (io) => {
         if (!room) return;
 
         // Save original message
-        const message = await Message.create({
-          room: roomId,
-          sender: socket.userId,
-          content,
-          attachments,
-          readBy: [socket.userId],
-        });
+        // const message = await Message.create({
+        //   room: roomId,
+        //   sender: socket.userId,
+        //   content,
+        //   attachments,
+        //   readBy: [socket.userId],
+        // });
 
         // Identify receiver
         const receiverId =
@@ -91,7 +91,14 @@ module.exports = (io) => {
             console.warn("Translation failed, using original text:", err.message);
           }
         }
-
+        const message = await Message.create({
+          room: roomId,
+          sender: socket.userId,
+          content,
+          attachments,
+          readBy: [socket.userId],
+          translatedContent: translatedText,
+        });
         // 🟢 Send original to sender
         io.to(roomId).emit("newMessage", {
           ...message.toObject(),
@@ -104,11 +111,10 @@ module.exports = (io) => {
           await admin.messaging().sendEachForMulticast({
             tokens: [receiver.fcmToken],
             notification: {
-              title: `New message from ${
-                socket.userId === room.organisation.id
+              title: `New message from ${socket.userId === room.organisation.id
                   ? room.organisation.fullName
                   : room.processor.fullName
-              }`,
+                }`,
               body: translatedText,
             },
             data: {
