@@ -377,7 +377,8 @@ exports.updateCustomer = async (req, res) => {
 
       // ✅ Fetch user properly
       const UserData = await User.findById(userIdToUse);
-      const notificationMessage = `New customer "${existingCustomer.customerName}" has been assigned.`;
+      const orgData = await User.findById(newOrgId);
+      const notificationMessage = `New Organization "${orgData.fullName}" has been assigned.`;
       const ValidUser = await User.findById(req.user.id, "fullName email");
       // ✅ Create notification in DB
       const notification = new Notification({
