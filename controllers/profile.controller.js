@@ -5,51 +5,50 @@ const Role = require("../models/role.model");
 const QRCode = require("qrcode");
 
 function calculateProfileCompletion(profile, user) {
-  const profileFields = [
-    "profileImage",
-    "dob",
-    "gender",
-    "address",
-    "city",
-    "state",
-    "country",
-    "zipcode",
-    "bio",
-    "designation",
-    "organizationName",
-  ];
-  const userFields = ["fullName", "email", "phone"];
+  let totalPercent = 0;
 
-  let totalProfileFields = profileFields.length;
-  let filledProfileFields = 0;
-  profileFields.forEach((f) => {
-    if (profile && profile[f] && profile[f].toString().trim() !== "") {
-      filledProfileFields++;
-    }
-  });
+  // 1️⃣ User Basic Info (20%)
+  const userBasicFields = ["fullName", "email", "phone"];
+  const filledUserBasic = userBasicFields.filter(
+    (f) => user && user[f] && user[f].toString().trim() !== ""
+  ).length;
+  const userBasicPercent = (filledUserBasic / userBasicFields.length) * 20;
+  totalPercent += userBasicPercent;
 
-  let totalUserFields = userFields.length;
-  let filledUserFields = 0;
-  userFields.forEach((f) => {
-    if (user && user[f] && user[f].toString().trim() !== "") {
-      filledUserFields++;
-    }
-  });
+  // 2️⃣ Profile Image (20%)
+  if (profile?.profileImage && profile.profileImage.trim() !== "") {
+    totalPercent += 20;
+  }
 
-  // 80% weight to profile, 20% to user
-  const profilePercent = (filledProfileFields / totalProfileFields) * 80;
-  const userPercent = (filledUserFields / totalUserFields) * 20;
-  const totalPercent = Math.round(profilePercent + userPercent);
+  // 3️⃣ Verification (20%)
+  let verifyCount = 0;
+  if (user?.isEmailVerified) verifyCount++;
+  if (user?.isPhoneVerified) verifyCount++;
+  const verifyPercent = (verifyCount / 2) * 20;
+  totalPercent += verifyPercent;
 
-  if (filledProfileFields === 0 && filledUserFields === 0) return 0;
-  if (
-    filledProfileFields === totalProfileFields &&
-    filledUserFields === totalUserFields
-  )
-    return 100;
+  // 4️⃣ Personal Address (factoryAddress = your personal)
+  const personalAddress = profile?.factoryAddress || {};
+  const personalFields = ["addressLine1", "city", "state", "country", "pincode"];
+  const filledPersonal = personalFields.filter(
+    (f) => personalAddress[f] && personalAddress[f].toString().trim() !== ""
+  ).length;
+  const personalPercent = (filledPersonal / personalFields.length) * 20;
+  totalPercent += personalPercent;
 
-  return totalPercent;
+  // 5️⃣ Corporate Address
+  const corporateAddress = profile?.corporateAddress || {};
+  const corporateFields = ["addressLine1", "city", "state", "country", "pincode"];
+  const filledCorporate = corporateFields.filter(
+    (f) => corporateAddress[f] && corporateAddress[f].toString().trim() !== ""
+  ).length;
+  const corporatePercent = (filledCorporate / corporateFields.length) * 20;
+  totalPercent += corporatePercent;
+  console.log("Profile Completion Percentage:", totalPercent);
+  return Math.min(Math.round(totalPercent), 100);
 }
+
+
 
 
 
