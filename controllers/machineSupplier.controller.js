@@ -1,7 +1,7 @@
 const Customer = require("../models/customer.model");
 const Machine = require("../models/machine.model");
 const User = require("../models/user.model");
-const { getFlag } = require("../utils/flagHelper");
+const { getFlag, getFlagWithCountryCode } = require("../utils/flagHelper");
 
 exports.getMachineSupplierList = async (req, res) => {
   try {
@@ -29,9 +29,11 @@ exports.getMachineSupplierList = async (req, res) => {
     })
       .populate({
         path: "organization",
-        select: "fullName email phone",
+        select: "fullName email phone countryCode",
       })
       .populate("machines.machine");
+
+
 
     if (!customers || customers.length === 0) {
       return res.status(404).json({ message: "No customers with organization found for this processor" });
@@ -43,7 +45,7 @@ exports.getMachineSupplierList = async (req, res) => {
     // }));
     const result = customers.map(cust => {
       const customerObj = cust.toObject(); // Convert Mongoose doc → plain JS
-      customerObj.flag = getFlag(customerObj.countryOrigin);
+      customerObj.flag = getFlagWithCountryCode(customerObj.organization.countryCode);
       return { customer: customerObj };
     });
 
