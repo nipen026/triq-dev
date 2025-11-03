@@ -198,7 +198,8 @@ exports.createTicket = async (req, res) => {
           type: 'ticket_created',
           ticketNumber: String(ticket.ticketNumber),
           ticketId: String(ticket._id),
-          screenName: 'ticket',
+          Route:'/ticketDetails'  ,
+          screenName: 'TicketDetailsView',
         },
       });
 

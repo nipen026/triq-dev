@@ -411,8 +411,9 @@ exports.updateCustomer = async (req, res) => {
             },
             data: {
               type: "customer_assigned",
-              customer_id: String(UserData._id),
-              screenName: "customer"
+              processorId: String(UserData._id),
+              screenName: "CustomerEditDetailsView",
+              route:'/customerEditDetailsView'
             }
           };
 

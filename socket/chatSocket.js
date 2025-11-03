@@ -6,6 +6,7 @@ const User = require("../models/user.model");
 const Profile = require("../models/profile.model");
 const mongoose = require("mongoose");
 const { translate } = require("@vitalets/google-translate-api");
+const { getFlagWithCountryCode } = require("../utils/flagHelper");
 
 module.exports = (io) => {
   const userRooms = new Map();
@@ -61,7 +62,7 @@ module.exports = (io) => {
     socket.on("sendMessage", async ({ roomId, content, attachments }) => {
       try {
         if (!socket.userId || !roomId) return;
-        const room = await ChatRoom.findById(roomId).populate("organisation processor");
+        const room = await ChatRoom.findById(roomId).populate("organisation processor ticket");
         if (!room) return;
 
         // Save original message
@@ -112,15 +113,32 @@ module.exports = (io) => {
             tokens: [receiver.fcmToken],
             notification: {
               title: `New message from ${socket.userId === room.organisation.id
-                  ? room.organisation.fullName
-                  : room.processor.fullName
+                ? room.organisation.fullName
+                : room.processor.fullName
                 }`,
               body: translatedText,
             },
             data: {
               type: "chat_message",
               chatRoomId: room.id,
-              screenName: "chat",
+              screenName: "chatView",
+              Route: '/chatView',
+              chatData: {
+                contactName: socket.userId === room.organisation.id
+                  ? room.organisation.fullName
+                  : room.processor.fullName,
+                contactNumber:  socket.userId === room.organisation.id
+                  ? room.organisation.phone
+                  : room.processor.phone,
+                roomId: room.id,
+                ticketId: room.ticket ? String(room.ticket._id) : "",
+                ticketStatus: room.ticket ? room.ticket.status : "",
+                userRole:  socket.userId === room.organisation.id ? "organization" : "processor",
+                flag:  socket.userId === room.organisation.id
+                  ? getFlagWithCountryCode(room.organisation.countryCode)
+                  : getFlagWithCountryCode(room.processor.countryCode),
+
+              }
             },
           });
         }
