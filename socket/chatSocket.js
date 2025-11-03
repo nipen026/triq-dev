@@ -140,6 +140,10 @@ module.exports = (io) => {
 
               }
             },
+          }).then((response) => {
+            console.log("Push notification sent:", response.successCount);
+          }).catch((error) => {
+            console.error("Error sending push notification:", error);
           });
         }
       } catch (err) {
