@@ -130,18 +130,22 @@ exports.createCustomer = async (req, res) => {
     const notificationMessage = `New customer "${customer.customerName}" has been created.`;
 
     // If you have a Notification model
-    console.log(customer,"customerData create time");
-     const validUser = await User.findById(req.user.id, "fullName email");
+    console.log(customer, "customerData create time");
+    const validUser = await User.findById(req.user.id, "fullName email");
     const notification = new Notification({
       title: "New Customer Created",
       body: notificationMessage,
-      type:'message',
+      type: 'message',
       receiver: customer.id, // who triggered the notification
       sender: req.user.id,
       read: false,
       createdAt: new Date(),
-      data:{
-        manufacture_name:validUser.fullName || '',
+      data: {
+        // manufacture_name: ValidUser.fullName || '',
+          type: "customer_assigned",
+          processorId: String(customer._id),
+          screenName: "CustomerEditDetailsView",
+          route: '/customerEditDetailsView'
       }
     });
     await notification.save();
@@ -329,7 +333,7 @@ exports.getCustomerById = async (req, res) => {
 //                data: notifPayload.data,
 //              });
 //            }
-   
+
 
 //       await newCustomer.save();
 
@@ -391,16 +395,20 @@ exports.updateCustomer = async (req, res) => {
         createdAt: new Date(),
         data: {
           manufacture_name: ValidUser.fullName || '',
+          type: "customer_assigned",
+          processorId: String(UserData._id),
+          screenName: "CustomerEditDetailsView",
+          route: '/customerEditDetailsView'
         }
       });
-      console.log(notification,"notification");
-      
+      console.log(notification, "notification");
+
       await notification.save();
 
       // ✅ Save the new customer
       await newCustomer.save();
-      console.log(UserData,"UserData");
-      
+      console.log(UserData, "UserData");
+
       // ✅ Send FCM notification if token available
       if (UserData?.fcmToken) {
         try {
@@ -413,7 +421,7 @@ exports.updateCustomer = async (req, res) => {
               type: "customer_assigned",
               processorId: String(UserData._id),
               screenName: "CustomerEditDetailsView",
-              route:'/customerEditDetailsView'
+              route: '/customerEditDetailsView'
             }
           };
 
@@ -429,7 +437,7 @@ exports.updateCustomer = async (req, res) => {
         }
       }
 
-     return res.json({
+      return res.json({
         message: "Organization changed, new customer created under new organization",
         data: newCustomer
       });
