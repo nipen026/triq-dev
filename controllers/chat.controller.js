@@ -39,63 +39,138 @@ exports.getRoomByTicket = async (req, res) => {
 };
 
 // 🔹 GET /api/chat/rooms (all chats for logged-in user)
+// exports.getAllChats = async (req, res) => {
+//   try {
+//     const userId = req.user.id;
+//     const roles = req.user.roles; // array like ['processor'] or ['organization']
+
+//     let query = {};
+//     let currentRole;
+
+//     if (roles.includes('organization')) {
+//       currentRole = 'organization';
+//       query.organisation = userId;
+//     } else if (roles.includes('processor')) {
+//       currentRole = 'processor';
+//       query.processor = userId;
+//     } else {
+//       return res.status(403).json({ message: 'Unauthorized' });
+//     }
+
+//     // fetch all rooms
+//     const rooms = await ChatRoom.find(query)
+//       .populate('organisation', 'fullName email countryCode')
+//       .populate('processor', 'fullName email countryCode')
+//       .populate('ticket').sort({ lastMessageAt: -1 });
+
+//     // now map the rooms so that only “other side” user is returned as `chatWith`
+//     const formatted = await Promise.all(
+//       rooms.map(async (room) => {
+//         const chatWith =
+//           currentRole === "organization" ? room.processor : room.organisation;
+
+//         // ✅ Add flag dynamically (no response structure change)
+//         const flag = getFlagWithCountryCode(chatWith?.countryCode);
+
+//         const unreadCount = await Message.countDocuments({
+//           room: room._id,
+//           sender: { $ne: userId },
+//           readBy: { $ne: userId }
+//         });
+
+//         return {
+//           _id: room._id,
+//           ticket: room.ticket,
+//           chatWith: {
+//             ...chatWith._doc, // retain existing fields
+//             flag // 🏳️ added here
+//           },
+//           unreadCount
+//         };
+//       })
+//     );
+
+//     res.json(formatted);
+
+
+//     res.json(formatted);
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 exports.getAllChats = async (req, res) => {
   try {
     const userId = req.user.id;
-    const roles = req.user.roles; // array like ['processor'] or ['organization']
+    const roles = req.user.roles; // ['processor'] or ['organization']
 
     let query = {};
     let currentRole;
 
-    if (roles.includes('organization')) {
-      currentRole = 'organization';
+    if (roles.includes("organization")) {
+      currentRole = "organization";
       query.organisation = userId;
-    } else if (roles.includes('processor')) {
-      currentRole = 'processor';
+    } else if (roles.includes("processor")) {
+      currentRole = "processor";
       query.processor = userId;
     } else {
-      return res.status(403).json({ message: 'Unauthorized' });
+      return res.status(403).json({ message: "Unauthorized" });
     }
 
-    // fetch all rooms
+    // 🔹 Fetch rooms sorted by latest message
     const rooms = await ChatRoom.find(query)
-      .populate('organisation', 'fullName email countryCode')
-      .populate('processor', 'fullName email countryCode')
-      .populate('ticket').sort({ lastMessageAt: -1 });;
+      .populate("organisation", "fullName email countryCode")
+      .populate("processor", "fullName email countryCode")
+      .populate("ticket")
+      .sort({ lastMessageAt: -1 }); // 🧠 this auto brings latest chats to top
 
-    // now map the rooms so that only “other side” user is returned as `chatWith`
-    const formatted = await Promise.all(
-      rooms.map(async (room) => {
-        const chatWith =
-          currentRole === "organization" ? room.processor : room.organisation;
+    const formatted = [];
 
-        // ✅ Add flag dynamically (no response structure change)
-        const flag = getFlagWithCountryCode(chatWith?.countryCode);
+    for (const room of rooms) {
+      // 🔹 Get last message
+      const lastMessage = await Message.findOne({ room: room._id })
+        .sort({ createdAt: -1 })
+        .limit(1);
 
-        const unreadCount = await Message.countDocuments({
-          room: room._id,
-          sender: { $ne: userId },
-          readBy: { $ne: userId }
-        });
+      // 🚫 Skip if no messages exist
+      if (!lastMessage) continue;
 
-        return {
-          _id: room._id,
-          ticket: room.ticket,
-          chatWith: {
-            ...chatWith._doc, // retain existing fields
-            flag // 🏳️ added here
-          },
-          unreadCount
-        };
-      })
+      // 🔹 Count unread messages
+      const unreadCount = await Message.countDocuments({
+        room: room._id,
+        sender: { $ne: userId },
+        readBy: { $ne: userId },
+      });
+
+      const chatWith =
+        currentRole === "organization" ? room.processor : room.organisation;
+
+      const flag = getFlagWithCountryCode(chatWith?.countryCode);
+
+      formatted.push({
+        _id: room._id,
+        ticket: room.ticket,
+        chatWith: {
+          ...chatWith._doc,
+          flag,
+        },
+        unreadCount,
+        lastMessage: {
+          content: lastMessage.content || "",
+          createdAt: lastMessage.createdAt,
+        },
+      });
+    }
+
+    // Final fallback sort by latest message date
+    formatted.sort(
+      (a, b) =>
+        new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt)
     );
 
     res.json(formatted);
-
-
-    res.json(formatted);
   } catch (err) {
-    console.error(err);
+    console.error("getAllChats error:", err);
     res.status(500).json({ message: err.message });
   }
 };
@@ -144,8 +219,6 @@ exports.getMessages = async (req, res) => {
 
 // 🔹 POST /api/chat/messages
 exports.sendMessage = async (req, res) => {
-
-
   const senderId = req.body.senderId;
 
   const message = await Message.create({
@@ -154,9 +227,12 @@ exports.sendMessage = async (req, res) => {
     content: req.body.content,
     attachments: req.body.attachments || [],
   });
-  await ChatRoom.findByIdAndUpdate(req.body.roomId, {
+  await ChatRoom.findByIdAndUpdate(roomId, {
+      lastMessage: content,
       lastMessageAt: new Date(),
+      lastMessageBy: senderId,
     });
+
   // broadcast via socket.io
   const io = getIO();
   io.to(req.body.roomId).emit("newMessage", message);

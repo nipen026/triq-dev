@@ -16,7 +16,9 @@ const chatRoomSchema = new mongoose.Schema({
     ref: "User",
     required: true // processor user
   },
-  lastMessageAt: { type: Date, default: Date.now } // 🕒 Added field
+  lastMessage: { type: String },
+  lastMessageAt: { type: Date },
+  lastMessageBy: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
 }, { timestamps: true });
 
 module.exports = mongoose.model("ChatRoom", chatRoomSchema);
