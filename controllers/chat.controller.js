@@ -4,67 +4,67 @@ const { getIO } = require("../socket/socketInstance");
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
 // 🔹 POST /api/chat/rooms  → create a chat room manually
 exports.createChatRoomForTicket = async (req, res) => {
-    try {
-        const { ticketId, organisationId, processorId } = req.body;
-        if (!ticketId || !organisationId || !processorId) {
-            return res
-                .status(400)
-                .json({ message: "ticketId, organisationId, processorId are required" });
-        }
-
-        let room = await ChatRoom.findOne({ ticket: ticketId });
-        if (room) {
-            return res.status(200).json({ message: "Room already exists", room });
-        }
-
-        room = await ChatRoom.create({
-            ticket: ticketId,
-            organisation: organisationId,
-            processor: processorId,
-        });
-
-        res.status(201).json({ message: "Chat room created", room });
-    } catch (err) {
-        res.status(500).json({ message: err.message });
+  try {
+    const { ticketId, organisationId, processorId } = req.body;
+    if (!ticketId || !organisationId || !processorId) {
+      return res
+        .status(400)
+        .json({ message: "ticketId, organisationId, processorId are required" });
     }
+
+    let room = await ChatRoom.findOne({ ticket: ticketId });
+    if (room) {
+      return res.status(200).json({ message: "Room already exists", room });
+    }
+
+    room = await ChatRoom.create({
+      ticket: ticketId,
+      organisation: organisationId,
+      processor: processorId,
+    });
+
+    res.status(201).json({ message: "Chat room created", room });
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
 };
 
 // 🔹 GET /api/chat/rooms/:ticketId
 exports.getRoomByTicket = async (req, res) => {
-    const room = await ChatRoom.findOne({ ticket: req.params.ticketId })
-        .populate("organisation", "fullName email")
-        .populate("processor", "fullName email");
-    if (!room) return res.status(404).json({ message: "Chat room not found" });
-    res.json(room);
+  const room = await ChatRoom.findOne({ ticket: req.params.ticketId })
+    .populate("organisation", "fullName email")
+    .populate("processor", "fullName email");
+  if (!room) return res.status(404).json({ message: "Chat room not found" });
+  res.json(room);
 };
 
 // 🔹 GET /api/chat/rooms (all chats for logged-in user)
 exports.getAllChats = async (req, res) => {
-    try {
-        const userId = req.user.id;
-        const roles = req.user.roles; // array like ['processor'] or ['organization']
+  try {
+    const userId = req.user.id;
+    const roles = req.user.roles; // array like ['processor'] or ['organization']
 
-        let query = {};
-        let currentRole;
+    let query = {};
+    let currentRole;
 
-        if (roles.includes('organization')) {
-            currentRole = 'organization';
-            query.organisation = userId;
-        } else if (roles.includes('processor')) {
-            currentRole = 'processor';
-            query.processor = userId;
-        } else {
-            return res.status(403).json({ message: 'Unauthorized' });
-        }
+    if (roles.includes('organization')) {
+      currentRole = 'organization';
+      query.organisation = userId;
+    } else if (roles.includes('processor')) {
+      currentRole = 'processor';
+      query.processor = userId;
+    } else {
+      return res.status(403).json({ message: 'Unauthorized' });
+    }
 
-        // fetch all rooms
-        const rooms = await ChatRoom.find(query)
-            .populate('organisation', 'fullName email countryCode')
-            .populate('processor', 'fullName email countryCode')
-            .populate('ticket');
+    // fetch all rooms
+    const rooms = await ChatRoom.find(query)
+      .populate('organization', 'fullName email countryCode')
+      .populate('processor', 'fullName email countryCode')
+      .populate('ticket');
 
-        // now map the rooms so that only “other side” user is returned as `chatWith`
-        const formatted = await Promise.all(
+    // now map the rooms so that only “other side” user is returned as `chatWith`
+    const formatted = await Promise.all(
       rooms.map(async (room) => {
         const chatWith =
           currentRole === "organization" ? room.processor : room.organisation;
@@ -93,11 +93,11 @@ exports.getAllChats = async (req, res) => {
     res.json(formatted);
 
 
-        res.json(formatted);
-    } catch (err) {
-        console.error(err);
-        res.status(500).json({ message: err.message });
-    }
+    res.json(formatted);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
 };
 
 
@@ -120,12 +120,12 @@ exports.getMessages = async (req, res) => {
 
     // optionally total count for UI
     const total = await Message.countDocuments({ room: req.params.roomId });
-     const room = await ChatRoom.findById(req.params.roomId).populate("ticket");
+    const room = await ChatRoom.findById(req.params.roomId).populate("ticket");
     if (!room) return res.status(404).json({ message: "Room not found" });
     console.log(room);
-    
+
     const isResolvedTicket = room.ticket?.status === "Resolved";
-const formattedMessages = messages.map((msg) => ({
+    const formattedMessages = messages.map((msg) => ({
       ...msg.toObject(),
       isResolvedTicket,
     }));
@@ -133,7 +133,7 @@ const formattedMessages = messages.map((msg) => ({
       page,
       limit,
       total,
-      messages:formattedMessages
+      messages: formattedMessages
     });
   } catch (err) {
     console.error(err);
@@ -146,18 +146,18 @@ const formattedMessages = messages.map((msg) => ({
 exports.sendMessage = async (req, res) => {
 
 
-    const senderId = req.body.senderId;
+  const senderId = req.body.senderId;
 
-    const message = await Message.create({
-        room: req.body.roomId,
-        sender: senderId,
-        content: req.body.content,
-        attachments: req.body.attachments || [],
-    });
+  const message = await Message.create({
+    room: req.body.roomId,
+    sender: senderId,
+    content: req.body.content,
+    attachments: req.body.attachments || [],
+  });
 
-    // broadcast via socket.io
-    const io = getIO();
-    io.to(req.body.roomId).emit("newMessage", message);
+  // broadcast via socket.io
+  const io = getIO();
+  io.to(req.body.roomId).emit("newMessage", message);
 
-    res.status(201).json(message);
+  res.status(201).json(message);
 };
