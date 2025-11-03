@@ -123,6 +123,7 @@ module.exports = (io) => {
                 flag:  socket.userId === room.organisation.id
                   ? getFlagWithCountryCode(room.organisation.countryCode)
                   : getFlagWithCountryCode(room.processor.countryCode) }
+                  console.log("chatData for notification:", chatData);
           await admin.messaging().sendEachForMulticast({
             tokens: [receiver.fcmToken],
             notification: {
