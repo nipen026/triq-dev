@@ -59,9 +59,9 @@ exports.getAllChats = async (req, res) => {
 
     // fetch all rooms
     const rooms = await ChatRoom.find(query)
-      .populate('organization', 'fullName email countryCode')
+      .populate('organisation', 'fullName email countryCode')
       .populate('processor', 'fullName email countryCode')
-      .populate('ticket');
+      .populate('ticket').sort({ lastMessageAt: -1 });;
 
     // now map the rooms so that only “other side” user is returned as `chatWith`
     const formatted = await Promise.all(
@@ -154,7 +154,9 @@ exports.sendMessage = async (req, res) => {
     content: req.body.content,
     attachments: req.body.attachments || [],
   });
-
+  await ChatRoom.findByIdAndUpdate(req.body.roomId, {
+      lastMessageAt: new Date(),
+    });
   // broadcast via socket.io
   const io = getIO();
   io.to(req.body.roomId).emit("newMessage", message);
