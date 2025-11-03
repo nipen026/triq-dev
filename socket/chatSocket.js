@@ -138,22 +138,22 @@ module.exports = (io) => {
               chatRoomId: room.id,
               screenName: "chatView",
               Route: '/chatView',
-              chatData: {
+              // chatData: {
                 contactName: socket.userId === room.organisation.id
                   ? room.organisation.fullName
                   : room.processor.fullName,
-                // contactNumber:  socket.userId === room.organisation.id
-                //   ? room.organisation.phone
-                //   : room.processor.phone,
-                // roomId: room.id,
-                // ticketId: room.ticket ? String(room.ticket._id) : "",
-                // ticketStatus: room.ticket ? room.ticket.status : "",
-                // userRole:  socket.userId === room.organisation.id ? "organization" : "processor",
-                // flag:  socket.userId === room.organisation.id
-                //   ? getFlagWithCountryCode(room.organisation.countryCode)
-                //   : getFlagWithCountryCode(room.processor.countryCode),
+                contactNumber:  socket.userId === room.organisation.id
+                  ? room.organisation.phone
+                  : room.processor.phone,
+                roomId: room.id,
+                ticketId: room.ticket ? String(room.ticket._id) : "",
+                ticketStatus: room.ticket ? room.ticket.status : "",
+                userRole:  socket.userId === room.organisation.id ? "organization" : "processor",
+                flag:  socket.userId === room.organisation.id
+                  ? getFlagWithCountryCode(room.organisation.countryCode)
+                  : getFlagWithCountryCode(room.processor.countryCode),
 
-              }
+              // }
             },
           }).then((response) => {
             console.log("Push notification sent:", response.successCount);
