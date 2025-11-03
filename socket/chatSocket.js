@@ -108,7 +108,7 @@ module.exports = (io) => {
 
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
-        if (!isReceiverInRoom && receiver?.fcmToken) {
+        // if (!isReceiverInRoom && receiver?.fcmToken) {
           await admin.messaging().sendEachForMulticast({
             tokens: [receiver.fcmToken],
             notification: {
@@ -145,7 +145,7 @@ module.exports = (io) => {
           }).catch((error) => {
             console.error("Error sending push notification:", error);
           });
-        }
+        // }
       } catch (err) {
         console.error("sendMessage error:", err);
       }
