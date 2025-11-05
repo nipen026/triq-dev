@@ -100,67 +100,41 @@ module.exports = (io) => {
           readBy: [socket.userId],
           translatedContent: translatedText,
         });
+        console.log(room,"room");
+        
+        io.to(room.organisation._id.toString()).emit("updateChatList", {
+          roomId,
+          lastMessage: message,
+        });
+
+        io.to(room.processor._id.toString()).emit("updateChatList", {
+          roomId,
+          lastMessage: message,
+        });
         // 🟢 Send original to sender
         io.to(roomId).emit("newMessage", {
           ...message.toObject(),
           translatedContent: translatedText,
         });
-
+        
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
-        const chatData = {
-          contactName: socket.userId === room.organisation.id
-            ? room.organisation.fullName
-            : room.processor.fullName,
-          contactNumber: socket.userId === room.organisation.id
-            ? room.organisation.phone
-            : room.processor.phone,
-          roomId: room.id,
-          ticketId: room.ticket ? String(room.ticket._id) : "",
-          ticketStatus: room.ticket ? room.ticket.status : "",
-          userRole: socket.userId === room.organisation.id ? "organization" : "processor",
-          flag: socket.userId === room.organisation.id
-            ? getFlagWithCountryCode(room.organisation.countryCode)
-            : getFlagWithCountryCode(room.processor.countryCode)
-        }
-        console.log("chatData for notification:", chatData);
-        await admin.messaging().sendEachForMulticast({
-          tokens: [receiver.fcmToken],
-          notification: {
-            title: `New message from ${socket.userId === room.organisation.id
-              ? room.organisation.fullName
-              : room.processor.fullName
-              }`,
-            body: translatedText,
-          },
-          data: {
-            type: "chat_message",
-            chatRoomId: room.id,
-            screenName: "chatView",
-            Route: '/chatView',
-            // chatData: {
-            contactName: socket.userId === room.organisation.id
-              ? room.organisation.fullName
-              : room.processor.fullName,
-            contactNumber: socket.userId === room.organisation.id
-              ? room.organisation.phone
-              : room.processor.phone,
-            roomId: room.id,
-            ticketId: room.ticket ? String(room.ticket._id) : "",
-            ticketStatus: room.ticket ? room.ticket.status : "",
-            userRole: socket.userId === room.organisation.id ? "organization" : "processor",
-            flag: socket.userId === room.organisation.id
-              ? getFlagWithCountryCode(room.organisation.countryCode)
-              : getFlagWithCountryCode(room.processor.countryCode),
-
-            // }
-          },
-        }).then((response) => {
-          console.log("Push notification sent:", response.successCount);
-        }).catch((error) => {
-          console.error("Error sending push notification:", error);
-        });
+          await admin.messaging().sendEachForMulticast({
+            tokens: [receiver.fcmToken],
+            notification: {
+              title: `New message from ${socket.userId === room.organisation.id
+                ? room.organisation.fullName
+                : room.processor.fullName
+                }`,
+              body: translatedText,
+            },
+            data: {
+              type: "chat_message",
+              chatRoomId: room.id,
+              screenName: "chat",
+            },
+          });
         }
       } catch (err) {
         console.error("sendMessage error:", err);

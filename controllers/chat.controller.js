@@ -40,31 +40,31 @@ exports.getRoomByTicket = async (req, res) => {
 
 // 🔹 GET /api/chat/rooms (all chats for logged-in user)
 // exports.getAllChats = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const roles = req.user.roles; // array like ['processor'] or ['organization']
+//     try {
+//         const userId = req.user.id;
+//         const roles = req.user.roles; // array like ['processor'] or ['organization']
 
-//     let query = {};
-//     let currentRole;
+//         let query = {};
+//         let currentRole;
 
-//     if (roles.includes('organization')) {
-//       currentRole = 'organization';
-//       query.organisation = userId;
-//     } else if (roles.includes('processor')) {
-//       currentRole = 'processor';
-//       query.processor = userId;
-//     } else {
-//       return res.status(403).json({ message: 'Unauthorized' });
-//     }
+//         if (roles.includes('organization')) {
+//             currentRole = 'organization';
+//             query.organisation = userId;
+//         } else if (roles.includes('processor')) {
+//             currentRole = 'processor';
+//             query.processor = userId;
+//         } else {
+//             return res.status(403).json({ message: 'Unauthorized' });
+//         }
 
-//     // fetch all rooms
-//     const rooms = await ChatRoom.find(query)
-//       .populate('organisation', 'fullName email countryCode')
-//       .populate('processor', 'fullName email countryCode')
-//       .populate('ticket').sort({ lastMessageAt: -1 });
+//         // fetch all rooms
+//         const rooms = await ChatRoom.find(query)
+//             .populate('organisation', 'fullName email countryCode')
+//             .populate('processor', 'fullName email countryCode')
+//             .populate('ticket');
 
-//     // now map the rooms so that only “other side” user is returned as `chatWith`
-//     const formatted = await Promise.all(
+//         // now map the rooms so that only “other side” user is returned as `chatWith`
+//         const formatted = await Promise.all(
 //       rooms.map(async (room) => {
 //         const chatWith =
 //           currentRole === "organization" ? room.processor : room.organisation;
@@ -89,20 +89,16 @@ exports.getRoomByTicket = async (req, res) => {
 //         };
 //       })
 //     );
-
-//     res.json(formatted);
-
-
-//     res.json(formatted);
-//   } catch (err) {
-//     console.error(err);
-//     res.status(500).json({ message: err.message });
-//   }
+//         res.json(formatted);
+//     } catch (err) {
+//         console.error(err);
+//         res.status(500).json({ message: err.message });
+//     }
 // };
 exports.getAllChats = async (req, res) => {
   try {
     const userId = req.user.id;
-    const roles = req.user.roles; // ['processor'] or ['organization']
+    const roles = req.user.roles;
 
     let query = {};
     let currentRole;
@@ -117,64 +113,62 @@ exports.getAllChats = async (req, res) => {
       return res.status(403).json({ message: "Unauthorized" });
     }
 
-    // 🔹 Fetch rooms sorted by latest message
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    // Sort chats by latest message time
     const rooms = await ChatRoom.find(query)
       .populate("organisation", "fullName email countryCode")
       .populate("processor", "fullName email countryCode")
       .populate("ticket")
-      .sort({ lastMessageAt: -1 }); // 🧠 this auto brings latest chats to top
+      .sort({ updatedAt: -1 })
+      .skip(skip)
+      .limit(limit);
 
-    const formatted = [];
+    const total = await ChatRoom.countDocuments(query);
 
-    for (const room of rooms) {
-      // 🔹 Get last message
-      const lastMessage = await Message.findOne({ room: room._id })
-        .sort({ createdAt: -1 })
-        .limit(1);
+    const formatted = await Promise.all(
+      rooms.map(async (room) => {
+        const chatWith =
+          currentRole === "organization" ? room.processor : room.organisation;
 
-      // 🚫 Skip if no messages exist
-      if (!lastMessage) continue;
+        const flag = getFlagWithCountryCode(chatWith?.countryCode);
 
-      // 🔹 Count unread messages
-      const unreadCount = await Message.countDocuments({
-        room: room._id,
-        sender: { $ne: userId },
-        readBy: { $ne: userId },
-      });
+        // 🧩 Get latest message
+        const lastMessage = await Message.findOne({ room: room._id })
+          .sort({ createdAt: -1 })
+          .lean();
 
-      const chatWith =
-        currentRole === "organization" ? room.processor : room.organisation;
+        const unreadCount = await Message.countDocuments({
+          room: room._id,
+          sender: { $ne: userId },
+          readBy: { $ne: userId },
+        });
 
-      const flag = getFlagWithCountryCode(chatWith?.countryCode);
-
-      formatted.push({
-        _id: room._id,
-        ticket: room.ticket,
-        chatWith: {
-          ...chatWith._doc,
-          flag,
-        },
-        unreadCount,
-        lastMessage: {
-          content: lastMessage.content || "",
-          createdAt: lastMessage.createdAt,
-        },
-      });
-    }
-
-    // Final fallback sort by latest message date
-    formatted.sort(
-      (a, b) =>
-        new Date(b.lastMessage.createdAt) - new Date(a.lastMessage.createdAt)
+        return {
+          _id: room._id,
+          ticket: room.ticket,
+          chatWith: { ...chatWith._doc, flag },
+          lastMessage: lastMessage || null,
+          unreadCount,
+          updatedAt: room.updatedAt,
+        };
+      })
     );
 
-    res.json(formatted);
+    res.json({
+      page,
+      limit,
+      total,
+      totalPages: Math.ceil(total / limit),
+      data: formatted,
+    });
   } catch (err) {
     console.error("getAllChats error:", err);
     res.status(500).json({ message: err.message });
   }
 };
-
 
 // 🔹 GET /api/chat/messages/:roomId
 // GET /api/chat/messages/:roomId?page=1&limit=20
@@ -218,24 +212,87 @@ exports.getMessages = async (req, res) => {
 
 
 // 🔹 POST /api/chat/messages
-exports.sendMessage = async (req, res) => {
-  const senderId = req.body.senderId;
+// exports.sendMessage = async (req, res) => {
 
-  const message = await Message.create({
-    room: req.body.roomId,
-    sender: senderId,
-    content: req.body.content,
-    attachments: req.body.attachments || [],
-  });
-  await ChatRoom.findByIdAndUpdate(roomId, {
-      lastMessage: content,
-      lastMessageAt: new Date(),
-      lastMessageBy: senderId,
+
+//     const senderId = req.body.senderId;
+
+//     const message = await Message.create({
+//         room: req.body.roomId,
+//         sender: senderId,
+//         content: req.body.content,
+//         attachments: req.body.attachments || [],
+//     });
+
+//     // broadcast via socket.io
+//     const io = getIO();
+//     io.to(req.body.roomId).emit("newMessage", message);
+
+//     res.status(201).json(message);
+// };
+// 🔹 POST /api/chat/messages
+exports.sendMessage = async (req, res) => {
+  try {
+    const { roomId, senderId, content, attachments = [] } = req.body;
+
+    const message = await Message.create({
+      room: roomId,
+      sender: senderId,
+      content,
+      attachments,
     });
 
-  // broadcast via socket.io
-  const io = getIO();
-  io.to(req.body.roomId).emit("newMessage", message);
+    const io = getIO();
 
-  res.status(201).json(message);
+    // 🔹 Emit to the room (active chat window)
+    io.to(roomId).emit("newMessage", message);
+
+    // 🔹 Fetch the room and determine who should receive the update
+    const room = await ChatRoom.findById(roomId)
+      .populate("organisation", "_id fullName email countryCode")
+      .populate("processor", "_id fullName email countryCode")
+      .populate("ticket");
+
+    if (!room) return res.status(404).json({ message: "Room not found" });
+
+    // Emit updated chat info for both participants (for their chat lists)
+    const participants = [room.organisation._id.toString(), room.processor._id.toString()];
+
+    for (const userId of participants) {
+      // Count unread messages for this user
+      const unreadCount = await Message.countDocuments({
+        room: roomId,
+        sender: { $ne: userId },
+        readBy: { $ne: userId },
+      });
+
+      // Build updated chat info
+      const chatWith =
+        userId === room.organisation._id.toString()
+          ? room.processor
+          : room.organisation;
+
+      const flag = getFlagWithCountryCode(chatWith?.countryCode);
+
+      const updatedChat = {
+        _id: room._id,
+        ticket: room.ticket,
+        chatWith: {
+          ...chatWith._doc,
+          flag,
+        },
+        unreadCount,
+        lastMessage: message, // ✅ added message preview
+      };
+
+      // Emit to each user's personal socket room
+      const io = getIO();
+      io.to(userId).emit("updateChatList", updatedChat);
+    }
+
+    res.status(201).json(message);
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ message: err.message });
+  }
 };
