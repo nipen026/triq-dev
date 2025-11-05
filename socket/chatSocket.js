@@ -17,6 +17,7 @@ module.exports = (io) => {
     // Register user on connection
     socket.on("registerUser", ({ userId }) => {
       socket.userId = userId;
+       socket.join(userId);
       console.log("Registered user:", userId);
     });
 
@@ -100,23 +101,43 @@ module.exports = (io) => {
           readBy: [socket.userId],
           translatedContent: translatedText,
         });
-        console.log(room,"room");
-        
-        io.to(room.organisation._id.toString()).emit("updateChatList", {
-          roomId,
-          lastMessage: message,
-        });
+        console.log(room, "room");
 
-        io.to(room.processor._id.toString()).emit("updateChatList", {
-          roomId,
-          lastMessage: message,
-        });
+
         // 🟢 Send original to sender
         io.to(roomId).emit("newMessage", {
           ...message.toObject(),
           translatedContent: translatedText,
         });
-        
+        const participants = [room.organisation._id.toString(), room.processor._id.toString()];
+
+        for (const userId of participants) {
+          const chatWith =
+            userId === room.organisation._id.toString()
+              ? room.processor
+              : room.organisation;
+
+          const flag = getFlagWithCountryCode(chatWith?.countryCode);
+
+          // 🔸 Count unread messages for this user
+          const unreadCount = await Message.countDocuments({
+            room: roomId,
+            sender: { $ne: userId },
+            readBy: { $ne: userId },
+          });
+
+          const updatedChat = {
+            _id: room._id,
+            ticket: room.ticket,
+            chatWith: { ...chatWith._doc, flag },
+            lastMessage: message,
+            unreadCount,
+            updatedAt: new Date(),
+          };
+
+          // ✅ Emit to each user's personal socket room
+          io.to(userId).emit("updateChatList", updatedChat);
+        }
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {

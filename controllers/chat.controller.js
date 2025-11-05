@@ -40,31 +40,36 @@ exports.getRoomByTicket = async (req, res) => {
 
 // 🔹 GET /api/chat/rooms (all chats for logged-in user)
 // exports.getAllChats = async (req, res) => {
-//     try {
-//         const userId = req.user.id;
-//         const roles = req.user.roles; // array like ['processor'] or ['organization']
+//   try {
+//     const userId = req.user.id;
+//     const roles = req.user.roles; // array like ['processor'] or ['organization']
 
-//         let query = {};
-//         let currentRole;
+//     let query = {};
+//     let currentRole;
+//     const page = parseInt(req.query.page) || 1;
+//     const limit = parseInt(req.query.limit) || 10;
+//     const skip = (page - 1) * limit;
+//     if (roles.includes('organization')) {
+//       currentRole = 'organization';
+//       query.organisation = userId;
+//     } else if (roles.includes('processor')) {
+//       currentRole = 'processor';
+//       query.processor = userId;
+//     } else {
+//       return res.status(403).json({ message: 'Unauthorized' });
+//     }
 
-//         if (roles.includes('organization')) {
-//             currentRole = 'organization';
-//             query.organisation = userId;
-//         } else if (roles.includes('processor')) {
-//             currentRole = 'processor';
-//             query.processor = userId;
-//         } else {
-//             return res.status(403).json({ message: 'Unauthorized' });
-//         }
+//     // fetch all rooms
+//     const rooms = await ChatRoom.find(query)
+//       .populate("organisation", "fullName email countryCode")
+//       .populate("processor", "fullName email countryCode")
+//       .populate("ticket")
+//       .sort({ updatedAt: -1 })
+//       .skip(skip)
+//       .limit(limit);
 
-//         // fetch all rooms
-//         const rooms = await ChatRoom.find(query)
-//             .populate('organisation', 'fullName email countryCode')
-//             .populate('processor', 'fullName email countryCode')
-//             .populate('ticket');
-
-//         // now map the rooms so that only “other side” user is returned as `chatWith`
-//         const formatted = await Promise.all(
+//     // now map the rooms so that only “other side” user is returned as `chatWith`
+//     const formatted = await Promise.all(
 //       rooms.map(async (room) => {
 //         const chatWith =
 //           currentRole === "organization" ? room.processor : room.organisation;
@@ -89,11 +94,15 @@ exports.getRoomByTicket = async (req, res) => {
 //         };
 //       })
 //     );
-//         res.json(formatted);
-//     } catch (err) {
-//         console.error(err);
-//         res.status(500).json({ message: err.message });
-//     }
+//     res.json({
+//       page,
+//       limit,
+//       data: formatted,
+//     });
+//   } catch (err) {
+//     console.error(err);
+//     res.status(500).json({ message: err.message });
+//   }
 // };
 exports.getAllChats = async (req, res) => {
   try {
