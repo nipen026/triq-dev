@@ -12,7 +12,8 @@ const servicePricingRoutes = require("./routes/servicePricing.routes");
 const ChatRoutes = require("./routes/chat.route");
 const profileRoutes = require("./routes/profile.route");
 const reportRoutes = require("./routes/report.routes");
-const notificationRoutes = require("./routes/notification.route")
+const notificationRoutes = require("./routes/notification.route");
+const taskRoutes = require("./routes/task.routes");
 const path = require("path");
 
 const app = express();
@@ -33,6 +34,7 @@ app.use("/api/chat", ChatRoutes);
 app.use("/api/profile", profileRoutes);
 app.use("/api/report", reportRoutes);
 app.use("/api/notification",notificationRoutes)
+app.use("/api/task",taskRoutes );
 
 
 // Static

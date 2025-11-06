@@ -43,8 +43,8 @@ socket.on("newMessage", (msg) => {
   console.log("new message from server", msg);
 });
 
-socket.on("updateChatList", (msg) => {
-  console.log("chat list updated:", msg);
+socket.on("updateChatList", (updatedChat) => {
+  console.log("Chat list updated:", updatedChat);
 });
 // // // import { translate } from '@vitalets/google-translate-api';
 
