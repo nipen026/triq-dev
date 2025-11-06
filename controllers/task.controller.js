@@ -44,7 +44,8 @@ exports.getTasks = async (req, res) => {
     // Get pagination params (default page=1, limit=10)
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 10;
-    const tab = req.query.tab
+    const tab = req.query.tab;
+    const status = req.query.status;
     // Calculate skip value
     const skip = (page - 1) * limit;
 
