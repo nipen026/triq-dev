@@ -38,14 +38,39 @@ exports.createTask = async (req, res) => {
 
 // ✅ Get All Tasks
 exports.getTasks = async (req, res) => {
-    const user = req.user; // Get the authenticated user
-    try {
-        const tasks = await Task.find({ user: user.id, isActive: true }).sort({ createdAt: -1 });
-        res.status(200).json({ success: true, tasks });
-    } catch (error) {
-        res.status(500).json({ success: false, message: "Server Error" });
-    }
+  const user = req.user; // authenticated user
+
+  try {
+    // Get pagination params (default page=1, limit=10)
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const tab = req.query.tab
+    // Calculate skip value
+    const skip = (page - 1) * limit;
+
+    // Fetch paginated tasks
+    const [tasks, total] = await Promise.all([
+      Task.find({ user: user.id, isActive: true })
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Task.countDocuments({ user: user.id, isActive: true }),
+    ]);
+
+    res.status(200).json({
+      success: true,
+      currentPage: page,
+      totalPages: Math.ceil(total / limit),
+      totalTasks: total,
+      count: tasks.length,
+      tasks,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ success: false, message: "Server Error" });
+  }
 };
+
 
 // ✅ Get Task by ID
 exports.getTaskById = async (req, res) => {
