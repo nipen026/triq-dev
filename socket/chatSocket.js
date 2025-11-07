@@ -144,8 +144,8 @@ module.exports = (io) => {
         if (!isReceiverInRoom && receiver?.fcmToken) {
           const soundData = await Sound.findOne({type:chat,user:receiverId});
           const androidNotification = {
-            channelId: soundData.channelId,
-            sound: soundData.soundName, // feach from api in future
+            channelId: "triq",
+            sound: 'bell', // feach from api in future
           
           };
 
@@ -163,7 +163,7 @@ module.exports = (io) => {
               chatRoomId: room.id,
               screenName: "chatView",
               route:'/chatView',
-              sound:soundData.soundName
+              sound:"bell"
             },
             android: {
               notification: androidNotification,
@@ -171,7 +171,7 @@ module.exports = (io) => {
             apns: {
               payload: {
                 aps: {
-                  sound: `${soundData.soundName}.aiff`,
+                  sound: `bell.aiff`,
                   "mutable-content": 1,
                 },
               },
