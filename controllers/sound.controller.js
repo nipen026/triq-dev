@@ -4,21 +4,17 @@ const Sound = require("../models/sound.model");
 exports.addSound = async (req, res) => {
   try {
     const user = req.user;
-    console.log(user,"user")
-    const { soundName, androidSound, iosSound } = req.body;
+    const { soundName, type, channelId } = req.body;
 
-    if (!soundName || !androidSound || !iosSound) {
+    if (!soundName || !type || !channelId) {
       return res.status(400).json({ status: 0, message: "Missing required fields" });
     }
 
-
-
-
     const newSound = await Sound.create({
       soundName,
-      androidSound,
-      iosSound,
-      user:user.id
+      channelId,
+      type,
+      user: user.id
     });
 
     return res.status(201).json({
@@ -36,7 +32,7 @@ exports.addSound = async (req, res) => {
 exports.getAllSounds = async (req, res) => {
   try {
     const user = req.user
-    const sounds = await Sound.find({user:user.id}).sort({ createdAt: -1 });
+    const sounds = await Sound.find({ user: user.id }).sort({ createdAt: -1 });
     return res.status(200).json({ status: 1, data: sounds });
   } catch (error) {
     console.error("❌ Error fetching sounds:", error);

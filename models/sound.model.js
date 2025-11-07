@@ -5,17 +5,9 @@ const soundSchema = new mongoose.Schema(
         user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
         soundName: {
             type: String,
-            required: true,
-            unique: true,
         },
-        androidSound: {
-            type: String,
-            required: true, // e.g. chat_sound.mp3
-        },
-        iosSound: {
-            type: String,
-            required: true, // e.g. chat_sound.aiff
-        },
+        type: {type :String, enum: ["chat","voice_call","video_call","ticket_notification","alert"],},
+        channelId:String,
     },
     { timestamps: true }
 );

@@ -4,6 +4,7 @@ const Ticket = require("../models/ticket.model");
 const admin = require("../config/firebase");
 const User = require("../models/user.model");
 const Profile = require("../models/profile.model");
+const Sound = require("../models/sound.model")
 const mongoose = require("mongoose");
 const { translate } = require("@vitalets/google-translate-api");
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
@@ -17,7 +18,7 @@ module.exports = (io) => {
     // Register user on connection
     socket.on("registerUser", ({ userId }) => {
       socket.userId = userId;
-       socket.join(userId);
+      socket.join(userId);
       console.log("Registered user:", userId);
     });
 
@@ -141,7 +142,14 @@ module.exports = (io) => {
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
-          await admin.messaging().sendEachForMulticast({
+          const soundData = await Sound.findOne({type:chat,user:receiverId});
+          const androidNotification = {
+            channelId: soundData.channelId,
+            sound: soundData.soundName, // feach from api in future
+          
+          };
+
+          const message = {
             tokens: [receiver.fcmToken],
             notification: {
               title: `New message from ${socket.userId === room.organisation.id
@@ -153,9 +161,42 @@ module.exports = (io) => {
             data: {
               type: "chat_message",
               chatRoomId: room.id,
-              screenName: "chat",
+              screenName: "chatView",
+              route:'/chatView',
+              sound:soundData.soundName
             },
-          });
+            android: {
+              notification: androidNotification,
+            },
+            apns: {
+              payload: {
+                aps: {
+                  sound: `${soundData.soundName}.aiff`,
+                  "mutable-content": 1,
+                },
+              },
+       
+            },
+          };
+
+          // const message ={
+          //   tokens: [receiver.fcmToken],
+          //   notification: {
+          //     title: `New message from ${socket.userId === room.organisation.id
+          //       ? room.organisation.fullName
+          //       : room.processor.fullName
+          //       }`,
+          //     body: translatedText,
+          //   },
+          //   data: {
+          //     type: "chat_message",
+          //     chatRoomId: room.id,
+          //     screenName: "chat",
+          //   },
+          // }
+
+
+          await admin.messaging().sendEachForMulticast(message);
         }
       } catch (err) {
         console.error("sendMessage error:", err);
