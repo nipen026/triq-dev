@@ -10,6 +10,7 @@ const { getCountryFromPhone } = require("../utils/phoneHelper");
 const Profile = require("../models/profile.model");
 const VerifyCode = require("../models/verifyCode.model");
 const ServicePricing = require('../models/servicePricing.model');
+const Sound = require('../models/sound.model')
 const sendSMS = require("../utils/smsOtp");
 const sendMail = require("../utils/mailer");
 // Register new user
@@ -74,6 +75,39 @@ exports.register = async (req, res) => {
       }
       user.processorType = processorType; // 👈 Add field dynamically
     }
+    const defaultSounds = [
+      {
+        user: user._id,
+        soundName: "bell",
+        type: "chat",
+        channelId: "triq_custom_sound_channel",
+      },
+      {
+        user: user._id,
+        soundName: "bell",
+        type: "voice_call",
+        channelId: "triq_custom_sound_channel",
+      },
+      {
+        user: user._id,
+        soundName: "bell",
+        type: "video_call",
+        channelId: "triq_custom_sound_channel",
+      },
+      {
+        user: user._id,
+        soundName: "bell",
+        type: "ticket_notification",
+        channelId: "triq_custom_sound_channel",
+      },
+      {
+        user: user._id,
+        soundName: "bell",
+        type: "alert",
+        channelId: "triq_custom_sound_channel",
+      },
+    ];
+    await Sound.insertMany(defaultSounds);
     await user.save();
 
     // 8️⃣ Create default profile
