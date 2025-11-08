@@ -146,7 +146,7 @@ module.exports = (io) => {
           const androidNotification = {
             channelId: "triq",
             sound: 'bell', // feach from api in future
-          
+            priority:"high"
           };
 
           const message = {
@@ -163,12 +163,14 @@ module.exports = (io) => {
               chatRoomId: room.id,
               screenName: "chatView",
               route:'/chatView',
-              sound:"bell"
+              sound:"bell",
+              android_channel_id: "triq_custom_sound_channel"
             },
             android: {
               notification: androidNotification,
             },
             apns: {
+               headers: { "apns-priority": "10" },
               payload: {
                 aps: {
                   sound: `bell.aiff`,
