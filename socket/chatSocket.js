@@ -217,6 +217,8 @@ module.exports = (io) => {
               chatRoomId: room.id,
               screenName: "chatView",
               route: '/chatView',
+              android_channel_id: "triq_custom_sound_channel",
+              sound:dynamicSoundName,
               // Yahan se 'sound' aur 'android_channel_id' hata diye gaye hain kyunki wo ab upar set hain.
               contactName: socket.userId === room.organisation.id
                 ? room.organisation.fullName
