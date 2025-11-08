@@ -142,15 +142,67 @@ module.exports = (io) => {
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
-          const soundData = await Sound.findOne({type:"chat",user:receiverId});
+          const soundData = await Sound.findOne({ type: "chat", user: receiverId });
+          const dynamicSoundName = 'bell';
+
+          // Step B: Android ke notification options taiyaar karein
           const androidNotification = {
+            // Channel ID aapke Flutter code se match honi chahiye
             channelId: "triq_custom_sound_channel",
-            sound: 'bell', // feach from api in future
-            priority:"high"
+
+            // Sound file ka naam (bina .mp3 ke)
+            sound: dynamicSoundName,
           };
 
+          // const message = {
+          //   tokens: [receiver.fcmToken],
+          //   notification: {
+          //     title: `New message from ${socket.userId === room.organisation.id
+          //       ? room.organisation.fullName
+          //       : room.processor.fullName
+          //       }`,
+          //     body: translatedText,
+          //   },
+          //   data: {
+          //     type: "chat_message",
+          //     chatRoomId: room.id,
+          //     screenName: "chatView",
+          //     route:'/chatView',
+          //     sound:"bell",
+          //     android_channel_id: "triq_custom_sound_channel",
+          //     contactName: socket.userId === room.organisation.id
+          //     ? room.organisation.fullName
+          //     : room.processor.fullName,
+          //   contactNumber: socket.userId === room.organisation.id
+          //     ? room.organisation.phone
+          //     : room.processor.phone,
+          //   roomId: room.id,
+          //   ticketId: room.ticket ? String(room.ticket._id) : "",
+          //   ticketStatus: room.ticket ? room.ticket.status : "",
+          //   ticketNumber:room.ticket ? room.ticket.ticketNumber : "",
+          //   userRole: socket.userId === room.organisation.id ? "organization" : "processor",
+          //   flag: socket.userId === room.organisation.id
+          //     ? getFlagWithCountryCode(room.organisation.countryCode)
+          //     : getFlagWithCountryCode(room.processor.countryCode),
+          //   },
+          //   android: {
+          //     notification: androidNotification,
+          //   },
+          //   apns: {
+          //      headers: { "apns-priority": "10" },
+          //     payload: {
+          //       aps: {
+          //         sound: `bell.aiff`,
+          //         "mutable-content": 1,
+          //       },
+          //     },
+
+          //   },
+          // };
           const message = {
             tokens: [receiver.fcmToken],
+
+            // 1. Notification object title/body ke saath
             notification: {
               title: `New message from ${socket.userId === room.organisation.id
                 ? room.organisation.fullName
@@ -158,41 +210,47 @@ module.exports = (io) => {
                 }`,
               body: translatedText,
             },
+
+            // 2. Data object me sirf navigation ka data hoga
             data: {
               type: "chat_message",
               chatRoomId: room.id,
               screenName: "chatView",
-              route:'/chatView',
-              sound:"bell",
-              android_channel_id: "triq_custom_sound_channel",
+              route: '/chatView',
+              // Yahan se 'sound' aur 'android_channel_id' hata diye gaye hain kyunki wo ab upar set hain.
               contactName: socket.userId === room.organisation.id
-              ? room.organisation.fullName
-              : room.processor.fullName,
-            contactNumber: socket.userId === room.organisation.id
-              ? room.organisation.phone
-              : room.processor.phone,
-            roomId: room.id,
-            ticketId: room.ticket ? String(room.ticket._id) : "",
-            ticketStatus: room.ticket ? room.ticket.status : "",
-            ticketNumber:room.ticket ? room.ticket.ticketNumber : "",
-            userRole: socket.userId === room.organisation.id ? "organization" : "processor",
-            flag: socket.userId === room.organisation.id
-              ? getFlagWithCountryCode(room.organisation.countryCode)
-              : getFlagWithCountryCode(room.processor.countryCode),
+                ? room.organisation.fullName
+                : room.processor.fullName,
+              contactNumber: socket.userId === room.organisation.id
+                ? room.organisation.phone
+                : room.processor.phone,
+              roomId: room.id,
+              ticketId: room.ticket ? String(room.ticket._id) : "",
+              ticketStatus: room.ticket ? room.ticket.status : "",
+              ticketNumber: room.ticket ? room.ticket.ticketNumber : "",
+              userRole: socket.userId === room.organisation.id ? "organization" : "processor",
+              flag: socket.userId === room.organisation.id
+                ? getFlagWithCountryCode(room.organisation.countryCode)
+                : getFlagWithCountryCode(room.processor.countryCode),
             },
+
+            // 3. Android ke liye priority aur notification options
             android: {
+              priority: "high", // Priority ko yahan rakhein
               notification: androidNotification,
             },
+
+            // 4. iOS ke liye options
             apns: {
-               headers: { "apns-priority": "10" },
+              headers: { "apns-priority": "10" },
               payload: {
                 aps: {
-                  sound: `bell.aiff`,
+                  // Sound file ka naam string me aur .aiff extension ke saath
+                  sound: ` ${dynamicSoundName}.aiff`,
                   "mutable-content": 1,
                 },
               },
-       
-            },
+            }
           };
 
           // const message ={
