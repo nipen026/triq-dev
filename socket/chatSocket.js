@@ -144,7 +144,7 @@ module.exports = (io) => {
         if (!isReceiverInRoom && receiver?.fcmToken) {
           const soundData = await Sound.findOne({type:"chat",user:receiverId});
           const androidNotification = {
-            channelId: "triq",
+            channelId: "triq_custom_sound_channel",
             sound: 'bell', // feach from api in future
             priority:"high"
           };
