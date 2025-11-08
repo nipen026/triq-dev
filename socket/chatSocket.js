@@ -164,7 +164,21 @@ module.exports = (io) => {
               screenName: "chatView",
               route:'/chatView',
               sound:"bell",
-              android_channel_id: "triq_custom_sound_channel"
+              android_channel_id: "triq_custom_sound_channel",
+              contactName: socket.userId === room.organisation.id
+              ? room.organisation.fullName
+              : room.processor.fullName,
+            contactNumber: socket.userId === room.organisation.id
+              ? room.organisation.phone
+              : room.processor.phone,
+            roomId: room.id,
+            ticketId: room.ticket ? String(room.ticket._id) : "",
+            ticketStatus: room.ticket ? room.ticket.status : "",
+            ticketNumber:room.ticket ? room.ticket.ticketNumber : "",
+            userRole: socket.userId === room.organisation.id ? "organization" : "processor",
+            flag: socket.userId === room.organisation.id
+              ? getFlagWithCountryCode(room.organisation.countryCode)
+              : getFlagWithCountryCode(room.processor.countryCode),
             },
             android: {
               notification: androidNotification,
