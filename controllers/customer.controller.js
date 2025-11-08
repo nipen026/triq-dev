@@ -3,6 +3,7 @@ const Machine = require("../models/machine.model");
 const Role = require("../models/role.model");
 const User = require("../models/user.model");
 const Notification = require("../models/notification.model");
+const Sound = require("../models/sound.model")
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const { getFlag, getFlagWithCountryCode } = require("../utils/flagHelper");
@@ -142,10 +143,10 @@ exports.createCustomer = async (req, res) => {
       createdAt: new Date(),
       data: {
         // manufacture_name: ValidUser.fullName || '',
-          type: "customer_assigned",
-          processorId: String(customer._id),
-          screenName: "CustomerEditDetailsView",
-          route: '/customerEditDetailsView'
+        type: "customer_assigned",
+        processorId: String(customer._id),
+        screenName: "CustomerEditDetailsView",
+        route: '/customerEditDetailsView'
       }
     });
     await notification.save();
@@ -412,6 +413,12 @@ exports.updateCustomer = async (req, res) => {
       // ✅ Send FCM notification if token available
       if (UserData?.fcmToken) {
         try {
+          const soundData = await Sound.findOne({ type: "alert", user: UserData._id });
+          const dynamicSoundName = soundData.soundName;
+          const androidNotification = {
+            channelId: "triq_custom_sound_channel",
+            sound: dynamicSoundName,
+          };
           const notifPayload = {
             notification: {
               title: "Customer Assigned",
@@ -422,6 +429,20 @@ exports.updateCustomer = async (req, res) => {
               processorId: String(UserData._id),
               screenName: "CustomerEditDetailsView",
               route: '/customerEditDetailsView'
+            },
+            android: {
+              priority: "high", // Priority ko yahan rakhein
+              notification: androidNotification,
+            },
+            apns: {
+              headers: { "apns-priority": "10" },
+              payload: {
+                aps: {
+                  // Sound file ka naam string me aur .aiff extension ke saath
+                  sound: ` ${dynamicSoundName}.aiff`,
+                  "mutable-content": 1,
+                },
+              },
             }
           };
 

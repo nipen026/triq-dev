@@ -2,6 +2,7 @@ const Notification = require("../models/notification.model");
 const Profile = require("../models/profile.model");
 const User = require("../models/user.model");
 const Ticket = require("../models/ticket.model");
+const Sound = require('../models/sound.model');
 const admin = require("firebase-admin"); // optional (for FCM push)
 
 exports.sendOrganizationRequest = async (req, res) => {
@@ -51,6 +52,14 @@ exports.sendOrganizationRequest = async (req, res) => {
     // 5️⃣ Optional: send FCM notification if the organization has a token
     if (organization.fcmToken) {
       try {
+        const soundData = await Sound.findOne({ type: "chat", user: organization._id });
+        const dynamicSoundName = soundData.soundName;
+
+        // Step B: Android ke notification options taiyaar karein
+        const androidNotification = {
+          channelId: "triq_custom_sound_channel",
+          sound: dynamicSoundName,
+        };
         await admin.messaging().send({
           token: organization.fcmToken,
           notification: {
@@ -61,6 +70,22 @@ exports.sendOrganizationRequest = async (req, res) => {
             type: "organizationRequest",
             senderId: String(processorId),
           },
+          android: {
+            priority: "high", // Priority ko yahan rakhein
+            notification: androidNotification,
+          },
+
+          // 4. iOS ke liye options
+          apns: {
+            headers: { "apns-priority": "10" },
+            payload: {
+              aps: {
+                // Sound file ka naam string me aur .aiff extension ke saath
+                sound: ` ${dynamicSoundName}.aiff`,
+                "mutable-content": 1,
+              },
+            },
+          }
         });
       } catch (err) {
         console.error("FCM error:", err.message);
@@ -127,7 +152,7 @@ exports.deleteNotification = async (req, res) => {
 
 exports.updateNotificationTicket = async (req, res) => {
   console.log(req.body, "body in updateNotificationTicket");
-  
+
   try {
     const { ticketId, type, notificationId } = req.body;
 

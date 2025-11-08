@@ -7,6 +7,7 @@ const { getFlag, getFlagWithCountryCode } = require("../utils/flagHelper");
 const ChatRoom = require("../models/chatRoom.model");
 const admin = require("../config/firebase");
 const User = require("../models/user.model");
+const Sound = require('../models/sound.model');
 const Notification = require('../models/notification.model')
 const mongoose = require("mongoose");
 const socket = require("../socket/socketInstance"); // import socket utility
@@ -163,7 +164,7 @@ exports.createTicket = async (req, res) => {
           ticketNumber: ticket.ticketNumber,
           screenName: 'TicketDetailsView',
           ticketId: ticket._id.toString(),
-          Route :'/ticketDetails'
+          Route: '/ticketDetails'
         },
         createdAt: new Date()
       });
@@ -189,6 +190,12 @@ exports.createTicket = async (req, res) => {
       // }).then((response) =>
       //   console.log("📨 Notification sent:", response.successCount, "success")
       // );
+      const soundData = await Sound.findOne({ type: "ticket_notification", user: otherUser._id });
+      const dynamicSoundName = soundData.soundName;
+      const androidNotification = {
+        channelId: "triq_custom_sound_channel",
+        sound: dynamicSoundName,
+      };
       const response = await admin.messaging().sendEachForMulticast({
         tokens: [otherUser.fcmToken],
         notification: {
@@ -199,9 +206,25 @@ exports.createTicket = async (req, res) => {
           type: 'ticket_created',
           ticketNumber: String(ticket.ticketNumber),
           ticketId: String(ticket._id),
-          Route:'/ticketDetails'  ,
+          Route: '/ticketDetails',
           screenName: 'TicketDetailsView',
         },
+        android: {
+          priority: "high", // Priority ko yahan rakhein
+          notification: androidNotification,
+        },
+
+        // 4. iOS ke liye options
+        apns: {
+          headers: { "apns-priority": "10" },
+          payload: {
+            aps: {
+              // Sound file ka naam string me aur .aiff extension ke saath
+              sound: ` ${dynamicSoundName}.aiff`,
+              "mutable-content": 1,
+            },
+          },
+        }
       });
 
       response.responses.forEach((r, i) => {
@@ -349,6 +372,13 @@ exports.updateTicket = async (req, res) => {
     // 📲 Send FCM notification
     const otherUser = await User.findById(ticket.processor).select("fullName fcmToken");
     if (otherUser?.fcmToken) {
+      const soundData = await Sound.findOne({ type: "ticket_notification", user: receiverId });
+      const dynamicSoundName = soundData.soundName;
+      const androidNotification = {
+        channelId: "triq_custom_sound_channel",
+        sound: dynamicSoundName,
+      };
+
       const notifPayload = {
         notification: {
           title: `Ticket #${ticket.ticketNumber} has been updated: ${changes}.`,
@@ -359,6 +389,22 @@ exports.updateTicket = async (req, res) => {
           ticketNumber: ticket.ticketNumber,
           screenName: "ticket",
         },
+        android: {
+          priority: "high", // Priority ko yahan rakhein
+          notification: androidNotification,
+        },
+
+        // 4. iOS ke liye options
+        apns: {
+          headers: { "apns-priority": "10" },
+          payload: {
+            aps: {
+              // Sound file ka naam string me aur .aiff extension ke saath
+              sound: ` ${dynamicSoundName}.aiff`,
+              "mutable-content": 1,
+            },
+          },
+        }
       };
 
       await admin.messaging().sendEachForMulticast({

@@ -143,14 +143,11 @@ module.exports = (io) => {
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
           const soundData = await Sound.findOne({ type: "chat", user: receiverId });
-          const dynamicSoundName = 'bell';
+          const dynamicSoundName = soundData.soundName;
 
           // Step B: Android ke notification options taiyaar karein
           const androidNotification = {
-            // Channel ID aapke Flutter code se match honi chahiye
             channelId: "triq_custom_sound_channel",
-
-            // Sound file ka naam (bina .mp3 ke)
             sound: dynamicSoundName,
           };
 
