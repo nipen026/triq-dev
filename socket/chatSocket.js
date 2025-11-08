@@ -142,7 +142,7 @@ module.exports = (io) => {
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
-          const soundData = await Sound.findOne({type:chat,user:receiverId});
+          const soundData = await Sound.findOne({type:"chat",user:receiverId});
           const androidNotification = {
             channelId: "triq",
             sound: 'bell', // feach from api in future
