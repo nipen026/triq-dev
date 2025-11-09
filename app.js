@@ -15,6 +15,8 @@ const reportRoutes = require("./routes/report.routes");
 const notificationRoutes = require("./routes/notification.route");
 const taskRoutes = require("./routes/task.routes");
 const soundRoutes = require("./routes/sound.routes");
+const departmentRoutes = require("./routes/department.routes");
+
 const path = require("path");
 
 const app = express();
@@ -37,6 +39,7 @@ app.use("/api/report", reportRoutes);
 app.use("/api/notification",notificationRoutes)
 app.use("/api/task",taskRoutes );
 app.use("/api/notificationsound",soundRoutes );
+app.use("/api/department",departmentRoutes)
 
 
 // Static
