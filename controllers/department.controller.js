@@ -10,31 +10,31 @@ exports.addDepartment = async (req, res) => {
     }
 
     // 🧠 Normalize department name & set icon
-    let icon = "";
-    switch (name.toLowerCase()) {
-      case "service department":
-        icon = "service";
-        break;
-      case "sales department":
-        icon = "sales";
-        break;
-      case "hr department":
-        icon = "hr";
-        break;
-      case "finance department":
-        icon = "finance";
-        break;
-      case "production department":
-        icon = "production";
-        break;
-      default:
-        icon = "default"; // fallback icon
-        break;
-    }
+    // let icon = "";
+    // switch (name.toLowerCase()) {
+    //   case "service department":
+    //     icon = "service";
+    //     break;
+    //   case "sales department":
+    //     icon = "sales";
+    //     break;
+    //   case "hr department":
+    //     icon = "hr";
+    //     break;
+    //   case "finance department":
+    //     icon = "finance";
+    //     break;
+    //   case "production department":
+    //     icon = "production";
+    //     break;
+    //   default:
+    //     icon = "default"; // fallback icon
+    //     break;
+    // }
 
     const newDepartment = await Department.create({
       name,
-      icon,
+      // icon,
       user: user.id,
     });
 
@@ -52,7 +52,7 @@ exports.addDepartment = async (req, res) => {
 exports.getAllDepartment = async (req, res) => {
   try {
     const user = req.user;
-    const department = await Department.find({ user: user.id }).sort({ createdAt: -1 });
+    const department = await Department.find({ user: user.id }).select("name id").sort({ createdAt: -1 });
     return res.status(200).json({ status: 1, data: department });
   } catch (error) {
     console.error("❌ Error fetching department:", error);
