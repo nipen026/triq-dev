@@ -1,11 +1,13 @@
 const Employee = require("../models/employee.model");
 const Department = require("../models/department.model");
 const Designation = require("../models/designation.model");
+const EmployeePermission = require("../models/employeePermission.model");
 const User = require("../models/user.model");
 const QRCode = require("qrcode");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const Role = require('../models/role.model')
+// ➕ CREATE Employee
 // ➕ CREATE Employee
 exports.addEmployee = async (req, res) => {
     try {
@@ -26,29 +28,57 @@ exports.addEmployee = async (req, res) => {
             joiningDate,
         } = req.body;
 
+        // ✅ Parse nested JSON fields if they come as strings
+        let personalAddress = req.body.personalAddress;
+        let emergencyContact = req.body.emergencyContact;
+
+        try {
+            if (typeof personalAddress === "string") {
+                personalAddress = JSON.parse(personalAddress);
+            }
+        } catch (e) {
+            console.warn("⚠️ Invalid JSON in personalAddress", e.message);
+            personalAddress = {};
+        }
+
+        try {
+            if (typeof emergencyContact === "string") {
+                emergencyContact = JSON.parse(emergencyContact);
+            }
+        } catch (e) {
+            console.warn("⚠️ Invalid JSON in emergencyContact", e.message);
+            emergencyContact = {};
+        }
+
         // ✅ Validate required fields
         if (!name || !phone || !employeeId || !department || !designation) {
-            return res.status(400).json({ status: 0, message: "Missing required fields" });
+            return res
+                .status(400)
+                .json({ status: 0, message: "Missing required fields" });
         }
 
         // ✅ Validate Department
         const deptExists = await Department.findById(department);
-        if (!deptExists) return res.status(404).json({ status: 0, message: "Department not found" });
+        if (!deptExists)
+            return res.status(404).json({ status: 0, message: "Department not found" });
 
         // ✅ Validate Designation
         const desigExists = await Designation.findById(designation);
-        if (!desigExists) return res.status(404).json({ status: 0, message: "Designation not found" });
+        if (!desigExists)
+            return res.status(404).json({ status: 0, message: "Designation not found" });
 
         // ✅ Check for duplicate employeeId
         const existingEmployee = await Employee.findOne({ employeeId });
         if (existingEmployee) {
-            return res.status(400).json({ status: 0, message: `Employee ID ${employeeId} already exists` });
+            return res
+                .status(400)
+                .json({ status: 0, message: `Employee ID ${employeeId} already exists` });
         }
 
         // ✅ Handle file upload (profilePhoto)
         let profilePhotoPath = null;
         if (req.file) {
-            profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`; // accessible URL
+            profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`;
         }
 
         // ✅ Create new Employee
@@ -67,6 +97,8 @@ exports.addEmployee = async (req, res) => {
             employeeType,
             shiftTiming,
             joiningDate,
+            personalAddress,      // ✅ Now real object, not string
+            emergencyContact,     // ✅ Now real object, not string
             user: currentUser.id,
         });
 
@@ -107,7 +139,11 @@ exports.addEmployee = async (req, res) => {
         });
     } catch (error) {
         console.error("❌ Error adding employee:", error);
-        return res.status(500).json({ status: 0, message: "Server error", error: error.message });
+        return res.status(500).json({
+            status: 0,
+            message: "Server error",
+            error: error.message,
+        });
     }
 };
 
@@ -176,7 +212,6 @@ exports.updateEmployee = async (req, res) => {
             joiningDate,
         } = req.body;
 
-        // ✅ Build update object dynamically
         const updateData = {
             name,
             phone,
@@ -191,47 +226,58 @@ exports.updateEmployee = async (req, res) => {
             employeeType,
             shiftTiming,
             joiningDate,
+        
         };
+        let personalAddress = req.body.personalAddress;
+        let emergencyContact = req.body.emergencyContact;
 
-        // ✅ Handle optional file upload
+        try {
+            if (typeof personalAddress === "string") {
+                personalAddress = JSON.parse(personalAddress);
+            }
+        } catch (e) {
+            console.warn("⚠️ Invalid JSON in personalAddress", e.message);
+            personalAddress = {};
+        }
+
+        try {
+            if (typeof emergencyContact === "string") {
+                emergencyContact = JSON.parse(emergencyContact);
+            }
+        } catch (e) {
+            console.warn("⚠️ Invalid JSON in emergencyContact", e.message);
+            emergencyContact = {};
+        }
         if (req.file) {
             updateData.profilePhoto = `/uploads/profilePhotos/${req.file.filename}`;
         }
 
-        // ✅ Validate department (if provided)
         if (department) {
             const deptExists = await Department.findById(department);
-            if (!deptExists) {
+            if (!deptExists)
                 return res.status(404).json({ status: 0, message: "Department not found" });
-            }
         }
 
-        // ✅ Validate designation (if provided)
         if (designation) {
             const desigExists = await Designation.findById(designation);
-            if (!desigExists) {
+            if (!desigExists)
                 return res.status(404).json({ status: 0, message: "Designation not found" });
-            }
         }
 
-        // ✅ Prevent duplicate employeeId (if changed)
         if (employeeId) {
             const existing = await Employee.findOne({ employeeId, _id: { $ne: id } });
-            if (existing) {
+            if (existing)
                 return res.status(400).json({ status: 0, message: "Employee ID already in use" });
-            }
         }
 
-        // ✅ Update employee
         const updatedEmployee = await Employee.findByIdAndUpdate(id, updateData, {
             new: true,
         })
             .populate("department", "name")
             .populate("designation", "name");
 
-        if (!updatedEmployee) {
+        if (!updatedEmployee)
             return res.status(404).json({ status: 0, message: "Employee not found" });
-        }
 
         return res.status(200).json({
             status: 1,
@@ -243,7 +289,6 @@ exports.updateEmployee = async (req, res) => {
         return res.status(500).json({ status: 0, message: "Server error", error: error.message });
     }
 };
-
 
 
 
@@ -283,5 +328,114 @@ exports.getEmployeeById = async (req, res) => {
     } catch (error) {
         console.error("❌ Error fetching employee:", error);
         return res.status(500).json({ status: 0, message: "Server error" });
+    }
+};
+exports.getEmployeeHierarchy = async (req, res) => {
+    try {
+        const { departmentId } = req.params;
+
+        // Fetch all employees in that department
+        const employees = await Employee.find({ department: departmentId })
+            .populate("department", "name")
+            .populate("designation", "name");
+
+        // Convert to plain objects
+        const employeeList = employees.map((emp) => emp.toObject());
+
+        // Build a map using employeeId
+        const employeeMap = {};
+        employeeList.forEach((emp) => {
+            emp.children = [];
+            employeeMap[emp.employeeId] = emp;
+        });
+
+        // Build hierarchy
+        const roots = [];
+        employeeList.forEach((emp) => {
+            const managerId = emp.reportTo?.trim();
+            if (managerId && employeeMap[managerId]) {
+                employeeMap[managerId].children.push(emp);
+            } else {
+                // Top-level (no manager found)
+                roots.push(emp);
+            }
+        });
+
+        // Optional: sort designations or children alphabetically
+        const sortTree = (nodes) => {
+            nodes.sort((a, b) => a.name.localeCompare(b.name));
+            nodes.forEach((n) => sortTree(n.children));
+        };
+        sortTree(roots);
+
+        return res.status(200).json({
+            status: 1,
+            message: "Hierarchy built successfully",
+            data: roots,
+        });
+    } catch (error) {
+        console.error("❌ Error building hierarchy:", error);
+        return res.status(500).json({
+            status: 0,
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
+exports.setEmployeePermissions = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const { permissions } = req.body; // expects { serviceDepartment: {view, edit}, ... }
+
+        // Ensure employee exists
+        const employee = await Employee.findById(employeeId);
+        if (!employee)
+            return res.status(404).json({ status: 0, message: "Employee not found" });
+
+        // Upsert permissions
+        const updatedPermission = await EmployeePermission.findOneAndUpdate(
+            { employee: employeeId },
+            { employee: employeeId, permissions },
+            { new: true, upsert: true }
+        );
+
+        res.status(200).json({
+            status: 1,
+            message: "Permissions updated successfully",
+            data: updatedPermission,
+        });
+    } catch (error) {
+        console.error("❌ Error setting permissions:", error);
+        res.status(500).json({
+            status: 0,
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
+// 👀 Get Employee Permission
+exports.getEmployeePermissions = async (req, res) => {
+    try {
+        const { employeeId } = req.params;
+        const permissions = await EmployeePermission.findOne({ employee: employeeId }).populate(
+            "employee",
+            "name employeeId department designation"
+        );
+
+        if (!permissions)
+            return res
+                .status(404)
+                .json({ status: 0, message: "No permissions found for this employee" });
+
+        res.status(200).json({ status: 1, data: permissions });
+    } catch (error) {
+        console.error("❌ Error getting permissions:", error);
+        res.status(500).json({
+            status: 0,
+            message: "Server error",
+            error: error.message,
+        });
     }
 };
