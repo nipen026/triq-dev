@@ -9,6 +9,31 @@ const crypto = require("crypto");
 const Role = require('../models/role.model')
 // ➕ CREATE Employee
 // ➕ CREATE Employee
+
+// ✅ Helper Function (No res here)
+exports.setEmployeePermissions = async (employeeId, permissions) => {
+    try {
+        if (!employeeId) throw new Error("Employee ID is required");
+
+        // ✅ Ensure employee exists
+        const employee = await Employee.findById(employeeId);
+        if (!employee) throw new Error("Employee not found");
+
+        // ✅ Upsert permissions
+        const updatedPermission = await EmployeePermission.findOneAndUpdate(
+            { employee: employeeId },
+            { employee: employeeId, permissions },
+            { new: true, upsert: true }
+        );
+
+        return updatedPermission;
+    } catch (error) {
+        console.error("❌ Error setting permissions:", error);
+        throw new Error(error.message);
+    }
+};
+
+// ✅ Controller
 exports.addEmployee = async (req, res) => {
     try {
         const currentUser = req.user;
@@ -26,6 +51,7 @@ exports.addEmployee = async (req, res) => {
             employeeType,
             shiftTiming,
             joiningDate,
+            permissions,
         } = req.body;
 
         // ✅ Parse nested JSON fields if they come as strings
@@ -33,18 +59,16 @@ exports.addEmployee = async (req, res) => {
         let emergencyContact = req.body.emergencyContact;
 
         try {
-            if (typeof personalAddress === "string") {
+            if (typeof personalAddress === "string")
                 personalAddress = JSON.parse(personalAddress);
-            }
         } catch (e) {
             console.warn("⚠️ Invalid JSON in personalAddress", e.message);
             personalAddress = {};
         }
 
         try {
-            if (typeof emergencyContact === "string") {
+            if (typeof emergencyContact === "string")
                 emergencyContact = JSON.parse(emergencyContact);
-            }
         } catch (e) {
             console.warn("⚠️ Invalid JSON in emergencyContact", e.message);
             emergencyContact = {};
@@ -52,36 +76,42 @@ exports.addEmployee = async (req, res) => {
 
         // ✅ Validate required fields
         if (!name || !phone || !employeeId || !department || !designation) {
-            return res
-                .status(400)
-                .json({ status: 0, message: "Missing required fields" });
+            return res.status(400).json({
+                status: 0,
+                message: "Missing required fields",
+            });
         }
 
         // ✅ Validate Department
         const deptExists = await Department.findById(department);
         if (!deptExists)
-            return res.status(404).json({ status: 0, message: "Department not found" });
+            return res
+                .status(404)
+                .json({ status: 0, message: "Department not found" });
 
         // ✅ Validate Designation
         const desigExists = await Designation.findById(designation);
         if (!desigExists)
-            return res.status(404).json({ status: 0, message: "Designation not found" });
+            return res
+                .status(404)
+                .json({ status: 0, message: "Designation not found" });
 
-        // ✅ Check for duplicate employeeId
+        // ✅ Check duplicate employeeId
         const existingEmployee = await Employee.findOne({ employeeId });
         if (existingEmployee) {
-            return res
-                .status(400)
-                .json({ status: 0, message: `Employee ID ${employeeId} already exists` });
+            return res.status(400).json({
+                status: 0,
+                message: `Employee ID ${employeeId} already exists`,
+            });
         }
 
-        // ✅ Handle file upload (profilePhoto)
+        // ✅ Handle profile photo
         let profilePhotoPath = null;
         if (req.file) {
             profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`;
         }
 
-        // ✅ Create new Employee
+        // ✅ Create Employee
         const newEmployee = await Employee.create({
             name,
             phone,
@@ -97,20 +127,21 @@ exports.addEmployee = async (req, res) => {
             employeeType,
             shiftTiming,
             joiningDate,
-            personalAddress,      // ✅ Now real object, not string
-            emergencyContact,     // ✅ Now real object, not string
+            personalAddress,
+            emergencyContact,
             user: currentUser.id,
         });
 
-        // ✅ Create random password
+        // ✅ Create random password for login
         const plainPassword = crypto.randomBytes(6).toString("hex");
         const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
-        // ✅ Find or create "employee" role
+        // ✅ Ensure "employee" role exists
         let employeeRole = await Role.findOne({ name: "employee" });
-        if (!employeeRole) employeeRole = await Role.create({ name: "employee" });
+        if (!employeeRole)
+            employeeRole = await Role.create({ name: "employee" });
 
-        // ✅ Create linked user account
+        // ✅ Create User account linked to Employee
         const userAccount = await User.create({
             fullName: newEmployee.name,
             email: newEmployee.email,
@@ -123,7 +154,13 @@ exports.addEmployee = async (req, res) => {
             roles: [employeeRole._id],
         });
 
-        // ✅ Populate department & designation
+        // ✅ Set permissions if provided
+        if (permissions) {
+            const permissionData = JSON.parse(permissions)
+            await exports.setEmployeePermissions(newEmployee._id, permissionData);
+        }
+
+        // ✅ Populate and return
         const populatedEmployee = await Employee.findById(newEmployee._id)
             .populate("department", "name")
             .populate("designation", "name");
@@ -149,22 +186,49 @@ exports.addEmployee = async (req, res) => {
 
 
 
+
 // 📋 GET All Employees (with department & designation populated)
 exports.getAllEmployees = async (req, res) => {
     try {
         const user = req.user;
+
+        // ✅ Fetch all employees for this user
         const employees = await Employee.find({ user: user.id })
             .populate("department", "name")
             .populate("designation", "name")
             .sort({ createdAt: -1 });
 
-        return res.status(200).json({ status: 1, data: employees });
+        // ✅ Fetch all permissions for these employees in one go
+        const employeeIds = employees.map(emp => emp._id);
+        const permissions = await EmployeePermission.find({ employee: { $in: employeeIds } });
+
+        // ✅ Map permissions by employeeId for quick lookup
+        const permissionMap = {};
+        permissions.forEach(p => {
+            permissionMap[p.employee.toString()] = p.permissions;
+        });
+
+        // ✅ Attach permissions to each employee
+        const formatted = employees.map(emp => {
+            const obj = emp.toObject();
+            obj.permissions = permissionMap[emp._id.toString()] || {};
+            return obj;
+        });
+
+        return res.status(200).json({
+            status: 1,
+            message: "Employees fetched successfully",
+            data: formatted,
+        });
     } catch (error) {
         console.error("❌ Error fetching employees:", error);
-        return res.status(500).json({ status: 0, message: "Server error" });
+        return res.status(500).json({
+            status: 0,
+            message: "Server error",
+            error: error.message,
+        });
     }
 };
-
 
 
 // 🔍 SEARCH Employee (by name, employeeId, department, designation)
@@ -226,7 +290,7 @@ exports.updateEmployee = async (req, res) => {
             employeeType,
             shiftTiming,
             joiningDate,
-        
+
         };
         let personalAddress = req.body.personalAddress;
         let emergencyContact = req.body.emergencyContact;
@@ -321,9 +385,11 @@ exports.getEmployeeById = async (req, res) => {
         if (!employee) {
             return res.status(404).json({ status: 0, message: "Employee not found" });
         }
+        const employePermissionData = await EmployeePermission.findOne({ employee: employee._id });
         const qrCode = await QRCode.toDataURL(employee.id);
         const obj = employee.toObject();
-        obj.qrCode = qrCode
+        obj.qrCode = qrCode;
+        obj.permissions = employePermissionData
         return res.status(200).json({ status: 1, data: obj });
     } catch (error) {
         console.error("❌ Error fetching employee:", error);
@@ -383,37 +449,7 @@ exports.getEmployeeHierarchy = async (req, res) => {
     }
 };
 
-exports.setEmployeePermissions = async (req, res) => {
-    try {
-        const { employeeId } = req.params;
-        const { permissions } = req.body; // expects { serviceDepartment: {view, edit}, ... }
 
-        // Ensure employee exists
-        const employee = await Employee.findById(employeeId);
-        if (!employee)
-            return res.status(404).json({ status: 0, message: "Employee not found" });
-
-        // Upsert permissions
-        const updatedPermission = await EmployeePermission.findOneAndUpdate(
-            { employee: employeeId },
-            { employee: employeeId, permissions },
-            { new: true, upsert: true }
-        );
-
-        res.status(200).json({
-            status: 1,
-            message: "Permissions updated successfully",
-            data: updatedPermission,
-        });
-    } catch (error) {
-        console.error("❌ Error setting permissions:", error);
-        res.status(500).json({
-            status: 0,
-            message: "Server error",
-            error: error.message,
-        });
-    }
-};
 
 // 👀 Get Employee Permission
 exports.getEmployeePermissions = async (req, res) => {
