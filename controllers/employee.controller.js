@@ -405,94 +405,86 @@ exports.getEmployeeById = async (req, res) => {
     }
 };
 exports.getEmployeeHierarchy = async (req, res) => {
-    try {
-        const user = req.user; // 🧠 from auth middleware
-        const { departmentId } = req.params;
-        console.log(user);
+  try {
+    const user = req.user;
+    const { departmentId } = req.params;
 
-        if (!departmentId) {
-            return res.status(400).json({ status: 0, message: "Department ID is required" });
-        }
-
-        // ✅ Fetch all employees in that department
-        const employees = await Employee.find({ department: departmentId })
-            .populate("department", "name")
-            .populate("designation", "name level")
-            .lean();
-
-        if (employees.length === 0) {
-            return res.status(200).json({
-                status: 1,
-                message: "No employees found for this department",
-                data: [],
-            });
-        }
-
-        // ✅ Build a map of employees
-        const employeeMap = {};
-        employees.forEach(emp => {
-            emp.children = [];
-            employeeMap[emp._id.toString()] = emp;
-        });
-
-        // ✅ Build hierarchy using reportTo
-        const roots = [];
-        employees.forEach(emp => {
-            if (emp.reportTo && employeeMap[emp.reportTo.toString()]) {
-                employeeMap[emp.reportTo.toString()].children.push(emp);
-            } else {
-                roots.push(emp);
-            }
-        });
-
-        // ✅ Sort recursively by designation level
-        const sortHierarchy = (nodes) => {
-            nodes.sort((a, b) => {
-                if (!a.designation || !b.designation) return 0;
-                return a.designation.level - b.designation.level;
-            });
-            nodes.forEach(child => sortHierarchy(child.children));
-        };
-        sortHierarchy(roots);
-
-        let finalHierarchy = roots;
-
-        // ✅ If user is "organization" or "processor", add them as top-level Director
-        if (user.roles && (user.roles.includes("organization") || user.roles.includes("processor"))) {
-            console.log('Adding director node for org/processor');
-
-            const userData = await User.findById(user.id).select("fullName email phone processorType").lean();
-
-            const directorNode = {
-                _id: userData._id,
-                fullName: userData.fullName,
-                email: userData.email,
-                phone: userData.phone,
-                processorType: userData.processorType || null,
-                designation: { name: "Director", level: 1 },
-                department: { _id: departmentId, name: "All Departments" },
-                children: finalHierarchy, // attach all department employees
-            };
-
-            finalHierarchy = [directorNode];
-        }
-
-        // ✅ Response
-        return res.status(200).json({
-            status: 1,
-            message: "Department hierarchy fetched successfully",
-            data: finalHierarchy,
-        });
-
-    } catch (error) {
-        console.error("❌ Error building department hierarchy:", error);
-        return res.status(500).json({
-            status: 0,
-            message: "Server error",
-            error: error.message,
-        });
+    if (!departmentId) {
+      return res.status(400).json({ status: 0, message: "Department ID is required" });
     }
+
+    // ✅ Fetch employees for that department
+    const employees = await Employee.find({ user:user.id , department: departmentId })
+      .populate("department", "name")
+      .populate("designation", "name level")
+      .lean();
+
+    // ✅ Build map and hierarchy only if employees exist
+    let finalHierarchy = [];
+
+    if (employees.length > 0) {
+      const employeeMap = {};
+      employees.forEach(emp => {
+        emp.children = [];
+        employeeMap[emp._id.toString()] = emp;
+      });
+
+      const roots = [];
+      employees.forEach(emp => {
+        if (emp.reportTo && employeeMap[emp.reportTo.toString()]) {
+          employeeMap[emp.reportTo.toString()].children.push(emp);
+        } else {
+          roots.push(emp);
+        }
+      });
+
+      // ✅ Sort recursively by designation level
+      const sortHierarchy = (nodes) => {
+        nodes.sort((a, b) => {
+          if (!a.designation || !b.designation) return 0;
+          return a.designation.level - b.designation.level;
+        });
+        nodes.forEach(child => sortHierarchy(child.children));
+      };
+      sortHierarchy(roots);
+
+      finalHierarchy = roots;
+    }
+
+    // ✅ Always add Director node for organization/processor users
+    if (user.roles && (user.roles.includes("organization") || user.roles.includes("processor"))) {
+      const userData = await User.findById(user.id).select("fullName email phone processorType").lean();
+
+      const directorNode = {
+        _id: userData._id,
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: userData.phone,
+        processorType: userData.processorType || null,
+        designation: { name: "Director", level: 1 },
+        department: { _id: departmentId, name: "All Departments" },
+        children: finalHierarchy, // attach all employees (if any)
+      };
+
+      // ✅ If no employees, still show only director node
+      finalHierarchy = [directorNode];
+    }
+
+    return res.status(200).json({
+      status: 1,
+      message: "Department hierarchy fetched successfully",
+      data: finalHierarchy,
+    });
+  } catch (error) {
+    console.error("❌ Error building department hierarchy:", error);
+    return res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
+
 
 
 
