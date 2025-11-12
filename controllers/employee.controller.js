@@ -397,7 +397,7 @@ exports.getEmployeeById = async (req, res) => {
         const qrCode = await QRCode.toDataURL(employee.id);
         const obj = employee.toObject();
         obj.qrCode = qrCode;
-        obj.permissions = employePermissionData
+        obj.permissions = employePermissionData.permissions
         return res.status(200).json({ status: 1, data: obj });
     } catch (error) {
         console.error("❌ Error fetching employee:", error);
