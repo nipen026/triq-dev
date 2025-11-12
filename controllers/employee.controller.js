@@ -112,6 +112,15 @@ exports.addEmployee = async (req, res) => {
         }
 
         // ✅ Create Employee
+
+
+        // ✅ If designation name is CEO → reportTo = token user id
+        let finalReportTo = reportTo;
+        if (desigExists.name?.toLowerCase() === "ceo") {
+            finalReportTo = currentUser.id; // token user's ID as supervisor
+        }
+
+        // ✅ Create Employee
         const newEmployee = await Employee.create({
             name,
             phone,
@@ -123,7 +132,7 @@ exports.addEmployee = async (req, res) => {
             designation,
             country,
             area,
-            reportTo,
+            reportTo: finalReportTo,
             employeeType,
             shiftTiming,
             joiningDate,
@@ -159,7 +168,6 @@ exports.addEmployee = async (req, res) => {
             const permissionData = JSON.parse(permissions)
             await exports.setEmployeePermissions(newEmployee._id, permissionData);
         }
-
         // ✅ Populate and return
         const populatedEmployee = await Employee.findById(newEmployee._id)
             .populate("department", "name")
@@ -398,49 +406,86 @@ exports.getEmployeeById = async (req, res) => {
 };
 exports.getEmployeeHierarchy = async (req, res) => {
     try {
+        const user = req.user; // 🧠 from auth middleware
         const { departmentId } = req.params;
+        console.log(user);
 
-        // Fetch all employees in that department
+        if (!departmentId) {
+            return res.status(400).json({ status: 0, message: "Department ID is required" });
+        }
+
+        // ✅ Fetch all employees in that department
         const employees = await Employee.find({ department: departmentId })
             .populate("department", "name")
-            .populate("designation", "name");
+            .populate("designation", "name level")
+            .lean();
 
-        // Convert to plain objects
-        const employeeList = employees.map((emp) => emp.toObject());
+        if (employees.length === 0) {
+            return res.status(200).json({
+                status: 1,
+                message: "No employees found for this department",
+                data: [],
+            });
+        }
 
-        // Build a map using employeeId
+        // ✅ Build a map of employees
         const employeeMap = {};
-        employeeList.forEach((emp) => {
+        employees.forEach(emp => {
             emp.children = [];
-            employeeMap[emp.employeeId] = emp;
+            employeeMap[emp._id.toString()] = emp;
         });
 
-        // Build hierarchy
+        // ✅ Build hierarchy using reportTo
         const roots = [];
-        employeeList.forEach((emp) => {
-            const managerId = emp.reportTo?.trim();
-            if (managerId && employeeMap[managerId]) {
-                employeeMap[managerId].children.push(emp);
+        employees.forEach(emp => {
+            if (emp.reportTo && employeeMap[emp.reportTo.toString()]) {
+                employeeMap[emp.reportTo.toString()].children.push(emp);
             } else {
-                // Top-level (no manager found)
                 roots.push(emp);
             }
         });
 
-        // Optional: sort designations or children alphabetically
-        const sortTree = (nodes) => {
-            nodes.sort((a, b) => a.name.localeCompare(b.name));
-            nodes.forEach((n) => sortTree(n.children));
+        // ✅ Sort recursively by designation level
+        const sortHierarchy = (nodes) => {
+            nodes.sort((a, b) => {
+                if (!a.designation || !b.designation) return 0;
+                return a.designation.level - b.designation.level;
+            });
+            nodes.forEach(child => sortHierarchy(child.children));
         };
-        sortTree(roots);
+        sortHierarchy(roots);
 
+        let finalHierarchy = roots;
+
+        // ✅ If user is "organization" or "processor", add them as top-level Director
+        if (user.roles && (user.roles.includes("organization") || user.roles.includes("processor"))) {
+            console.log('Adding director node for org/processor');
+
+            const userData = await User.findById(user.id).select("fullName email phone processorType").lean();
+
+            const directorNode = {
+                _id: userData._id,
+                fullName: userData.fullName,
+                email: userData.email,
+                phone: userData.phone,
+                processorType: userData.processorType || null,
+                designation: { name: "Director", level: 1 },
+                department: { _id: departmentId, name: "All Departments" },
+                children: finalHierarchy, // attach all department employees
+            };
+
+            finalHierarchy = [directorNode];
+        }
+
+        // ✅ Response
         return res.status(200).json({
             status: 1,
-            message: "Hierarchy built successfully",
-            data: roots,
+            message: "Department hierarchy fetched successfully",
+            data: finalHierarchy,
         });
+
     } catch (error) {
-        console.error("❌ Error building hierarchy:", error);
+        console.error("❌ Error building department hierarchy:", error);
         return res.status(500).json({
             status: 0,
             message: "Server error",
@@ -448,6 +493,7 @@ exports.getEmployeeHierarchy = async (req, res) => {
         });
     }
 };
+
 
 
 
@@ -469,6 +515,84 @@ exports.getEmployeePermissions = async (req, res) => {
     } catch (error) {
         console.error("❌ Error getting permissions:", error);
         res.status(500).json({
+            status: 0,
+            message: "Server error",
+            error: error.message,
+        });
+    }
+};
+
+exports.getEligibleReportToList = async (req, res) => {
+    try {
+        const { designationId, departmentId } = req.query;
+        const user = req.user;
+
+        if (!designationId || !departmentId) {
+            return res.status(400).json({
+                status: 0,
+                message: "designationId and departmentId are required",
+            });
+        }
+
+        // ✅ Fetch current designation
+        const currentDesig = await Designation.findById(designationId);
+        if (!currentDesig) {
+            return res.status(404).json({
+                status: 0,
+                message: "Designation not found",
+            });
+        }
+
+        // ✅ If current designation is CEO → show Director (user data)
+        if (currentDesig.name?.toLowerCase() === "ceo") {
+            const userData = await User.findById(user.id)
+                .select("fullName email phone processorType")
+                .lean();
+
+            const directorData = {
+                _id: userData._id,
+                fullName: userData.fullName,
+                email: userData.email,
+                phone: userData.phone,
+                processorType: userData.processorType || null,
+                designation: { name: "Director", level: 1 },
+                department: { _id: departmentId, name: "All Departments" },
+                isUser: true, // 🔹 helpful flag to know it's not an employee
+            };
+
+            return res.status(200).json({
+                status: 1,
+                message: "Eligible reportTo list fetched successfully (Director user)",
+                data: [directorData],
+            });
+        }
+
+        // ✅ Otherwise, find higher-level employees within the department
+        const eligibleEmployees = await Employee.find({
+            user: user.id,
+            department: departmentId,
+        })
+            .populate({
+                path: "designation",
+                match: { level: { $lt: currentDesig.level } }, // higher-level only
+                select: "name level",
+            })
+            .populate("department", "name")
+            .lean();
+
+        // Remove employees that didn’t match higher-level condition
+        const filtered = eligibleEmployees.filter(e => e.designation);
+
+        // ✅ Final response
+        return res.status(200).json({
+            status: 1,
+            message: "Eligible reportTo list fetched successfully",
+            data: filtered,
+        });
+
+    } catch (error) {
+        console.error("❌ Error fetching reportTo list:", error);
+        return res.status(500).json({
             status: 0,
             message: "Server error",
             error: error.message,

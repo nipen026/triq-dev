@@ -1,0 +1,66 @@
+{
+  "departments": [
+    {
+      "name": "Service Department",
+      "designations": [
+        { "name": "Director", "level": 1 },
+        { "name": "CEO", "level": 2 },
+        { "name": "Head of Global Services", "level": 3 },
+        { "name": "Country Service Head India", "level": 4 },
+        { "name": "Service Executive Delhi, India", "level": 5 },
+        { "name": "Country Service Head AUS", "level": 6 },
+        { "name": "Service Manager, Perth, AUS", "level": 7 },
+        { "name": "Service Executive, Sydney, AUS", "level": 8 },
+        { "name": "Country Service Head GER", "level": 9 },
+        { "name": "Service Executive", "level": 10 }
+      ]
+    },
+    {
+      "name": "Sales Department",
+      "designations": [
+        { "name": "Director", "level": 1 },
+        { "name": "CEO", "level": 2 },
+        { "name": "Head of Global Sales", "level": 3 },
+        { "name": "Country Sales Head India", "level": 4 },
+        { "name": "Sales Executive Delhi, India", "level": 5 },
+        { "name": "Country Sales Head AUS", "level": 6 },
+        { "name": "Sales Manager, Perth, AUS", "level": 7 },
+        { "name": "Sales Executive, Sydney, AUS", "level": 8 },
+        { "name": "Country Sales Head GER", "level": 9 },
+        { "name": "Sales Executive", "level": 10 }
+      ]
+    },
+    {
+      "name": "HR Department",
+      "designations": [
+        { "name": "Director", "level": 1 },
+        { "name": "CEO", "level": 2 },
+        { "name": "HR Head", "level": 3 },
+        { "name": "HR Manager", "level": 4 },
+        { "name": "HR Executive", "level": 5 }
+      ]
+    },
+    {
+      "name": "Finance Department",
+      "designations": [
+        { "name": "Director", "level": 1 },
+        { "name": "CEO", "level": 2 },
+        { "name": "Finance Head", "level": 3 },
+        { "name": "Finance Manager", "level": 4 },
+        { "name": "Finance Executive", "level": 5 }
+      ]
+    },
+    {
+      "name": "Production Department",
+      "designations": [
+        { "name": "Director", "level": 1 },
+        { "name": "CEO", "level": 2 },
+        { "name": "Plant / Unit Head", "level": 3 },
+        { "name": "Production Supervisor Head", "level": 4 },
+        { "name": "Production Supervisor", "level": 5 },
+        { "name": "Quality Control Engineer", "level": 6 },
+        { "name": "Production Executive", "level": 7 }
+      ]
+    }
+  ]
+}
