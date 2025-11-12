@@ -34,164 +34,309 @@ exports.setEmployeePermissions = async (employeeId, permissions) => {
 };
 
 // ✅ Controller
+// exports.addEmployee = async (req, res) => {
+//     try {
+//         const currentUser = req.user;
+//         const {
+//             name,
+//             phone,
+//             email,
+//             bloodGroup,
+//             employeeId,
+//             department,
+//             designation,
+//             country,
+//             area,
+//             reportTo,
+//             employeeType,
+//             shiftTiming,
+//             joiningDate,
+//             permissions,
+//         } = req.body;
+
+//         // ✅ Parse nested JSON fields if they come as strings
+//         let personalAddress = req.body.personalAddress;
+//         let emergencyContact = req.body.emergencyContact;
+
+//         try {
+//             if (typeof personalAddress === "string")
+//                 personalAddress = JSON.parse(personalAddress);
+//         } catch (e) {
+//             console.warn("⚠️ Invalid JSON in personalAddress", e.message);
+//             personalAddress = {};
+//         }
+
+//         try {
+//             if (typeof emergencyContact === "string")
+//                 emergencyContact = JSON.parse(emergencyContact);
+//         } catch (e) {
+//             console.warn("⚠️ Invalid JSON in emergencyContact", e.message);
+//             emergencyContact = {};
+//         }
+
+//         // ✅ Validate required fields
+//         if (!name || !phone || !employeeId || !department || !designation) {
+//             return res.status(400).json({
+//                 status: 0,
+//                 message: "Missing required fields",
+//             });
+//         }
+
+//         // ✅ Validate Department
+//         const deptExists = await Department.findById(department);
+//         if (!deptExists)
+//             return res
+//                 .status(404)
+//                 .json({ status: 0, message: "Department not found" });
+
+//         // ✅ Validate Designation
+//         const desigExists = await Designation.findById(designation);
+//         if (!desigExists)
+//             return res
+//                 .status(404)
+//                 .json({ status: 0, message: "Designation not found" });
+
+//         // ✅ Check duplicate employeeId
+//         const existingEmployee = await Employee.findOne({ employeeId });
+//         if (existingEmployee) {
+//             return res.status(400).json({
+//                 status: 0,
+//                 message: `Employee ID ${employeeId} already exists`,
+//             });
+//         }
+
+//         // ✅ Handle profile photo
+//         let profilePhotoPath = null;
+//         if (req.file) {
+//             profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`;
+//         }
+
+//         // ✅ Create Employee
+
+
+//         // ✅ If designation name is CEO → reportTo = token user id
+//         let finalReportTo = reportTo;
+//         if (desigExists.name?.toLowerCase() === "ceo") {
+//             finalReportTo = currentUser.id; // token user's ID as supervisor
+//         }
+
+//         // ✅ Create Employee
+//         const newEmployee = await Employee.create({
+//             name,
+//             phone,
+//             email,
+//             bloodGroup,
+//             profilePhoto: profilePhotoPath,
+//             employeeId,
+//             department,
+//             designation,
+//             country,
+//             area,
+//             reportTo: finalReportTo,
+//             employeeType,
+//             shiftTiming,
+//             joiningDate,
+//             personalAddress,
+//             emergencyContact,
+//             user: currentUser.id,
+//         });
+
+//         // ✅ Create random password for login
+//         const plainPassword = crypto.randomBytes(6).toString("hex");
+//         const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+//         // ✅ Ensure "employee" role exists
+//         let employeeRole = await Role.findOne({ name: "employee" });
+//         if (!employeeRole)
+//             employeeRole = await Role.create({ name: "employee" });
+
+//         // ✅ Create User account linked to Employee
+//         const userAccount = await User.create({
+//             fullName: newEmployee.name,
+//             email: newEmployee.email,
+//             password: hashedPassword,
+//             phone: newEmployee.phone,
+//             isEmailVerified: false,
+//             isPhoneVerified: false,
+//             emailOTP: "123456",
+//             countryCode: "+91",
+//             roles: [employeeRole._id],
+//         });
+
+//         // ✅ Set permissions if provided
+//         if (permissions) {
+//             const permissionData = JSON.parse(permissions)
+//             await exports.setEmployeePermissions(newEmployee._id, permissionData);
+//         }
+//         // ✅ Populate and return
+//         const populatedEmployee = await Employee.findById(newEmployee._id)
+//             .populate("department", "name")
+//             .populate("designation", "name");
+
+//         return res.status(201).json({
+//             status: 1,
+//             message: "Employee created successfully",
+//             data: populatedEmployee,
+//             credentials: {
+//                 email: userAccount.email,
+//                 password: plainPassword,
+//             },
+//         });
+//     } catch (error) {
+//         console.error("❌ Error adding employee:", error);
+//         return res.status(500).json({
+//             status: 0,
+//             message: "Server error",
+//             error: error.message,
+//         });
+//     }
+// };
+
 exports.addEmployee = async (req, res) => {
+  try {
+    const currentUser = req.user;
+    const {
+      name,
+      phone,
+      email,
+      bloodGroup,
+      employeeId,
+      department,
+      designation,
+      country,
+      area,
+      reportTo,
+      employeeType,
+      shiftTiming,
+      joiningDate,
+      permissions,
+    } = req.body;
+
+    // Parse nested JSON safely
+    let personalAddress = req.body.personalAddress;
+    let emergencyContact = req.body.emergencyContact;
     try {
-        const currentUser = req.user;
-        const {
-            name,
-            phone,
-            email,
-            bloodGroup,
-            employeeId,
-            department,
-            designation,
-            country,
-            area,
-            reportTo,
-            employeeType,
-            shiftTiming,
-            joiningDate,
-            permissions,
-        } = req.body;
-
-        // ✅ Parse nested JSON fields if they come as strings
-        let personalAddress = req.body.personalAddress;
-        let emergencyContact = req.body.emergencyContact;
-
-        try {
-            if (typeof personalAddress === "string")
-                personalAddress = JSON.parse(personalAddress);
-        } catch (e) {
-            console.warn("⚠️ Invalid JSON in personalAddress", e.message);
-            personalAddress = {};
-        }
-
-        try {
-            if (typeof emergencyContact === "string")
-                emergencyContact = JSON.parse(emergencyContact);
-        } catch (e) {
-            console.warn("⚠️ Invalid JSON in emergencyContact", e.message);
-            emergencyContact = {};
-        }
-
-        // ✅ Validate required fields
-        if (!name || !phone || !employeeId || !department || !designation) {
-            return res.status(400).json({
-                status: 0,
-                message: "Missing required fields",
-            });
-        }
-
-        // ✅ Validate Department
-        const deptExists = await Department.findById(department);
-        if (!deptExists)
-            return res
-                .status(404)
-                .json({ status: 0, message: "Department not found" });
-
-        // ✅ Validate Designation
-        const desigExists = await Designation.findById(designation);
-        if (!desigExists)
-            return res
-                .status(404)
-                .json({ status: 0, message: "Designation not found" });
-
-        // ✅ Check duplicate employeeId
-        const existingEmployee = await Employee.findOne({ employeeId });
-        if (existingEmployee) {
-            return res.status(400).json({
-                status: 0,
-                message: `Employee ID ${employeeId} already exists`,
-            });
-        }
-
-        // ✅ Handle profile photo
-        let profilePhotoPath = null;
-        if (req.file) {
-            profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`;
-        }
-
-        // ✅ Create Employee
-
-
-        // ✅ If designation name is CEO → reportTo = token user id
-        let finalReportTo = reportTo;
-        if (desigExists.name?.toLowerCase() === "ceo") {
-            finalReportTo = currentUser.id; // token user's ID as supervisor
-        }
-
-        // ✅ Create Employee
-        const newEmployee = await Employee.create({
-            name,
-            phone,
-            email,
-            bloodGroup,
-            profilePhoto: profilePhotoPath,
-            employeeId,
-            department,
-            designation,
-            country,
-            area,
-            reportTo: finalReportTo,
-            employeeType,
-            shiftTiming,
-            joiningDate,
-            personalAddress,
-            emergencyContact,
-            user: currentUser.id,
-        });
-
-        // ✅ Create random password for login
-        const plainPassword = crypto.randomBytes(6).toString("hex");
-        const hashedPassword = await bcrypt.hash(plainPassword, 10);
-
-        // ✅ Ensure "employee" role exists
-        let employeeRole = await Role.findOne({ name: "employee" });
-        if (!employeeRole)
-            employeeRole = await Role.create({ name: "employee" });
-
-        // ✅ Create User account linked to Employee
-        const userAccount = await User.create({
-            fullName: newEmployee.name,
-            email: newEmployee.email,
-            password: hashedPassword,
-            phone: newEmployee.phone,
-            isEmailVerified: false,
-            isPhoneVerified: false,
-            emailOTP: "123456",
-            countryCode: "+91",
-            roles: [employeeRole._id],
-        });
-
-        // ✅ Set permissions if provided
-        if (permissions) {
-            const permissionData = JSON.parse(permissions)
-            await exports.setEmployeePermissions(newEmployee._id, permissionData);
-        }
-        // ✅ Populate and return
-        const populatedEmployee = await Employee.findById(newEmployee._id)
-            .populate("department", "name")
-            .populate("designation", "name");
-
-        return res.status(201).json({
-            status: 1,
-            message: "Employee created successfully",
-            data: populatedEmployee,
-            credentials: {
-                email: userAccount.email,
-                password: plainPassword,
-            },
-        });
-    } catch (error) {
-        console.error("❌ Error adding employee:", error);
-        return res.status(500).json({
-            status: 0,
-            message: "Server error",
-            error: error.message,
-        });
+      if (typeof personalAddress === "string")
+        personalAddress = JSON.parse(personalAddress);
+    } catch {
+      personalAddress = {};
     }
-};
+    try {
+      if (typeof emergencyContact === "string")
+        emergencyContact = JSON.parse(emergencyContact);
+    } catch {
+      emergencyContact = {};
+    }
 
+    // Validate required fields
+    if (!name || !phone || !employeeId || !department || !designation) {
+      return res.status(400).json({ status: 0, message: "Missing required fields" });
+    }
+
+    // Validate Department and Designation
+    const deptExists = await Department.findById(department);
+    if (!deptExists) return res.status(404).json({ status: 0, message: "Department not found" });
+
+    const desigExists = await Designation.findById(designation);
+    if (!desigExists) return res.status(404).json({ status: 0, message: "Designation not found" });
+
+    // Check duplicate employeeId
+    const existingEmployee = await Employee.findOne({ employeeId });
+    if (existingEmployee) {
+      return res.status(400).json({
+        status: 0,
+        message: `Employee ID ${employeeId} already exists`,
+      });
+    }
+
+    // Handle profile photo
+    let profilePhotoPath = null;
+    if (req.file) {
+      profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`;
+    }
+
+    // If designation = CEO → reportTo = token user id
+    let finalReportTo = reportTo;
+    if (desigExists.name?.toLowerCase() === "ceo") {
+      finalReportTo = currentUser.id;
+    }
+
+    // ✅ Check if user already exists (by email)
+    let userAccount = await User.findOne({ email });
+
+    let plainPassword = null;
+    if (!userAccount) {
+      // 🆕 Create new user
+      plainPassword = crypto.randomBytes(6).toString("hex");
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+      let employeeRole = await Role.findOne({ name: "employee" });
+      if (!employeeRole) employeeRole = await Role.create({ name: "employee" });
+
+      userAccount = await User.create({
+        fullName: name,
+        email,
+        password: hashedPassword,
+        phone,
+        isEmailVerified: false,
+        isPhoneVerified: false,
+        emailOTP: "123456",
+        countryCode: "+91",
+        roles: [employeeRole._id],
+      });
+    }
+
+    // ✅ Create employee linked to user (existing or new)
+    const newEmployee = await Employee.create({
+      name,
+      phone,
+      email,
+      bloodGroup,
+      profilePhoto: profilePhotoPath,
+      employeeId,
+      department,
+      designation,
+      country,
+      area,
+      reportTo: finalReportTo,
+      employeeType,
+      shiftTiming,
+      joiningDate,
+      personalAddress,
+      emergencyContact,
+      user: currentUser.id,
+      linkedUser: userAccount._id, // 🔗 Link existing/new user
+    });
+
+    // ✅ Set permissions if provided
+    if (permissions) {
+      const permissionData = JSON.parse(permissions);
+      await exports.setEmployeePermissions(newEmployee._id, permissionData);
+    }
+
+    const populatedEmployee = await Employee.findById(newEmployee._id)
+      .populate("department", "name")
+      .populate("designation", "name");
+
+    return res.status(201).json({
+      status: 1,
+      message: userAccount.isNew
+        ? "Employee created successfully with new user"
+        : "Employee linked with existing user",
+      data: populatedEmployee,
+      credentials: plainPassword
+        ? { email: userAccount.email, password: plainPassword }
+        : null,
+    });
+  } catch (error) {
+    console.error("❌ Error adding employee:", error);
+    return res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
 
 
 
@@ -264,107 +409,206 @@ exports.searchEmployee = async (req, res) => {
 };
 
 
-exports.updateEmployee = async (req, res) => {
-    try {
-        const { id } = req.params;
+// exports.updateEmployee = async (req, res) => {
+//     try {
+//         const { id } = req.params;
 
-        const {
-            name,
-            phone,
-            email,
-            bloodGroup,
-            employeeId,
-            department,
-            designation,
-            country,
-            area,
-            reportTo,
-            employeeType,
-            shiftTiming,
-            joiningDate,
-        } = req.body;
+//         const {
+//             name,
+//             phone,
+//             email,
+//             bloodGroup,
+//             employeeId,
+//             department,
+//             designation,
+//             country,
+//             area,
+//             reportTo,
+//             employeeType,
+//             shiftTiming,
+//             joiningDate,
+//         } = req.body;
 
-        const updateData = {
-            name,
-            phone,
-            email,
-            bloodGroup,
-            employeeId,
-            department,
-            designation,
-            country,
-            area,
-            reportTo,
-            employeeType,
-            shiftTiming,
-            joiningDate,
+//         const updateData = {
+//             name,
+//             phone,
+//             email,
+//             bloodGroup,
+//             employeeId,
+//             department,
+//             designation,
+//             country,
+//             area,
+//             reportTo,
+//             employeeType,
+//             shiftTiming,
+//             joiningDate,
 
-        };
-        let personalAddress = req.body.personalAddress;
-        let emergencyContact = req.body.emergencyContact;
+//         };
+//         let personalAddress = req.body.personalAddress;
+//         let emergencyContact = req.body.emergencyContact;
 
-        try {
-            if (typeof personalAddress === "string") {
-                personalAddress = JSON.parse(personalAddress);
-            }
-        } catch (e) {
-            console.warn("⚠️ Invalid JSON in personalAddress", e.message);
-            personalAddress = {};
-        }
+//         try {
+//             if (typeof personalAddress === "string") {
+//                 personalAddress = JSON.parse(personalAddress);
+//             }
+//         } catch (e) {
+//             console.warn("⚠️ Invalid JSON in personalAddress", e.message);
+//             personalAddress = {};
+//         }
 
-        try {
-            if (typeof emergencyContact === "string") {
-                emergencyContact = JSON.parse(emergencyContact);
-            }
-        } catch (e) {
-            console.warn("⚠️ Invalid JSON in emergencyContact", e.message);
-            emergencyContact = {};
-        }
-        if (req.file) {
-            updateData.profilePhoto = `/uploads/profilePhotos/${req.file.filename}`;
-        }
+//         try {
+//             if (typeof emergencyContact === "string") {
+//                 emergencyContact = JSON.parse(emergencyContact);
+//             }
+//         } catch (e) {
+//             console.warn("⚠️ Invalid JSON in emergencyContact", e.message);
+//             emergencyContact = {};
+//         }
+//         if (req.file) {
+//             updateData.profilePhoto = `/uploads/profilePhotos/${req.file.filename}`;
+//         }
 
-        if (department) {
-            const deptExists = await Department.findById(department);
-            if (!deptExists)
-                return res.status(404).json({ status: 0, message: "Department not found" });
-        }
+//         if (department) {
+//             const deptExists = await Department.findById(department);
+//             if (!deptExists)
+//                 return res.status(404).json({ status: 0, message: "Department not found" });
+//         }
 
-        if (designation) {
-            const desigExists = await Designation.findById(designation);
-            if (!desigExists)
-                return res.status(404).json({ status: 0, message: "Designation not found" });
-        }
+//         if (designation) {
+//             const desigExists = await Designation.findById(designation);
+//             if (!desigExists)
+//                 return res.status(404).json({ status: 0, message: "Designation not found" });
+//         }
 
-        if (employeeId) {
-            const existing = await Employee.findOne({ employeeId, _id: { $ne: id } });
-            if (existing)
-                return res.status(400).json({ status: 0, message: "Employee ID already in use" });
-        }
+//         if (employeeId) {
+//             const existing = await Employee.findOne({ employeeId, _id: { $ne: id } });
+//             if (existing)
+//                 return res.status(400).json({ status: 0, message: "Employee ID already in use" });
+//         }
 
-        const updatedEmployee = await Employee.findByIdAndUpdate(id, updateData, {
-            new: true,
-        })
-            .populate("department", "name")
-            .populate("designation", "name");
+//         const updatedEmployee = await Employee.findByIdAndUpdate(id, updateData, {
+//             new: true,
+//         })
+//             .populate("department", "name")
+//             .populate("designation", "name");
 
-        if (!updatedEmployee)
-            return res.status(404).json({ status: 0, message: "Employee not found" });
+//         if (!updatedEmployee)
+//             return res.status(404).json({ status: 0, message: "Employee not found" });
 
-        return res.status(200).json({
-            status: 1,
-            message: "Employee updated successfully",
-            data: updatedEmployee,
-        });
-    } catch (error) {
-        console.error("❌ Error updating employee:", error);
-        return res.status(500).json({ status: 0, message: "Server error", error: error.message });
-    }
-};
+//         return res.status(200).json({
+//             status: 1,
+//             message: "Employee updated successfully",
+//             data: updatedEmployee,
+//         });
+//     } catch (error) {
+//         console.error("❌ Error updating employee:", error);
+//         return res.status(500).json({ status: 0, message: "Server error", error: error.message });
+//     }
+// };
 
 
 
 // ❌ DELETE Employee
+
+exports.updateEmployee = async (req, res) => {
+  try {
+    const { id } = req.params;
+    const {
+      name,
+      phone,
+      email,
+      bloodGroup,
+      employeeId,
+      department,
+      designation,
+      country,
+      area,
+      reportTo,
+      employeeType,
+      shiftTiming,
+      joiningDate,
+    } = req.body;
+
+    const updateData = {
+      name,
+      phone,
+      email,
+      bloodGroup,
+      employeeId,
+      department,
+      designation,
+      country,
+      area,
+      reportTo,
+      employeeType,
+      shiftTiming,
+      joiningDate,
+    };
+
+    let personalAddress = req.body.personalAddress;
+    let emergencyContact = req.body.emergencyContact;
+    try {
+      if (typeof personalAddress === "string") personalAddress = JSON.parse(personalAddress);
+    } catch {
+      personalAddress = {};
+    }
+    try {
+      if (typeof emergencyContact === "string") emergencyContact = JSON.parse(emergencyContact);
+    } catch {
+      emergencyContact = {};
+    }
+
+    if (req.file) {
+      updateData.profilePhoto = `/uploads/profilePhotos/${req.file.filename}`;
+    }
+
+    if (department) {
+      const deptExists = await Department.findById(department);
+      if (!deptExists)
+        return res.status(404).json({ status: 0, message: "Department not found" });
+    }
+
+    if (designation) {
+      const desigExists = await Designation.findById(designation);
+      if (!desigExists)
+        return res.status(404).json({ status: 0, message: "Designation not found" });
+    }
+
+    if (employeeId) {
+      const existing = await Employee.findOne({ employeeId, _id: { $ne: id } });
+      if (existing)
+        return res.status(400).json({ status: 0, message: "Employee ID already in use" });
+    }
+
+    // ✅ If email changed → link to existing user
+    const existingUser = await User.findOne({ email });
+    if (existingUser) {
+      updateData.linkedUser = existingUser._id; // 🔗 Relink employee
+    }
+
+    const updatedEmployee = await Employee.findByIdAndUpdate(id, updateData, {
+      new: true,
+    })
+      .populate("department", "name")
+      .populate("designation", "name");
+
+    if (!updatedEmployee)
+      return res.status(404).json({ status: 0, message: "Employee not found" });
+
+    return res.status(200).json({
+      status: 1,
+      message: existingUser
+        ? "Employee updated and linked to existing user"
+        : "Employee updated successfully",
+      data: updatedEmployee,
+    });
+  } catch (error) {
+    console.error("❌ Error updating employee:", error);
+    return res.status(500).json({ status: 0, message: "Server error", error: error.message });
+  }
+};
+
 exports.deleteEmployee = async (req, res) => {
     try {
         const { id } = req.params;

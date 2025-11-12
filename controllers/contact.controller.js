@@ -1,9 +1,12 @@
 const Employee = require("../models/employee.model");
+const User = require('../models/user.model');
 const Department = require("../models/department.model");
 const Designation = require("../models/designation.model");
 const ExternalContact = require("../models/externalContact.model"); // we'll define this below
-
-
+const Profile = require("../models/profile.model");
+const admin = require("firebase-admin");
+const Sound = require("../models/sound.model");
+const Notification = require("../models/notification.model");
 
 exports.addExternalContact = async (req, res) => {
   try {
@@ -244,8 +247,6 @@ exports.getAllContacts = async (req, res) => {
     if (type === "department") {
       data = employeeData;
     } else if (type === "external") {
-      
-      
       data = externalData;
     } else {
       data = [...employeeData, ...externalData];
@@ -273,3 +274,119 @@ exports.getAllContacts = async (req, res) => {
     });
   }
 };
+
+exports.sendExternalEmployeeRequest = async (req, res) => {
+  try {
+    const senderUserId = req.user.id; // token user (User table ID)
+    const { receiverId } = req.body; // this is Employee table _id
+
+    // 1️⃣ Get sender employee info using senderUserId
+    const senderEmployee = await Employee.findOne({ user: senderUserId })
+      .populate("department designation");
+
+    if (!senderEmployee) {
+      return res.status(404).json({ msg: "Sender employee not found" });
+    }
+
+    // 2️⃣ Get receiver employee info using employee _id
+    const receiverEmployee = await Employee.findById(receiverId)
+      .populate("department designation");
+
+    if (!receiverEmployee) {
+      return res.status(404).json({ msg: "Receiver employee not found" });
+    }
+
+    // 3️⃣ Find receiver's linked User using name + email
+    const userData = await User.findOne({
+      fullName: receiverEmployee.name,
+      email: receiverEmployee.email,
+    });
+
+    if (!userData) {
+      return res.status(400).json({ msg: "Receiver employee's user account not found" });
+    }
+
+    const receiverUserId = userData._id;
+
+    // 4️⃣ Prevent duplicate requests
+    const existing = await Notification.findOne({
+      sender: senderUserId,
+      receiver: receiverUserId,
+      type: "external_employee_request",
+      isActive: true,
+    });
+
+    if (existing) {
+      return res.status(400).json({ msg: "Request already sent to this employee" });
+    }
+
+    // 5️⃣ Fetch sender profile image
+    const senderProfile = await Profile.findOne({ user: senderUserId });
+
+    // 6️⃣ Create notification (use user IDs for sender/receiver)
+    const notification = await Notification.create({
+      title: "New Employee Request",
+      body: `${senderEmployee.name} has sent you an external employee request.`,
+      sender: senderUserId, // user id of sender
+      receiver: receiverUserId, // user id of receiver
+      userImage: senderProfile?.profileImage ?? "",
+      type: "external_employee_request",
+      data: {
+        action: "external_employee_request",
+        senderEmployeeId: senderEmployee._id,
+        receiverEmployeeId: receiverEmployee._id,
+      },
+    });
+
+    // 7️⃣ Send FCM notification if receiver has token
+    const receiverUser = await User.findById(receiverUserId);
+    if (receiverUser?.fcmToken) {
+      try {
+        const soundData = await Sound.findOne({ type: "alert", user: receiverUserId });
+        const dynamicSoundName = soundData?.soundName || "default";
+
+        await admin.messaging().send({
+          token: receiverUser.fcmToken,
+          notification: {
+            title: notification.title,
+            body: notification.body,
+          },
+          data: {
+            type: "externalEmployeeRequest",
+            senderId: String(senderUserId),
+          },
+          android: {
+            priority: "high",
+            notification: {
+              channelId: "triq_custom_sound_channel",
+              sound: dynamicSoundName,
+            },
+          },
+          apns: {
+            headers: { "apns-priority": "10" },
+            payload: {
+              aps: {
+                sound: `${dynamicSoundName}.aiff`,
+                "mutable-content": 1,
+              },
+            },
+          },
+        });
+      } catch (err) {
+        console.error("FCM error:", err.message);
+      }
+    }
+
+    // ✅ Done
+    res.status(200).json({
+      success: true,
+      msg: "External employee request sent successfully",
+      notification,
+    });
+
+  } catch (error) {
+    console.error("Error creating external employee request:", error);
+    res.status(500).json({ msg: "Internal Server Error" });
+  }
+};
+
