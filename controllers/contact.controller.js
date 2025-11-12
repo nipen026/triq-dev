@@ -193,3 +193,83 @@ exports.searchContacts = async (req, res) => {
     });
   }
 };
+
+exports.getAllContacts = async (req, res) => {
+  try {
+    const user = req.user;
+    const { type } = req.params;
+
+    // 🔹 1. Always fetch both (then we filter below)
+   const employees = await Employee.find({ user: user.id })
+      .populate("department", "name")
+      .populate("designation", "name")
+      .sort({ name: 1 })
+      .lean();
+
+     const contacts = await ExternalContact.find({ addedBy: user.id })
+      .sort({ createdAt: -1 })
+      .lean();
+
+    // 🔹 2. Format employee data
+    const employeeData = employees.map(emp => ({
+      _id: emp._id,
+      name: emp.name,
+      email: emp.email,
+      phone: emp.phone,
+      designation: emp.designation?.name || "—",
+      department: emp.department?.name || "—",
+      profilePhoto: emp.profilePhoto || null,
+      status: emp.isActive ? "Active" : "Inactive",
+      organizationName: null,
+      type: "employee", // flag
+    }));
+
+    // 🔹 3. Format external data
+    const externalData = contacts.map(c => ({
+      _id: c._id,
+      name: c.name,
+      email: c.email,
+      phone: c.phone,
+      designation: null,
+      department: null,
+      profilePhoto: c.profilePhoto || null,
+      organizationName: c.organizationName || "—",
+      status: null,
+      type: "external", // flag
+    }));
+    console.log(type)
+    // 🔹 4. Decide what to return based on type param
+    let data = [];
+
+    if (type === "department") {
+      data = employeeData;
+    } else if (type === "external") {
+      
+      
+      data = externalData;
+    } else {
+      data = [...employeeData, ...externalData];
+    }
+
+    // 🔹 5. Sort alphabetically
+    data.sort((a, b) => a.name.localeCompare(b.name));
+
+    return res.status(200).json({
+      status: 1,
+      message:
+        type === "department"
+          ? "Departmental contacts fetched successfully"
+          : type === "external"
+          ? "External contacts fetched successfully"
+          : "All contacts fetched successfully",
+      data,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching contacts:", error);
+    res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message,
+    });
+  }
+};
