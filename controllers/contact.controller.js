@@ -223,7 +223,6 @@ exports.getAllContacts = async (req, res) => {
       department: emp.department?.name || "—",
       profilePhoto: emp.profilePhoto || null,
       status: emp.isActive ? "Active" : "Inactive",
-      organizationName: null,
       type: "employee", // flag
     }));
 
@@ -236,7 +235,6 @@ exports.getAllContacts = async (req, res) => {
       designation: null,
       department: null,
       profilePhoto: c.profilePhoto || null,
-      organizationName: c.organizationName || "—",
       status: null,
       type: "external", // flag
     }));
