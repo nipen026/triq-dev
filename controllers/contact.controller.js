@@ -7,6 +7,7 @@ const Profile = require("../models/profile.model");
 const admin = require("firebase-admin");
 const Sound = require("../models/sound.model");
 const Notification = require("../models/notification.model");
+const { getFlag } = require("../utils/flagHelper");
 
 exports.addExternalContact = async (req, res) => {
   try {
@@ -224,8 +225,8 @@ exports.getAllContacts = async (req, res) => {
       profilePhoto: emp.profilePhoto || null,
       status: emp.isActive ? "Active" : "Inactive",
       type: "employee", // flag
+      flag:getFlag(emp.country),
     }));
-
     // 🔹 3. Format external data
     const externalData = contacts.map(c => ({
       _id: c._id,
@@ -237,8 +238,8 @@ exports.getAllContacts = async (req, res) => {
       profilePhoto: c.profilePhoto || null,
       status: null,
       type: "external", // flag
+      flag:getFlag(c.country),
     }));
-    console.log(type)
     // 🔹 4. Decide what to return based on type param
     let data = [];
 
@@ -387,4 +388,3 @@ exports.sendExternalEmployeeRequest = async (req, res) => {
     res.status(500).json({ msg: "Internal Server Error" });
   }
 };
-
