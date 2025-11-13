@@ -7,6 +7,7 @@ const DESIGNATION_LEVELS = {
   "Country Sales Head AUS": 5,
   "Sales Executive": 6,
   "HR Head": 3,
+  "HR": 3,
   "HR Manager": 4,
   "HR Executive": 5,
   "Finance Head": 3,
