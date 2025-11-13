@@ -54,7 +54,7 @@ app.use("/api/contactChat",contactChatRoutes);
 app.use("/uploads", express.static(path.join(__dirname, "uploads"))); // Serve uploaded files
 
 app.use(
-  "/api/flags",
+  "/flags",
   express.static(path.join(__dirname, "node_modules/flag-icons/flags/4x3"))
 );
 
