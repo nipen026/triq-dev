@@ -81,6 +81,7 @@ module.exports = (io) => {
           chatRoom: roomId,
           sender: socket.userId,
           content : content,
+          translatedContent:content,
           attachments,
           readBy: [socket.userId],
         });

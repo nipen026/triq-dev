@@ -7,31 +7,33 @@ const QRCode = require("qrcode");
 const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const Role = require('../models/role.model')
+const ContactChatRoom = require('../models/contactChatRoom.model');
 // ➕ CREATE Employee
 // ➕ CREATE Employee
 
 // ✅ Helper Function (No res here)
-exports.setEmployeePermissions = async (employeeId, permissions) => {
-    try {
-        if (!employeeId) throw new Error("Employee ID is required");
+exports.setEmployeePermissions = async (employeeId, permissions, session = null) => {
+  try {
+    if (!employeeId) throw new Error("Employee ID is required");
 
-        // ✅ Ensure employee exists
-        const employee = await Employee.findById(employeeId);
-        if (!employee) throw new Error("Employee not found");
+    // ✅ Ensure employee exists (inside session)
+    const employee = await Employee.findById(employeeId).session(session);
+    if (!employee) throw new Error("Employee not found");
 
-        // ✅ Upsert permissions
-        const updatedPermission = await EmployeePermission.findOneAndUpdate(
-            { employee: employeeId },
-            { employee: employeeId, permissions },
-            { new: true, upsert: true }
-        );
+    // ✅ Upsert permissions
+    const updatedPermission = await EmployeePermission.findOneAndUpdate(
+      { employee: employeeId },
+      { employee: employeeId, permissions },
+      { new: true, upsert: true, session }
+    );
 
-        return updatedPermission;
-    } catch (error) {
-        console.error("❌ Error setting permissions:", error);
-        throw new Error(error.message);
-    }
+    return updatedPermission;
+  } catch (error) {
+    console.error("❌ Error setting permissions:", error);
+    throw new Error(error.message);
+  }
 };
+
 
 // ✅ Controller
 // exports.addEmployee = async (req, res) => {
@@ -192,7 +194,156 @@ exports.setEmployeePermissions = async (employeeId, permissions) => {
 //     }
 // };
 
+// exports.addEmployee = async (req, res) => {
+//   try {
+//     const currentUser = req.user;
+//     const {
+//       name,
+//       phone,
+//       email,
+//       bloodGroup,
+//       employeeId,
+//       department,
+//       designation,
+//       country,
+//       area,
+//       reportTo,
+//       employeeType,
+//       shiftTiming,
+//       joiningDate,
+//       permissions,
+//     } = req.body;
+
+//     // Parse nested JSON safely
+//     let personalAddress = req.body.personalAddress;
+//     let emergencyContact = req.body.emergencyContact;
+//     try {
+//       if (typeof personalAddress === "string")
+//         personalAddress = JSON.parse(personalAddress);
+//     } catch {
+//       personalAddress = {};
+//     }
+//     try {
+//       if (typeof emergencyContact === "string")
+//         emergencyContact = JSON.parse(emergencyContact);
+//     } catch {
+//       emergencyContact = {};
+//     }
+
+//     // Validate required fields
+//     if (!name || !phone || !employeeId || !department || !designation) {
+//       return res.status(400).json({ status: 0, message: "Missing required fields" });
+//     }
+
+//     // Validate Department and Designation
+//     const deptExists = await Department.findById(department);
+//     if (!deptExists) return res.status(404).json({ status: 0, message: "Department not found" });
+
+//     const desigExists = await Designation.findById(designation);
+//     if (!desigExists) return res.status(404).json({ status: 0, message: "Designation not found" });
+
+//     // Check duplicate employeeId
+//     const existingEmployee = await Employee.findOne({ employeeId });
+//     if (existingEmployee) {
+//       return res.status(400).json({
+//         status: 0,
+//         message: `Employee ID ${employeeId} already exists`,
+//       });
+//     }
+
+//     // Handle profile photo
+//     let profilePhotoPath = null;
+//     if (req.file) {
+//       profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`;
+//     }
+
+//     // If designation = CEO → reportTo = token user id
+//     let finalReportTo = reportTo;
+//     if (desigExists.name?.toLowerCase() === "ceo") {
+//       finalReportTo = currentUser.id;
+//     }
+
+//     // ✅ Check if user already exists (by email)
+//     let userAccount = await User.findOne({ email });
+
+//     let plainPassword = null;
+//     if (!userAccount) {
+//       // 🆕 Create new user
+//       plainPassword = crypto.randomBytes(6).toString("hex");
+//       const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+//       let employeeRole = await Role.findOne({ name: "employee" });
+//       if (!employeeRole) employeeRole = await Role.create({ name: "employee" });
+
+//       userAccount = await User.create({
+//         fullName: name,
+//         email,
+//         password: hashedPassword,
+//         phone,
+//         isEmailVerified: false,
+//         isPhoneVerified: false,
+//         emailOTP: "123456",
+//         countryCode: "+91",
+//         roles: [employeeRole._id],
+//       });
+//     }
+
+//     // ✅ Create employee linked to user (existing or new)
+//     const newEmployee = await Employee.create({
+//       name,
+//       phone,
+//       email,
+//       bloodGroup,
+//       profilePhoto: profilePhotoPath,
+//       employeeId,
+//       department,
+//       designation,
+//       country,
+//       area,
+//       reportTo: finalReportTo,
+//       employeeType,
+//       shiftTiming,
+//       joiningDate,
+//       personalAddress,
+//       emergencyContact,
+//       user: currentUser.id,
+//       linkedUser: userAccount._id, // 🔗 Link existing/new user
+//     });
+
+//     // ✅ Set permissions if provided
+//     if (permissions) {
+//       const permissionData = JSON.parse(permissions);
+//       await exports.setEmployeePermissions(newEmployee._id, permissionData);
+//     }
+
+//     const populatedEmployee = await Employee.findById(newEmployee._id)
+//       .populate("department", "name")
+//       .populate("designation", "name");
+
+//     return res.status(201).json({
+//       status: 1,
+//       message: userAccount.isNew
+//         ? "Employee created successfully with new user"
+//         : "Employee linked with existing user",
+//       data: populatedEmployee,
+//       credentials: plainPassword
+//         ? { email: userAccount.email, password: plainPassword }
+//         : null,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error adding employee:", error);
+//     return res.status(500).json({
+//       status: 0,
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
 exports.addEmployee = async (req, res) => {
+  const session = await Employee.startSession();
+  session.startTransaction();
+
   try {
     const currentUser = req.user;
     const {
@@ -212,7 +363,7 @@ exports.addEmployee = async (req, res) => {
       permissions,
     } = req.body;
 
-    // Parse nested JSON safely
+    // Parse nested JSON
     let personalAddress = req.body.personalAddress;
     let emergencyContact = req.body.emergencyContact;
     try {
@@ -230,17 +381,21 @@ exports.addEmployee = async (req, res) => {
 
     // Validate required fields
     if (!name || !phone || !employeeId || !department || !designation) {
-      return res.status(400).json({ status: 0, message: "Missing required fields" });
+      return res
+        .status(400)
+        .json({ status: 0, message: "Missing required fields" });
     }
 
     // Validate Department and Designation
     const deptExists = await Department.findById(department);
-    if (!deptExists) return res.status(404).json({ status: 0, message: "Department not found" });
+    if (!deptExists)
+      return res.status(404).json({ status: 0, message: "Department not found" });
 
     const desigExists = await Designation.findById(designation);
-    if (!desigExists) return res.status(404).json({ status: 0, message: "Designation not found" });
+    if (!desigExists)
+      return res.status(404).json({ status: 0, message: "Designation not found" });
 
-    // Check duplicate employeeId
+    // Duplicate employeeId check
     const existingEmployee = await Employee.findOne({ employeeId });
     if (existingEmployee) {
       return res.status(400).json({
@@ -249,78 +404,127 @@ exports.addEmployee = async (req, res) => {
       });
     }
 
-    // Handle profile photo
+    // Profile photo
     let profilePhotoPath = null;
     if (req.file) {
       profilePhotoPath = `/uploads/employee/profilephoto/${req.file.filename}`;
     }
 
-    // If designation = CEO → reportTo = token user id
+    // Handle reportTo
     let finalReportTo = reportTo;
     if (desigExists.name?.toLowerCase() === "ceo") {
       finalReportTo = currentUser.id;
     }
 
-    // ✅ Check if user already exists (by email)
+    // ✅ Step 1: Check if User exists
     let userAccount = await User.findOne({ email });
 
     let plainPassword = null;
+    let isNewUser = false;
+
+    // ✅ Step 2: Create user if not exists
     if (!userAccount) {
-      // 🆕 Create new user
+      isNewUser = true;
       plainPassword = crypto.randomBytes(6).toString("hex");
       const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
       let employeeRole = await Role.findOne({ name: "employee" });
-      if (!employeeRole) employeeRole = await Role.create({ name: "employee" });
+      if (!employeeRole) {
+        employeeRole = await Role.create([{ name: "employee" }], { session });
+      }
 
-      userAccount = await User.create({
-        fullName: name,
-        email,
-        password: hashedPassword,
-        phone,
-        isEmailVerified: false,
-        isPhoneVerified: false,
-        emailOTP: "123456",
-        countryCode: "+91",
-        roles: [employeeRole._id],
+      userAccount = await User.create(
+        [
+          {
+            fullName: name,
+            email,
+            password: hashedPassword,
+            phone,
+            isEmailVerified: false,
+            isPhoneVerified: false,
+            emailOTP: "123456",
+            countryCode: "+91",
+            roles: [employeeRole._id],
+          },
+        ],
+        { session }
+      );
+      userAccount = userAccount[0];
+    }
+
+    // ✅ Step 3: Create employee only if user exists
+    if (!userAccount?._id) {
+      await session.abortTransaction();
+      return res.status(400).json({
+        status: 0,
+        message: "User account creation failed — employee not created",
       });
     }
 
-    // ✅ Create employee linked to user (existing or new)
-    const newEmployee = await Employee.create({
-      name,
-      phone,
-      email,
-      bloodGroup,
-      profilePhoto: profilePhotoPath,
-      employeeId,
-      department,
-      designation,
-      country,
-      area,
-      reportTo: finalReportTo,
-      employeeType,
-      shiftTiming,
-      joiningDate,
-      personalAddress,
-      emergencyContact,
-      user: currentUser.id,
-      linkedUser: userAccount._id, // 🔗 Link existing/new user
+    const newEmployee = await Employee.create(
+      [
+        {
+          name,
+          phone,
+          email,
+          bloodGroup,
+          profilePhoto: profilePhotoPath,
+          employeeId,
+          department,
+          designation,
+          country,
+          area,
+          reportTo: finalReportTo,
+          employeeType,
+          shiftTiming,
+          joiningDate,
+          personalAddress,
+          emergencyContact,
+          user: currentUser.id,
+          linkedUser: userAccount._id,
+        },
+      ],
+      { session }
+    );
+    
+    const employeeDoc = newEmployee[0];
+    console.log(employeeDoc,"newEmployee");
+  
+    // ✅ Step 4: Set permissions if provided
+   if (permissions) {
+  const permissionData = JSON.parse(permissions);
+  await exports.setEmployeePermissions(employeeDoc?._id, permissionData, session);
+}
+
+    // ✅ Step 5: Create chat room (only if user exists)
+    const existingChat = await ContactChatRoom.findOne({
+      $or: [
+        { employee_sender: currentUser.id, employee_receiver: userAccount._id },
+        { employee_sender: userAccount._id, employee_receiver: currentUser.id },
+      ],
     });
 
-    // ✅ Set permissions if provided
-    if (permissions) {
-      const permissionData = JSON.parse(permissions);
-      await exports.setEmployeePermissions(newEmployee._id, permissionData);
+    if (!existingChat) {
+      await ContactChatRoom.create(
+        [
+          {
+            employee_sender: currentUser.id,
+            employee_receiver: userAccount._id,
+          },
+        ],
+        { session }
+      );
     }
 
-    const populatedEmployee = await Employee.findById(newEmployee._id)
+    await session.commitTransaction();
+
+    const populatedEmployee = await Employee.findById(employeeDoc._id)
       .populate("department", "name")
       .populate("designation", "name");
 
     return res.status(201).json({
       status: 1,
-      message: userAccount.isNew
+       message:isNewUser
         ? "Employee created successfully with new user"
         : "Employee linked with existing user",
       data: populatedEmployee,
@@ -329,16 +533,17 @@ exports.addEmployee = async (req, res) => {
         : null,
     });
   } catch (error) {
-    console.error("❌ Error adding employee:", error);
+    await session.abortTransaction();
+    console.error("❌ Error adding employee with chat:", error);
     return res.status(500).json({
       status: 0,
       message: "Server error",
       error: error.message,
     });
+  } finally {
+    session.endSession();
   }
 };
-
-
 
 // 📋 GET All Employees (with department & designation populated)
 exports.getAllEmployees = async (req, res) => {
