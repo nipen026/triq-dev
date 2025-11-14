@@ -181,7 +181,7 @@ exports.searchContacts = async (req, res) => {
           profilePhoto: e.profilePhoto,
           type: "employee",
         })),
-        externals: externals.map(e => ({
+        externals: employees.map(e => ({
           _id: e._id,
           name: e.name,
           organizationName: e.organizationName,
