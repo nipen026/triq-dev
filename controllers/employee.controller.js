@@ -856,6 +856,104 @@ exports.getEmployeeById = async (req, res) => {
         return res.status(500).json({ status: 0, message: "Server error" });
     }
 };
+// exports.getEmployeeHierarchy = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     const { departmentId } = req.params;
+
+//     if (!departmentId) {
+//       return res.status(400).json({ status: 0, message: "Department ID is required" });
+//     }
+
+//     // ✅ Fetch employees for that department
+//     const employees = await Employee.find({ user:user.id , department: departmentId })
+//       .populate("department", "name")
+//       .populate("designation", "name level")
+//       .lean();
+
+//     // ✅ Build map and hierarchy only if employees exist
+//     let finalHierarchy = [];
+
+//     if (employees.length > 0) {
+//       const employeeMap = {};
+//       employees.forEach(emp => {
+//         emp.children = [];
+//         employeeMap[emp._id.toString()] = emp;
+//       });
+
+//       const roots = [];
+//       employees.forEach(emp => {
+//         if (emp.reportTo && employeeMap[emp.reportTo.toString()]) {
+//           employeeMap[emp.reportTo.toString()].children.push(emp);
+//         } else {
+//           roots.push(emp);
+//         }
+//       });
+
+//       // ✅ Sort recursively by designation level
+//       const sortHierarchy = (nodes) => {
+//         nodes.sort((a, b) => {
+//           if (!a.designation || !b.designation) return 0;
+//           return a.designation.level - b.designation.level;
+//         });
+//         nodes.forEach(child => sortHierarchy(child.children));
+//       };
+//       sortHierarchy(roots);
+
+//       finalHierarchy = roots;
+//     }
+
+//     // ✅ Always add Director node for organization/processor users
+//     if (user.roles && (user.roles.includes("organization") || user.roles.includes("processor"))) {
+//       const userData = await User.findById(user.id).select("fullName email phone processorType").lean();
+
+//       const directorNode = {
+//         _id: userData._id,
+//         fullName: userData.fullName,
+//         email: userData.email,
+//         phone: userData.phone,
+//         processorType: userData.processorType || null,
+//         designation: { name: "Director", level: 1 },
+//         department: { _id: departmentId, name: "All Departments" },
+//         children: finalHierarchy, // attach all employees (if any)
+//       };
+
+//       // ✅ If no employees, still show only director node
+//       finalHierarchy = [directorNode];
+//     }
+
+//     return res.status(200).json({
+//       status: 1,
+//       message: "Department hierarchy fetched successfully",
+//       data: finalHierarchy,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error building department hierarchy:", error);
+//     return res.status(500).json({
+//       status: 0,
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
+
+
+
+
+
+// 👀 Get Employee Permission
+
+
+const assignLevels = (nodes, currentLevel = 1) => {
+  nodes.forEach(node => {
+    node.autoLevel = currentLevel; // 👈 this is the NEW level you want
+    
+    if (node.children && node.children.length > 0) {
+      assignLevels(node.children, currentLevel + 1);
+    }
+  });
+};
+
 exports.getEmployeeHierarchy = async (req, res) => {
   try {
     const user = req.user;
@@ -865,17 +963,16 @@ exports.getEmployeeHierarchy = async (req, res) => {
       return res.status(400).json({ status: 0, message: "Department ID is required" });
     }
 
-    // ✅ Fetch employees for that department
-    const employees = await Employee.find({ user:user.id , department: departmentId })
+    const employees = await Employee.find({ user: user.id, department: departmentId })
       .populate("department", "name")
       .populate("designation", "name level")
       .lean();
 
-    // ✅ Build map and hierarchy only if employees exist
     let finalHierarchy = [];
 
     if (employees.length > 0) {
       const employeeMap = {};
+
       employees.forEach(emp => {
         emp.children = [];
         employeeMap[emp._id.toString()] = emp;
@@ -890,20 +987,23 @@ exports.getEmployeeHierarchy = async (req, res) => {
         }
       });
 
-      // ✅ Sort recursively by designation level
+      // Sort based on designation but optional
       const sortHierarchy = (nodes) => {
         nodes.sort((a, b) => {
           if (!a.designation || !b.designation) return 0;
-          return a.designation.level - b.designation.level;
+          return (a.designation.level || 999) - (b.designation.level || 999);
         });
         nodes.forEach(child => sortHierarchy(child.children));
       };
       sortHierarchy(roots);
 
+      // ⭐ Assign dynamic levels
+      assignLevels(roots);
+
       finalHierarchy = roots;
     }
 
-    // ✅ Always add Director node for organization/processor users
+    // Director Node
     if (user.roles && (user.roles.includes("organization") || user.roles.includes("processor"))) {
       const userData = await User.findById(user.id).select("fullName email phone processorType").lean();
 
@@ -915,10 +1015,15 @@ exports.getEmployeeHierarchy = async (req, res) => {
         processorType: userData.processorType || null,
         designation: { name: "Director", level: 1 },
         department: { _id: departmentId, name: "All Departments" },
-        children: finalHierarchy, // attach all employees (if any)
+        children: finalHierarchy,
       };
 
-      // ✅ If no employees, still show only director node
+      // ⭐ Director is always level 1
+      directorNode.autoLevel = 1;
+
+      // ⭐ Children become level 2+
+      assignLevels(directorNode.children, 2);
+
       finalHierarchy = [directorNode];
     }
 
@@ -929,19 +1034,11 @@ exports.getEmployeeHierarchy = async (req, res) => {
     });
   } catch (error) {
     console.error("❌ Error building department hierarchy:", error);
-    return res.status(500).json({
-      status: 0,
-      message: "Server error",
-      error: error.message,
-    });
+    return res.status(500).json({ status: 0, message: "Server error", error: error.message });
   }
 };
 
 
-
-
-
-// 👀 Get Employee Permission
 exports.getEmployeePermissions = async (req, res) => {
     try {
         const { employeeId } = req.params;
