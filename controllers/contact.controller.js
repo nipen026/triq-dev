@@ -8,6 +8,7 @@ const admin = require("firebase-admin");
 const Sound = require("../models/sound.model");
 const Notification = require("../models/notification.model");
 const ContactChatRoom = require("../models/contactChatRoom.model");
+const ContactChatMessage = require("../models/contactChatMessage.model");
 const { getFlag } = require("../utils/flagHelper");
 
 exports.addExternalContact = async (req, res) => {
@@ -274,12 +275,134 @@ exports.searchContacts = async (req, res) => {
 //     });
 //   }
 // };
+// exports.getAllContacts = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     const { type } = req.params;
+
+//     // ✅ 1️⃣ Get current user's employee info (to match chat room sender)
+//     const currentEmployee = await Employee.findOne({ user: user.id });
+//     if (!currentEmployee) {
+//       return res.status(404).json({
+//         status: 0,
+//         message: "Employee record not found for current user",
+//       });
+//     }
+
+//     // ✅ 2️⃣ Fetch employees under current user
+//     const employees = await Employee.find({ user: user.id })
+//       .populate("department", "name")
+//       .populate("designation", "name")
+//       .sort({ name: 1 })
+//       .lean();
+
+//     // ✅ 3️⃣ Fetch external contacts
+//     const contacts = await ExternalContact.find({ addedBy: user.id })
+//       .sort({ createdAt: -1 })
+//       .lean();
+
+//     // ✅ 4️⃣ Preload chat rooms for efficiency
+//     const userRooms = await ContactChatRoom.find({
+//       $or: [
+//         { employee_sender: user.id },
+//         { employee_receiver: user.id },
+//       ],
+//     }).lean();
+
+//     // Helper function to get chat room (if exists)
+//     const findChatRoom = (receiverUserId) => {
+//       return userRooms.find(
+//         (room) =>
+//           (room.employee_sender.toString() === user.id.toString() &&
+//             room.employee_receiver.toString() === receiverUserId.toString()) ||
+//           (room.employee_sender.toString() === receiverUserId.toString() &&
+//             room.employee_receiver.toString() === user.id.toString())
+//       );
+//     };
+
+//     // ✅ 5️⃣ Format employee data
+//     const employeeData = await Promise.all(
+//       employees.map(async (emp) => {
+//         // Find linked user for this employee (needed to match chat)
+//         const linkedUser = await User.findOne({
+//           email: emp.email,
+//           fullName: emp.name,
+//         }).lean();
+
+//         const room = linkedUser ? findChatRoom(linkedUser._id) : null;
+
+//         return {
+//           _id: emp._id,
+//           name: emp.name,
+//           email: emp.email,
+//           phone: emp.phone,
+//           designation: emp.designation?.name || "—",
+//           department: emp.department?.name || "—",
+//           profilePhoto: emp.profilePhoto || null,
+//           status: emp.isActive ? "Active" : "Inactive",
+//           type: "employee",
+//           flag: getFlag(emp.country),
+//           chatRoom: room
+//             ? { exists: true, roomId: room._id }
+//             : { exists: false },
+//         };
+//       })
+//     );
+
+//     // ✅ 6️⃣ Format external contact data
+//     const externalData = contacts.map((c) => ({
+//       _id: c._id,
+//       name: c.name,
+//       email: c.email,
+//       phone: c.phone,
+//       designation: null,
+//       department: null,
+//       profilePhoto: c.profilePhoto || null,
+//       status: null,
+//       type: "external",
+//       flag: getFlag(c.country),
+//       chatRoom: { exists: false }, // external contacts don’t have chat yet
+//     }));
+
+//     // ✅ 7️⃣ Combine based on `type`
+//     let data = [];
+//     if (type === "department") {
+//       data = employeeData;
+//     } else if (type === "external") {
+//       data = externalData;
+//     } else {
+//       data = [...employeeData, ...externalData];
+//     }
+
+//     // ✅ 8️⃣ Sort alphabetically
+//     data.sort((a, b) => a.name.localeCompare(b.name));
+
+//     res.status(200).json({
+//       status: 1,
+//       message:
+//         type === "department"
+//           ? "Departmental contacts fetched successfully"
+//           : type === "external"
+//           ? "External contacts fetched successfully"
+//           : "All contacts fetched successfully",
+//       data,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error fetching contacts with chat room:", error);
+//     res.status(500).json({
+//       status: 0,
+//       message: "Server error",
+//       error: error.message,
+//     });
+//   }
+// };
 exports.getAllContacts = async (req, res) => {
   try {
     const user = req.user;
     const { type } = req.params;
+    const { screenType } = req.query; // 🔥 NEW
 
-    // ✅ 1️⃣ Get current user's employee info (to match chat room sender)
+    // 1️⃣ Get current user's employee info
     const currentEmployee = await Employee.findOne({ user: user.id });
     if (!currentEmployee) {
       return res.status(404).json({
@@ -288,19 +411,19 @@ exports.getAllContacts = async (req, res) => {
       });
     }
 
-    // ✅ 2️⃣ Fetch employees under current user
+    // 2️⃣ Fetch employees
     const employees = await Employee.find({ user: user.id })
       .populate("department", "name")
       .populate("designation", "name")
       .sort({ name: 1 })
       .lean();
 
-    // ✅ 3️⃣ Fetch external contacts
+    // 3️⃣ Fetch external contacts
     const contacts = await ExternalContact.find({ addedBy: user.id })
       .sort({ createdAt: -1 })
       .lean();
 
-    // ✅ 4️⃣ Preload chat rooms for efficiency
+    // 4️⃣ Fetch chat rooms (for current user)
     const userRooms = await ContactChatRoom.find({
       $or: [
         { employee_sender: user.id },
@@ -308,7 +431,7 @@ exports.getAllContacts = async (req, res) => {
       ],
     }).lean();
 
-    // Helper function to get chat room (if exists)
+    // helper to match chat room
     const findChatRoom = (receiverUserId) => {
       return userRooms.find(
         (room) =>
@@ -318,17 +441,35 @@ exports.getAllContacts = async (req, res) => {
             room.employee_receiver.toString() === user.id.toString())
       );
     };
-
-    // ✅ 5️⃣ Format employee data
+    // 5️⃣ Employee list
     const employeeData = await Promise.all(
       employees.map(async (emp) => {
-        // Find linked user for this employee (needed to match chat)
         const linkedUser = await User.findOne({
           email: emp.email,
           fullName: emp.name,
         }).lean();
 
         const room = linkedUser ? findChatRoom(linkedUser._id) : null;
+
+        let unreadCount = 0;
+        let lastMessage = null;
+        let hasMessages = false;
+
+        if (room) {
+          // 🔥 Get unread count
+          const msgCount = await ContactChatMessage.countDocuments({ chatRoom: room._id });
+          hasMessages = msgCount > 0;
+
+          unreadCount = await ContactChatMessage.countDocuments({
+            chatRoom: room._id,
+            sender: { $ne: user.id },
+            readBy: { $ne: user.id },
+          });
+
+          lastMessage = await ContactChatMessage.findOne({ chatRoom: room._id })
+            .sort({ createdAt: -1 })
+            .lean();
+        }
 
         return {
           _id: emp._id,
@@ -342,13 +483,19 @@ exports.getAllContacts = async (req, res) => {
           type: "employee",
           flag: getFlag(emp.country),
           chatRoom: room
-            ? { exists: true, roomId: room._id }
-            : { exists: false },
+            ? {
+              exists: true,
+              roomId: room._id,
+              hasMessages: hasMessages,
+              lastMessage: lastMessage?.content ? lastMessage?.content : "",
+              unreadCount: unreadCount ? unreadCount : 0,
+            }
+            : { exists: false, hasMessages: false, lastMessage: '', roomId: '', unreadCount: 0 },
         };
       })
     );
 
-    // ✅ 6️⃣ Format external contact data
+    // 6️⃣ External list
     const externalData = contacts.map((c) => ({
       _id: c._id,
       name: c.name,
@@ -360,34 +507,31 @@ exports.getAllContacts = async (req, res) => {
       status: null,
       type: "external",
       flag: getFlag(c.country),
-      chatRoom: { exists: false }, // external contacts don’t have chat yet
+      chatRoom: { exists: false },
     }));
 
-    // ✅ 7️⃣ Combine based on `type`
+    // 7️⃣ Merge based on type
     let data = [];
-    if (type === "department") {
-      data = employeeData;
-    } else if (type === "external") {
-      data = externalData;
-    } else {
-      data = [...employeeData, ...externalData];
+    if (type === "department") data = employeeData;
+    else if (type === "external") data = externalData;
+    else data = [...employeeData, ...externalData];
+
+    // ⭐ 8️⃣ FILTER based on screenType=chat
+    if (screenType === "chat") {
+      data = data.filter((c) => c.chatRoom.exists === true && c.chatRoom.hasMessages === true);
     }
 
-    // ✅ 8️⃣ Sort alphabetically
+
+    // 9️⃣ Sort
     data.sort((a, b) => a.name.localeCompare(b.name));
 
     res.status(200).json({
       status: 1,
-      message:
-        type === "department"
-          ? "Departmental contacts fetched successfully"
-          : type === "external"
-          ? "External contacts fetched successfully"
-          : "All contacts fetched successfully",
+      message: "Contacts fetched successfully",
       data,
     });
   } catch (error) {
-    console.error("❌ Error fetching contacts with chat room:", error);
+    console.error("❌ Error fetching contacts:", error);
     res.status(500).json({
       status: 0,
       message: "Server error",
@@ -395,6 +539,7 @@ exports.getAllContacts = async (req, res) => {
     });
   }
 };
+
 exports.sendExternalEmployeeRequest = async (req, res) => {
   try {
     const senderUserId = req.user.id; // token user (User table ID)
