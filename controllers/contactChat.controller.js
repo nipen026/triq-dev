@@ -165,7 +165,7 @@ exports.getChatMessages = async (req, res) => {
             page,
             limit,
             total,
-            data: formattedMessages,
+            messages: formattedMessages,
         });
     } catch (error) {
         console.error("Error fetching contact chat messages:", error);
