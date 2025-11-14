@@ -90,54 +90,52 @@ const Designation = require('../models/designation.model')
 // };
 
 const DESIGNATION_LEVELS = {
-  // Common Across Departments
-  "Director": 1,
-  "CEO": 2,
+  "director": 1,
+  "ceo": 2,
 
-  // Service Department
-  "Head of Global Services": 3,
-  "Country Service Head India": 4,
-  "Service Executive Delhi, India": 5,
-  "Country Service Head AUS": 6,
-  "Service Manager, Perth, AUS": 7,
-  "Service Executive, Sydney, AUS": 8,
-  "Country Service Head GER": 9,
-  "Service Executive": 10,
+  // Service
+  "head of global services": 3,
+  "country service head india": 4,
+  "service executive delhi, india": 5,
+  "country service head aus": 6,
+  "service manager, perth, aus": 7,
+  "service executive, sydney, aus": 8,
+  "country service head ger": 9,
+  "service executive": 10,
 
-  // Sales Department
-  "Head of Global Sales": 3,
-  "Sales Head":3,
-  "Sales Manager":4,
-  "Sales Executive":4,
-  "Sales Intern":4,
-  'Customer Relationship Manager':3,
-  "Country Sales Head India": 4,
-  "Sales Executive Delhi, India": 5,
-  "Country Sales Head AUS": 6,
-  "Sales Manager, Perth, AUS": 7,
-  "Sales Executive, Sydney, AUS": 8,
-  "Country Sales Head GER": 9,
-  "Sales Executive": 10,
+  // Sales
+  "head of global sales": 3,
+  "sales head": 3,
+  "sales manager": 4,
+  "sales executive": 4,
+  "sales intern": 4,
+  "customer relationship manager": 3,
+  "country sales head india": 4,
+  "sales executive delhi, india": 5,
+  "country sales head aus": 6,
+  "sales manager, perth, aus": 7,
+  "sales executive, sydney, aus": 8,
+  "country sales head ger": 9,
 
-  // HR Department
-  "HR Head": 3,
-  "HR Manager": 4,
-  "HR Executive": 5,
+  // HR
+  "hr head": 3,
+  "hr manager": 4,
+  "hr executive": 5,
 
-  // Finance Department
-  "Finance Head": 3,
-  "Finance Manager": 4,
-  "Finance Executive": 5,
+  // Finance
+  "finance head": 3,
+  "finance manager": 4,
+  "finance executive": 5,
 
-  // Production Department
-  "Plant / Unit Head": 3,
-  "Production Supervisor Head": 4,
-  "Production Supervisor": 5,
-  "Quality Control Engineer": 6,
-  "Production Executive": 7,
-  "Machine Operator": 7,
-  "Line Incharge":5,
-  "Maintenance Head":5,
+  // Production
+  "plant / unit head": 3,
+  "production supervisor head": 4,
+  "production supervisor": 5,
+  "quality control engineer": 6,
+  "production executive": 7,
+  "machine operator": 7,
+  "line incharge": 5,
+  "maintenance head": 5,
 };
 
 exports.addDesignation = async (req, res) => {
@@ -149,33 +147,38 @@ exports.addDesignation = async (req, res) => {
       return res.status(400).json({ status: 0, message: "Missing required field: name" });
     }
 
-    // Normalize name
-    name = name.trim();
+    // Normalize
+    const originalName = name.trim(); 
+    const keyName = originalName.toLowerCase(); // for matching case-insensitive
 
-    // If designation not in mapping → auto-generate next level
-    let level = DESIGNATION_LEVELS[name];
+    // Fetch level (case insensitive)
+    let level = DESIGNATION_LEVELS[keyName];
 
     if (!level) {
-      // find next highest level
+      // Auto-assign next level
       const maxLevel = Math.max(...Object.values(DESIGNATION_LEVELS));
       level = maxLevel + 1;
 
-      // Add new designation to mapping for system usage
-      DESIGNATION_LEVELS[name] = level;
+      // Store new designation in mapping (lowercase)
+      DESIGNATION_LEVELS[keyName] = level;
     }
 
-    // Check duplicates inside DB for this user
-    const existing = await Designation.findOne({ user: user.id, name });
+    // Check duplicates (case-insensitive)
+    const existing = await Designation.findOne({
+      user: user.id,
+      name: { $regex: new RegExp(`^${originalName}$`, 'i') }
+    });
+
     if (existing) {
       return res.status(400).json({
         status: 0,
-        message: `Designation '${name}' already exists`
+        message: `Designation '${originalName}' already exists`
       });
     }
 
     // Create designation
     const newDesignation = await Designation.create({
-      name,
+      name: originalName, // save original case
       level,
       user: user.id,
     });
@@ -191,6 +194,7 @@ exports.addDesignation = async (req, res) => {
     return res.status(500).json({ status: 0, message: "Server error", error: error.message });
   }
 };
+
 
 exports.getAllDesignation = async (req, res) => {
   try {
