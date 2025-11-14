@@ -1,5 +1,54 @@
 const Department = require('../models/department.model')
 
+// exports.addDepartment = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     let { name } = req.body;
+
+//     if (!name) {
+//       return res.status(400).json({ status: 0, message: "Missing required fields" });
+//     }
+
+//     // 🧠 Normalize department name & set icon
+//     // let icon = "";
+//     // switch (name.toLowerCase()) {
+//     //   case "service department":
+//     //     icon = "service";
+//     //     break;
+//     //   case "sales department":
+//     //     icon = "sales";
+//     //     break;
+//     //   case "hr department":
+//     //     icon = "hr";
+//     //     break;
+//     //   case "finance department":
+//     //     icon = "finance";
+//     //     break;
+//     //   case "production department":
+//     //     icon = "production";
+//     //     break;
+//     //   default:
+//     //     icon = "default"; // fallback icon
+//     //     break;
+//     // }
+
+//     const newDepartment = await Department.create({
+//       name,
+//       // icon,
+//       user: user.id,
+//     });
+
+//     return res.status(201).json({
+//       status: 1,
+//       message: "Department added successfully",
+//       data: newDepartment,
+//     });
+//   } catch (error) {
+//     console.error("❌ Error adding department:", error);
+//     return res.status(500).json({ status: 0, message: "Server error", error: error.message });
+//   }
+// };
+
 exports.addDepartment = async (req, res) => {
   try {
     const user = req.user;
@@ -9,32 +58,13 @@ exports.addDepartment = async (req, res) => {
       return res.status(400).json({ status: 0, message: "Missing required fields" });
     }
 
-    // 🧠 Normalize department name & set icon
-    // let icon = "";
-    // switch (name.toLowerCase()) {
-    //   case "service department":
-    //     icon = "service";
-    //     break;
-    //   case "sales department":
-    //     icon = "sales";
-    //     break;
-    //   case "hr department":
-    //     icon = "hr";
-    //     break;
-    //   case "finance department":
-    //     icon = "finance";
-    //     break;
-    //   case "production department":
-    //     icon = "production";
-    //     break;
-    //   default:
-    //     icon = "default"; // fallback icon
-    //     break;
-    // }
+    // 🧠 Auto-append "Department" if missing
+    if (!/department/i.test(name)) {
+      name = `${name} Department`;
+    }
 
     const newDepartment = await Department.create({
       name,
-      // icon,
       user: user.id,
     });
 
