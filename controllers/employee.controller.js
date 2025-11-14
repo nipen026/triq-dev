@@ -363,7 +363,8 @@ exports.addEmployee = async (req, res) => {
       permissions,
       machine,
     } = req.body;
-
+    console.log(req.body,"req.body");
+    
     // Parse nested JSON
     let personalAddress = req.body.personalAddress;
     let emergencyContact = req.body.emergencyContact;
