@@ -186,6 +186,8 @@ exports.searchContacts = async (req, res) => {
           name: e.name,
           organizationName: e.organizationName ?? '',
           profilePhoto: e.profilePhoto,
+          flag:getFlag(e.country),
+          designation: e.designation?.name,
           type: "external",
         })),
       },
