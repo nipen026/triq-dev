@@ -106,6 +106,7 @@ const DESIGNATION_LEVELS = {
 
   // Sales Department
   "Head of Global Sales": 3,
+  "Sales Head":3,
   "Country Sales Head India": 4,
   "Sales Executive Delhi, India": 5,
   "Country Sales Head AUS": 6,
