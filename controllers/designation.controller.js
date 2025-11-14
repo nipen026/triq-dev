@@ -107,6 +107,10 @@ const DESIGNATION_LEVELS = {
   // Sales Department
   "Head of Global Sales": 3,
   "Sales Head":3,
+  "Sales Manager":4,
+  "Sales Executive":4,
+  "Sales Intern":4,
+  'Customer Relationship Manager':3,
   "Country Sales Head India": 4,
   "Sales Executive Delhi, India": 5,
   "Country Sales Head AUS": 6,
@@ -131,7 +135,9 @@ const DESIGNATION_LEVELS = {
   "Production Supervisor": 5,
   "Quality Control Engineer": 6,
   "Production Executive": 7,
-  "Machine Operator": 7
+  "Machine Operator": 7,
+  "Line Incharge":5,
+  "Maintenance Head":5,
 };
 
 exports.addDesignation = async (req, res) => {
