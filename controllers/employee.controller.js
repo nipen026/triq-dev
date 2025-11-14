@@ -361,6 +361,7 @@ exports.addEmployee = async (req, res) => {
       shiftTiming,
       joiningDate,
       permissions,
+      machine,
     } = req.body;
 
     // Parse nested JSON
@@ -482,6 +483,7 @@ exports.addEmployee = async (req, res) => {
           emergencyContact,
           user: currentUser.id,
           linkedUser: userAccount._id,
+          machine: machine ? machine : null
         },
       ],
       { session }

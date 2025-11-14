@@ -23,6 +23,7 @@ const employeeSchema = new mongoose.Schema(
     employeeId: { type: String, required: true },
     department: { type: mongoose.Schema.Types.ObjectId, ref: "Department" },
     designation: { type: mongoose.Schema.Types.ObjectId, ref: "Designation" },
+    machine: { type: mongoose.Schema.Types.ObjectId, ref: "Machine" },
     country: { type: String },
     area: { type: String },
     reportTo: { type: String },

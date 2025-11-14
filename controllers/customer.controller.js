@@ -610,3 +610,36 @@ exports.removeMachineFromCustomer = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+exports.getMyMachines = async (req, res) => {
+  try {
+    const userId = req.user.id; // from token
+
+    // 1️⃣ Find customer linked with this user
+    const user = await User.findById(userId).populate("roles");
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const roleNames = user.roles.map(r => r.name);
+    if (!roleNames.includes("processor")) {
+      return res.status(403).json({ message: "Only processor role can access machine overview" });
+    }
+
+    // ✅ Use find to get all customers linked to this user
+    const customers = await Customer.find({ users: userId, isActive: true })
+      .populate({
+        path: "machines.machine",
+        select: "machineName modelNumber machine_type status isActive remarks",
+      });
+
+    return res.json({
+      count: customers.length,
+      message: "Machines assigned to logged-in customer",
+      data: customers
+    });
+
+  } catch (err) {
+    console.error("getMyMachines Error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};
