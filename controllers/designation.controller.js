@@ -129,7 +129,8 @@ const DESIGNATION_LEVELS = {
   "Production Supervisor Head": 4,
   "Production Supervisor": 5,
   "Quality Control Engineer": 6,
-  "Production Executive": 7
+  "Production Executive": 7,
+  "Machine Operator": 7
 };
 
 exports.addDesignation = async (req, res) => {
