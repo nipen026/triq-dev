@@ -488,9 +488,10 @@ exports.getAllContacts = async (req, res) => {
               roomId: room._id,
               hasMessages: hasMessages,
               lastMessage: lastMessage?.content ? lastMessage?.content : "",
+              lastMessageTime: lastMessage?.createdAt || null,   // ⭐ ADD THIS
               unreadCount: unreadCount ? unreadCount : 0,
             }
-            : { exists: false, hasMessages: false, lastMessage: '', roomId: '', unreadCount: 0 },
+            : { exists: false, hasMessages: false, lastMessageTime: null, lastMessage: '', roomId: '', unreadCount: 0 },
         };
       })
     );
