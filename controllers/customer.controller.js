@@ -610,32 +610,96 @@ exports.removeMachineFromCustomer = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// exports.getMyMachines = async (req, res) => {
+//   try {
+//     const userId = req.user.id; // from token
+
+//     // 1️⃣ Find customer linked with this user
+//     const user = await User.findById(userId).populate("roles");
+//     if (!user) {
+//       return res.status(404).json({ message: "User not found" });
+//     }
+
+//     const roleNames = user.roles.map(r => r.name);
+//     if (!roleNames.includes("processor")) {
+//       return res.status(403).json({ message: "Only processor role can access machine overview" });
+//     }
+
+//     // ✅ Use find to get all customers linked to this user
+//     const customers = await Customer.find({ users: userId, isActive: true })
+//       .populate({
+//         path: "machines.machine",
+//         select: "machineName modelNumber machine_type status isActive remarks",
+//       });
+
+//     return res.json({
+//       count: customers.length,
+//       message: "Machines assigned to logged-in customer",
+//       data: customers
+//     });
+
+//   } catch (err) {
+//     console.error("getMyMachines Error:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
 exports.getMyMachines = async (req, res) => {
   try {
-    const userId = req.user.id; // from token
+    const userId = req.user.id;
 
-    // 1️⃣ Find customer linked with this user
+    // Find user
     const user = await User.findById(userId).populate("roles");
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
 
-    const roleNames = user.roles.map(r => r.name);
+    const roleNames = user.roles.map((r) => r.name);
     if (!roleNames.includes("processor")) {
       return res.status(403).json({ message: "Only processor role can access machine overview" });
     }
 
-    // ✅ Use find to get all customers linked to this user
+    // Find all customers linked to this user
     const customers = await Customer.find({ users: userId, isActive: true })
       .populate({
         path: "machines.machine",
-        select: "machineName modelNumber machine_type status isActive remarks",
+        select: "machineName modelNumber machine_type status isActive remarks serialNumber operatingHours",
       });
 
+    // 🔥 Flatten machine list to match Flutter model
+    const finalMachineList = [];
+
+    customers.forEach((customer) => {
+      customer.machines.forEach((m) => {
+        if (m.machine) {
+          finalMachineList.push({
+            _id: m.machine._id,
+            machineName: m.machine.machineName,
+            modelNumber: m.machine.modelNumber,
+            serialNumber: m.machine.serialNumber,
+            operatingHours: m.machine.operatingHours,
+            machine_type: m.machine.machine_type,
+            status: m.machine.status,
+            remarks: m.machine.remarks,
+
+            // Warranty fields mapped into Flutter's Warranty model
+            warranty: {
+              purchaseDate: m.purchaseDate,
+              installationDate: m.installationDate,
+              startDate: m.warrantyStart,
+              expirationDate: m.warrantyEnd,
+              status: m.warrantyStatus,
+              invoiceNo: m.invoiceContractNo,
+            },
+          });
+        }
+      });
+    });
+
     return res.json({
-      count: customers.length,
+      count: finalMachineList.length,
       message: "Machines assigned to logged-in customer",
-      data: customers
+      data: finalMachineList,
     });
 
   } catch (err) {
