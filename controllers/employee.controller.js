@@ -21,8 +21,14 @@ exports.setEmployeePermissions = async (employeeId, permissions, session = null)
         parsed = JSON.parse(permissions);
       }
 
-      const hasAtLeastOneTrue = Object.values(parsed).some(v => v === true);
-      console.log(parsed,"parsed")
+      // 🔥 FIX: Deep nested check for any true permission
+      const hasAtLeastOneTrue = Object.values(parsed).some(module =>
+        typeof module === "object" &&
+        Object.values(module).some(val => val === true)
+      );
+
+      console.log(parsed, "parsed");
+
       if (!hasAtLeastOneTrue) {
         throw new Error("At least 1 permission must be enabled.");
       }
