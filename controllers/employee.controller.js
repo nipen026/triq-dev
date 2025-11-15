@@ -15,10 +15,20 @@ const ContactChatRoom = require('../models/contactChatRoom.model');
 exports.setEmployeePermissions = async (employeeId, permissions, session = null) => {
   try {
     if (!employeeId) throw new Error("Employee ID is required");
-    const hasAtLeastOneTrue = Object.values(permissions).some(value => value === true);
+    if (permissions) {
+      let parsed = permissions;
+      if (typeof permissions === "string") {
+        parsed = JSON.parse(permissions);
+      }
 
-    if (!hasAtLeastOneTrue) {
-      throw new Error("At least 1 permission must be enabled.");
+      const hasAtLeastOneTrue = Object.values(parsed).some(v => v === true);
+
+      if (!hasAtLeastOneTrue) {
+        return res.status(400).json({
+          status: 0,
+          message: "At least one permission must be enabled to create employee",
+        });
+      }
     }
     // ✅ Ensure employee exists (inside session)
     const employee = await Employee.findById(employeeId).session(session);
