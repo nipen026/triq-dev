@@ -22,7 +22,7 @@ exports.setEmployeePermissions = async (employeeId, permissions, session = null)
       }
 
       const hasAtLeastOneTrue = Object.values(parsed).some(v => v === true);
-
+      console.log(parsed,"parsed")
       if (!hasAtLeastOneTrue) {
         throw new Error("At least 1 permission must be enabled.");
       }
