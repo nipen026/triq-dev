@@ -15,7 +15,11 @@ const ContactChatRoom = require('../models/contactChatRoom.model');
 exports.setEmployeePermissions = async (employeeId, permissions, session = null) => {
   try {
     if (!employeeId) throw new Error("Employee ID is required");
+    const hasAtLeastOneTrue = Object.values(permissions).some(value => value === true);
 
+    if (!hasAtLeastOneTrue) {
+      throw new Error("At least 1 permission must be enabled.");
+    }
     // ✅ Ensure employee exists (inside session)
     const employee = await Employee.findById(employeeId).session(session);
     if (!employee) throw new Error("Employee not found");
@@ -363,8 +367,8 @@ exports.addEmployee = async (req, res) => {
       permissions,
       machine,
     } = req.body;
-    console.log(req.body,"req.body");
-    
+    console.log(req.body, "req.body");
+
     // Parse nested JSON
     let personalAddress = req.body.personalAddress;
     let emergencyContact = req.body.emergencyContact;
@@ -489,15 +493,15 @@ exports.addEmployee = async (req, res) => {
       ],
       { session }
     );
-    
+
     const employeeDoc = newEmployee[0];
-    console.log(employeeDoc,"newEmployee");
-  
+    console.log(employeeDoc, "newEmployee");
+
     // ✅ Step 4: Set permissions if provided
-   if (permissions) {
-  const permissionData = JSON.parse(permissions);
-  await exports.setEmployeePermissions(employeeDoc?._id, permissionData, session);
-}
+    if (permissions) {
+      const permissionData = JSON.parse(permissions);
+      await exports.setEmployeePermissions(employeeDoc?._id, permissionData, session);
+    }
 
     // ✅ Step 5: Create chat room (only if user exists)
     const existingChat = await ContactChatRoom.findOne({
@@ -527,7 +531,7 @@ exports.addEmployee = async (req, res) => {
 
     return res.status(201).json({
       status: 1,
-       message:isNewUser
+      message: isNewUser
         ? "Employee created successfully with new user"
         : "Employee linked with existing user",
       data: populatedEmployee,
@@ -550,70 +554,70 @@ exports.addEmployee = async (req, res) => {
 
 // 📋 GET All Employees (with department & designation populated)
 exports.getAllEmployees = async (req, res) => {
-    try {
-        const user = req.user;
+  try {
+    const user = req.user;
 
-        // ✅ Fetch all employees for this user
-        const employees = await Employee.find({ user: user.id })
-            .populate("department", "name")
-            .populate("designation", "name")
-            .sort({ createdAt: -1 });
+    // ✅ Fetch all employees for this user
+    const employees = await Employee.find({ user: user.id })
+      .populate("department", "name")
+      .populate("designation", "name")
+      .sort({ createdAt: -1 });
 
-        // ✅ Fetch all permissions for these employees in one go
-        const employeeIds = employees.map(emp => emp._id);
-        const permissions = await EmployeePermission.find({ employee: { $in: employeeIds } });
+    // ✅ Fetch all permissions for these employees in one go
+    const employeeIds = employees.map(emp => emp._id);
+    const permissions = await EmployeePermission.find({ employee: { $in: employeeIds } });
 
-        // ✅ Map permissions by employeeId for quick lookup
-        const permissionMap = {};
-        permissions.forEach(p => {
-            permissionMap[p.employee.toString()] = p.permissions;
-        });
+    // ✅ Map permissions by employeeId for quick lookup
+    const permissionMap = {};
+    permissions.forEach(p => {
+      permissionMap[p.employee.toString()] = p.permissions;
+    });
 
-        // ✅ Attach permissions to each employee
-        const formatted = employees.map(emp => {
-            const obj = emp.toObject();
-            obj.permissions = permissionMap[emp._id.toString()] || {};
-            return obj;
-        });
+    // ✅ Attach permissions to each employee
+    const formatted = employees.map(emp => {
+      const obj = emp.toObject();
+      obj.permissions = permissionMap[emp._id.toString()] || {};
+      return obj;
+    });
 
-        return res.status(200).json({
-            status: 1,
-            message: "Employees fetched successfully",
-            data: formatted,
-        });
-    } catch (error) {
-        console.error("❌ Error fetching employees:", error);
-        return res.status(500).json({
-            status: 0,
-            message: "Server error",
-            error: error.message,
-        });
-    }
+    return res.status(200).json({
+      status: 1,
+      message: "Employees fetched successfully",
+      data: formatted,
+    });
+  } catch (error) {
+    console.error("❌ Error fetching employees:", error);
+    return res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
 
 
 // 🔍 SEARCH Employee (by name, employeeId, department, designation)
 exports.searchEmployee = async (req, res) => {
-    try {
-        const { q } = req.query;
-        // const user = req.user;
+  try {
+    const { q } = req.query;
+    // const user = req.user;
 
-        const employees = await Employee.find({
-            // user: user.id,
-            $or: [
-                { name: new RegExp(q, "i") },
-                { email: new RegExp(q, "i") },
-                { phone: new RegExp(q, "i") },
-            ],
-        })
-            .populate("department", "name")
-            .populate("designation", "name");
+    const employees = await Employee.find({
+      // user: user.id,
+      $or: [
+        { name: new RegExp(q, "i") },
+        { email: new RegExp(q, "i") },
+        { phone: new RegExp(q, "i") },
+      ],
+    })
+      .populate("department", "name")
+      .populate("designation", "name");
 
-        return res.status(200).json({ status: 1, data: employees });
-    } catch (error) {
-        console.error("❌ Error searching employee:", error);
-        return res.status(500).json({ status: 0, message: "Server error" });
-    }
+    return res.status(200).json({ status: 1, data: employees });
+  } catch (error) {
+    console.error("❌ Error searching employee:", error);
+    return res.status(500).json({ status: 0, message: "Server error" });
+  }
 };
 
 
@@ -818,43 +822,43 @@ exports.updateEmployee = async (req, res) => {
 };
 
 exports.deleteEmployee = async (req, res) => {
-    try {
-        const { id } = req.params;
-        const deleted = await Employee.findByIdAndDelete(id);
+  try {
+    const { id } = req.params;
+    const deleted = await Employee.findByIdAndDelete(id);
 
-        if (!deleted) {
-            return res.status(404).json({ status: 0, message: "Employee not found" });
-        }
-
-        return res.status(200).json({ status: 1, message: "Employee deleted successfully" });
-    } catch (error) {
-        console.error("❌ Error deleting employee:", error);
-        return res.status(500).json({ status: 0, message: "Server error" });
+    if (!deleted) {
+      return res.status(404).json({ status: 0, message: "Employee not found" });
     }
+
+    return res.status(200).json({ status: 1, message: "Employee deleted successfully" });
+  } catch (error) {
+    console.error("❌ Error deleting employee:", error);
+    return res.status(500).json({ status: 0, message: "Server error" });
+  }
 };
 
 
 
 // 👤 GET Employee By ID (populated)
 exports.getEmployeeById = async (req, res) => {
-    try {
-        const employee = await Employee.findById(req.params.id)
-            .populate("department", "name")
-            .populate("designation", "name");
+  try {
+    const employee = await Employee.findById(req.params.id)
+      .populate("department", "name")
+      .populate("designation", "name");
 
-        if (!employee) {
-            return res.status(404).json({ status: 0, message: "Employee not found" });
-        }
-        const employePermissionData = await EmployeePermission.findOne({ employee: employee._id });
-        const qrCode = await QRCode.toDataURL(employee.id);
-        const obj = employee.toObject();
-        obj.qrCode = qrCode;
-        obj.permissions = employePermissionData.permissions
-        return res.status(200).json({ status: 1, data: obj });
-    } catch (error) {
-        console.error("❌ Error fetching employee:", error);
-        return res.status(500).json({ status: 0, message: "Server error" });
+    if (!employee) {
+      return res.status(404).json({ status: 0, message: "Employee not found" });
     }
+    const employePermissionData = await EmployeePermission.findOne({ employee: employee._id });
+    const qrCode = await QRCode.toDataURL(employee.id);
+    const obj = employee.toObject();
+    obj.qrCode = qrCode;
+    obj.permissions = employePermissionData.permissions
+    return res.status(200).json({ status: 1, data: obj });
+  } catch (error) {
+    console.error("❌ Error fetching employee:", error);
+    return res.status(500).json({ status: 0, message: "Server error" });
+  }
 };
 // exports.getEmployeeHierarchy = async (req, res) => {
 //   try {
@@ -947,7 +951,7 @@ exports.getEmployeeById = async (req, res) => {
 const assignLevels = (nodes, currentLevel = 1) => {
   nodes.forEach(node => {
     node.autoLevel = currentLevel; // 👈 this is the NEW level you want
-    
+
     if (node.children && node.children.length > 0) {
       assignLevels(node.children, currentLevel + 1);
     }
@@ -1040,103 +1044,103 @@ exports.getEmployeeHierarchy = async (req, res) => {
 
 
 exports.getEmployeePermissions = async (req, res) => {
-    try {
-        const { employeeId } = req.params;
-        const permissions = await EmployeePermission.findOne({ employee: employeeId }).populate(
-            "employee",
-            "name employeeId department designation"
-        );
+  try {
+    const { employeeId } = req.params;
+    const permissions = await EmployeePermission.findOne({ employee: employeeId }).populate(
+      "employee",
+      "name employeeId department designation"
+    );
 
-        if (!permissions)
-            return res
-                .status(404)
-                .json({ status: 0, message: "No permissions found for this employee" });
+    if (!permissions)
+      return res
+        .status(404)
+        .json({ status: 0, message: "No permissions found for this employee" });
 
-        res.status(200).json({ status: 1, data: permissions });
-    } catch (error) {
-        console.error("❌ Error getting permissions:", error);
-        res.status(500).json({
-            status: 0,
-            message: "Server error",
-            error: error.message,
-        });
-    }
+    res.status(200).json({ status: 1, data: permissions });
+  } catch (error) {
+    console.error("❌ Error getting permissions:", error);
+    res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
 
 exports.getEligibleReportToList = async (req, res) => {
-    try {
-        const { designationId, departmentId } = req.query;
-        const user = req.user;
+  try {
+    const { designationId, departmentId } = req.query;
+    const user = req.user;
 
-        if (!designationId || !departmentId) {
-            return res.status(400).json({
-                status: 0,
-                message: "designationId and departmentId are required",
-            });
-        }
-
-        // ✅ Fetch current designation
-        const currentDesig = await Designation.findById(designationId);
-        if (!currentDesig) {
-            return res.status(404).json({
-                status: 0,
-                message: "Designation not found",
-            });
-        }
-
-        // ✅ If current designation is CEO → show Director (user data)
-        if (currentDesig.name?.toLowerCase() === "ceo") {
-            const userData = await User.findById(user.id)
-                .select("fullName email phone processorType")
-                .lean();
-
-            const directorData = {
-                _id: userData._id,
-                fullName: userData.fullName,
-                email: userData.email,
-                phone: userData.phone,
-                processorType: userData.processorType || null,
-                designation: { name: "Director", level: 1 },
-                department: { _id: departmentId, name: "All Departments" },
-                isUser: true, // 🔹 helpful flag to know it's not an employee
-            };
-
-            return res.status(200).json({
-                status: 1,
-                message: "Eligible reportTo list fetched successfully (Director user)",
-                data: [directorData],
-            });
-        }
-
-        // ✅ Otherwise, find higher-level employees within the department
-        const eligibleEmployees = await Employee.find({
-            user: user.id,
-            department: departmentId,
-        })
-            .populate({
-                path: "designation",
-                match: { level: { $lt: currentDesig.level } }, // higher-level only
-                select: "name level",
-            })
-            .populate("department", "name")
-            .lean();
-
-        // Remove employees that didn’t match higher-level condition
-        const filtered = eligibleEmployees.filter(e => e.designation);
-
-        // ✅ Final response
-        return res.status(200).json({
-            status: 1,
-            message: "Eligible reportTo list fetched successfully",
-            data: filtered,
-        });
-
-    } catch (error) {
-        console.error("❌ Error fetching reportTo list:", error);
-        return res.status(500).json({
-            status: 0,
-            message: "Server error",
-            error: error.message,
-        });
+    if (!designationId || !departmentId) {
+      return res.status(400).json({
+        status: 0,
+        message: "designationId and departmentId are required",
+      });
     }
+
+    // ✅ Fetch current designation
+    const currentDesig = await Designation.findById(designationId);
+    if (!currentDesig) {
+      return res.status(404).json({
+        status: 0,
+        message: "Designation not found",
+      });
+    }
+
+    // ✅ If current designation is CEO → show Director (user data)
+    if (currentDesig.name?.toLowerCase() === "ceo") {
+      const userData = await User.findById(user.id)
+        .select("fullName email phone processorType")
+        .lean();
+
+      const directorData = {
+        _id: userData._id,
+        fullName: userData.fullName,
+        email: userData.email,
+        phone: userData.phone,
+        processorType: userData.processorType || null,
+        designation: { name: "Director", level: 1 },
+        department: { _id: departmentId, name: "All Departments" },
+        isUser: true, // 🔹 helpful flag to know it's not an employee
+      };
+
+      return res.status(200).json({
+        status: 1,
+        message: "Eligible reportTo list fetched successfully (Director user)",
+        data: [directorData],
+      });
+    }
+
+    // ✅ Otherwise, find higher-level employees within the department
+    const eligibleEmployees = await Employee.find({
+      user: user.id,
+      department: departmentId,
+    })
+      .populate({
+        path: "designation",
+        match: { level: { $lt: currentDesig.level } }, // higher-level only
+        select: "name level",
+      })
+      .populate("department", "name")
+      .lean();
+
+    // Remove employees that didn’t match higher-level condition
+    const filtered = eligibleEmployees.filter(e => e.designation);
+
+    // ✅ Final response
+    return res.status(200).json({
+      status: 1,
+      message: "Eligible reportTo list fetched successfully",
+      data: filtered,
+    });
+
+  } catch (error) {
+    console.error("❌ Error fetching reportTo list:", error);
+    return res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message,
+    });
+  }
 };
