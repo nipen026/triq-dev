@@ -24,10 +24,7 @@ exports.setEmployeePermissions = async (employeeId, permissions, session = null)
       const hasAtLeastOneTrue = Object.values(parsed).some(v => v === true);
 
       if (!hasAtLeastOneTrue) {
-        return res.status(400).json({
-          status: 0,
-          message: "At least one permission must be enabled to create employee",
-        });
+        throw new Error("At least 1 permission must be enabled.");
       }
     }
     // ✅ Ensure employee exists (inside session)
