@@ -1,66 +1,6 @@
 const Attendance = require("../models/attendance.model");
 
-// exports.checkIn = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const { time, location, note , type} = req.body;
 
-//     const today = new Date().toISOString().split("T")[0];
-
-//     // Check if already checked in
-//     const todayRecord = await Attendance.findOne({ user: userId, date: today });
-
-//     if (todayRecord && todayRecord.checkIn) {
-//       return res.status(400).json({ status: 0, message: "Already Checked In" });
-//     }
-
-//     const newRecord = await Attendance.findOneAndUpdate(
-//       { user: userId, date: today },
-//       {
-//         user: userId,
-//         date: today,
-//         checkIn: time,
-//         locationIn: location,
-//         noteIn: note,
-//         status: type,
-//       },
-//       { upsert: true, new: true }
-//     );
-
-//     res.json({ status: 1, message: "Checked In Successfully", data: newRecord });
-//   } catch (err) {
-//     res.status(500).json({ status: 0, error: err.message });
-//   }
-// };
-
-// exports.checkOut = async (req, res) => {
-//   try {
-//     const userId = req.user.id;
-//     const { time, location, note } = req.body;
-
-//     const today = new Date().toISOString().split("T")[0];
-
-//     const todayRecord = await Attendance.findOne({ user: userId, date: today });
-
-//     if (!todayRecord || !todayRecord.checkIn) {
-//       return res.status(400).json({ status: 0, message: "Check-In Required First" });
-//     }
-
-//     if (todayRecord.checkOut) {
-//       return res.status(400).json({ status: 0, message: "Already Checked Out" });
-//     }
-
-//     todayRecord.checkOut = time;
-//     todayRecord.locationOut = location;
-//     todayRecord.noteOut = note;
-
-//     await todayRecord.save();
-
-//     res.json({ status: 1, message: "Checked Out Successfully", data: todayRecord });
-//   } catch (err) {
-//     res.status(500).json({ status: 0, error: err.message });
-//   }
-// };
 
 function calculateMinutes(start, end) {
   const convert = (t) => {
@@ -187,7 +127,25 @@ exports.getDashboardData = async (req, res) => {
             }
           : null,
 
-        monthly: { present, absent, leave }
+        monthly: { present, absent, leave,late:0 },
+        ticketSummary: { waiting: 0, progress: 0, hold: 0 },
+        task:{myTasks:0,assignedTask:0},
+        permission:{
+          serviceDepartment:{view:true,edit:true},
+          accessLevel:{view:true,edit:true},
+          machineOperation:{view:true,edit:true},
+          ticketManagement:{view:true,edit:true},
+          approvalAuthority:{view:true,edit:true},
+          reportAccess:{view:true,edit:true},
+          myTeams:{view:true,edit:true},
+          piInvoice:{view:true,edit:true},
+          expenseReport:{view:true,edit:true},
+          fieldWork:{view:true,edit:true},
+          followUps:{view:true,edit:true},
+          myCustomer:{view:true,edit:true},
+          feedbackAndRating:{view:true,edit:true},
+          installationTracker:{view:true,edit:true},
+        }
       }
     });
 
