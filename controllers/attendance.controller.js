@@ -99,9 +99,14 @@ exports.getDashboardData = async (req, res) => {
   try {
     const userId = req.user.id;
     const today = new Date().toISOString().split("T")[0];
-
+    let showCheckIn = true;
     const todayRecord = await Attendance.findOne({ user: userId, date: today });
-
+    if(todayRecord && todayRecord.checkIn){
+      showCheckIn = false;
+    }
+    if(todayRecord && todayRecord.checkOut){
+      showCheckIn = true;
+    }
     const month = new Date().toISOString().slice(0, 7);
 
     const monthRecords = await Attendance.find({
@@ -112,11 +117,12 @@ exports.getDashboardData = async (req, res) => {
     const present = monthRecords.filter(r => r.status === "Present").length;
     const absent = monthRecords.filter(r => r.status === "Absent").length;
     const leave = monthRecords.filter(r => r.status === "Leave").length;
-
+    const formatted = todayRecord.toObject();
+    formatted.showCheckIn = showCheckIn;
     res.json({
       status: 1,
       data: {
-        today: todayRecord,
+        today: formatted,
         todaySummary: todayRecord
           ? {
               checkIn: todayRecord.checkIn,
@@ -124,6 +130,7 @@ exports.getDashboardData = async (req, res) => {
               breaks: todayRecord.breaks,
               totalWork: todayRecord.totalWorkMinutes,
               totalBreak: todayRecord.totalBreakMinutes,
+              showCheckIn:showCheckIn
             }
           : null,
 
