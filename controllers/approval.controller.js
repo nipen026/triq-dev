@@ -55,8 +55,8 @@ exports.updateApprovalStatus = async (req, res) => {
     try {
         const { id } = req.params;
         const { status } = req.body; // Approved | Rejected
-        console.log(id,status,"id,status");
-        
+        console.log(id, status, "id,status");
+
         if (!["Approved", "Rejected"].includes(status)) {
             return res.status(400).json({ status: 0, message: "Invalid status" });
         }
@@ -65,11 +65,52 @@ exports.updateApprovalStatus = async (req, res) => {
 
 
         const approval = await Approval.findByIdAndUpdate(id, { status }, { new: true });
-        console.log(approval,"approval");
-        
+        console.log(approval, "approval");
+
         res.json({ status: 1, data: approval });
 
     } catch (err) {
         res.status(500).json({ status: 0, error: err.message });
     }
 };
+
+exports.getAllApprovalMachines = async (req, res) => {
+    try {
+        const machineData = [{
+            "_id": "68e494d3a5636fb13ca2f2ae",
+            "machineName": "smart",
+            "modelNumber": "31rt5",
+            "machine_type": "Fully Automatic",
+            "status": "Available",
+            "remarks": "no remark",
+            "warranty": {
+                "purchaseDate": "2025-10-01T00:00:00.000Z",
+                "installationDate": "2025-10-01T00:00:00.000Z",
+                "startDate": "2025-10-01T00:00:00.000Z",
+                "expirationDate": "2025-10-31T00:00:00.000Z",
+                "status": "In warranty",
+                "invoiceNo": "5746"
+            }
+        }, {
+            "_id": "68e494d3a5636fb13ca2f2ae",
+            "machineName": "smart",
+            "modelNumber": "31rt5",
+            "machine_type": "Fully Automatic",
+            "status": "Available",
+            "remarks": "no remark",
+            "warranty": {
+                "purchaseDate": "2025-10-01T00:00:00.000Z",
+                "installationDate": "2025-10-01T00:00:00.000Z",
+                "startDate": "2025-10-01T00:00:00.000Z",
+                "expirationDate": "2025-10-31T00:00:00.000Z",
+                "status": "In warranty",
+                "invoiceNo": "5746"
+            }
+        }];
+        res.json({ status: 1, data: machineData });
+    }
+    catch (err) {
+        res.status(500).json({ status: 0, error: err.message });
+    }
+
+}
