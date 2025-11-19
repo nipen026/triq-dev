@@ -117,8 +117,11 @@ exports.getDashboardData = async (req, res) => {
     const present = monthRecords.filter(r => r.status === "Present").length;
     const absent = monthRecords.filter(r => r.status === "Absent").length;
     const leave = monthRecords.filter(r => r.status === "Leave").length;
-    const formatted = todayRecord.toObject();
-    formatted.showCheckIn = showCheckIn;
+    let formatted = null;
+    if(todayRecord){
+      formatted = todayRecord?.toObject();
+      formatted.showCheckIn = showCheckIn;
+    }
     res.json({
       status: 1,
       data: {
