@@ -33,6 +33,7 @@ const employeeSchema = new mongoose.Schema(
     isActive: { type: Boolean,default:true },
     personalAddress:AddressSchema,
     emergencyContact:emergencySchema,
+    postalAddress:AddressSchema,
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
