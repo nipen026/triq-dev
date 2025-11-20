@@ -100,9 +100,14 @@ exports.getDashboardData = async (req, res) => {
     const userId = req.user.id;
     const today = new Date().toISOString().split("T")[0];
     let showCheckIn = true;
+    let showBreakIn = false;
     const todayRecord = await Attendance.findOne({ user: userId, date: today });
     if(todayRecord && todayRecord.checkIn){
       showCheckIn = false;
+      showBreakIn = true;
+    }
+    if(todayRecord && todayRecord.breaks.length > 0){
+      showBreakIn = false;
     }
     if(todayRecord && todayRecord.checkOut){
       showCheckIn = true;
@@ -133,7 +138,8 @@ exports.getDashboardData = async (req, res) => {
               breaks: todayRecord.breaks,
               totalWork: todayRecord.totalWorkMinutes,
               totalBreak: todayRecord.totalBreakMinutes,
-              showCheckIn:showCheckIn
+              showCheckIn:showCheckIn,
+              showBreakIn:showBreakIn,
             }
           : null,
 
