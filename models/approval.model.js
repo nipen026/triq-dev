@@ -4,12 +4,14 @@ const approvalSchema = new mongoose.Schema(
   {
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
 
-    type: { type: String, required: true }, 
+    type: { type: String, required: true },
     // leave | overtime | workPermission | shiftChange | machineRequest | other
 
     details: {}, // dynamic object (each type has different fields)
 
-    attachments: String,
+    attachments: [{
+      type: String
+    }], // array of file paths
 
     status: {
       type: String,

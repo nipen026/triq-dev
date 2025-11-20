@@ -23,6 +23,8 @@ const contactChatRoutes = require("./routes/contactChat.routes");
 const AttendanceRoutes = require("./routes/attendance.routes");
 const employeeProfileRoutes = require("./routes/employeeProfile.routes");
 const approvalRoutes = require("./routes/approval.route");
+const expenseRoutes = require("./routes/expense.routes");
+const employeeCustomerRoutes = require("./routes/employeeCustomer.routes");
 const path = require("path");
 
 const app = express();
@@ -53,6 +55,8 @@ app.use("/api/contactChat",contactChatRoutes);
 app.use("/api/attendance",AttendanceRoutes);
 app.use("/api/employeeProfile",employeeProfileRoutes);
 app.use("/api/approval",approvalRoutes);
+app.use("/api/expense",expenseRoutes);
+app.use("/api/employeeCustomer",employeeCustomerRoutes);
 
 
 // Static

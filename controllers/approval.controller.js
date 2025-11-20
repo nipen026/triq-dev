@@ -19,16 +19,23 @@ exports.createApproval = async (req, res) => {
         if (!type) {
             return res.status(400).json({ status: 0, message: "Approval type required" });
         }
-        let attechament = null;
-        if (req.file) {
-            attechament = `/uploads/approval/${req.file.filename}`;
+
+        // -----------------------------
+        // MULTIPLE FILE HANDLING
+        // -----------------------------
+        let attachments = [];
+
+        if (req.files && req.files.length > 0) {
+            attachments = req.files.map(file => `/uploads/approval/${file.filename}`);
         }
-        const parseData = details ? JSON.parse(details) : {};
+
+        const parsedDetails = details ? JSON.parse(details) : {};
+
         const approval = await Approval.create({
             user: userId,
             type,
-            details: parseData,
-            attachments: attechament
+            details: parsedDetails,
+            attachments: attachments   // store array
         });
 
         res.json({
@@ -41,6 +48,7 @@ exports.createApproval = async (req, res) => {
         res.status(500).json({ status: 0, error: err.message });
     }
 };
+
 exports.getMyApprovals = async (req, res) => {
     try {
         const approvals = await Approval.find({ user: req.user.id })
