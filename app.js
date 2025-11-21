@@ -25,6 +25,7 @@ const employeeProfileRoutes = require("./routes/employeeProfile.routes");
 const approvalRoutes = require("./routes/approval.route");
 const expenseRoutes = require("./routes/expense.routes");
 const employeeCustomerRoutes = require("./routes/employeeCustomer.routes");
+const reportingRoutes = require("./routes/reporting.routes");
 const path = require("path");
 
 const app = express();
@@ -57,6 +58,7 @@ app.use("/api/employeeProfile",employeeProfileRoutes);
 app.use("/api/approval",approvalRoutes);
 app.use("/api/expense",expenseRoutes);
 app.use("/api/employeeCustomer",employeeCustomerRoutes);
+app.use("/api/reporting",reportingRoutes);
 
 
 // Static
