@@ -11,6 +11,11 @@ const reportingSchema = new mongoose.Schema({
     nextFollowUpTime: { type: String },
 
     remark: { type: String },
+    status: {
+        type: String,
+        enum: ["Pending", "Approved", "Rejected"],
+        default: "Pending"
+    },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Reporting", reportingSchema);
