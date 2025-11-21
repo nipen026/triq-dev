@@ -35,6 +35,7 @@ const employeeSchema = new mongoose.Schema(
     emergencyContact:emergencySchema,
     postalAddress:AddressSchema,
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    linkedUser: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
   { timestamps: true }
 );

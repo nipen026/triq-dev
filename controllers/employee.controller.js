@@ -436,14 +436,50 @@ exports.addEmployee = async (req, res) => {
     }
 
     // ✅ Step 1: Check if User exists
+    // let userAccount = await User.findOne({ email });
+
+    // let plainPassword = null;
+    // let isNewUser = false;
+
+    // // ✅ Step 2: Create user if not exists
+    // if (!userAccount) {
+    //   isNewUser = true;
+    //   plainPassword = crypto.randomBytes(6).toString("hex");
+    //   const hashedPassword = await bcrypt.hash(plainPassword, 10);
+
+    //   let employeeRole = await Role.findOne({ name: "employee" });
+    //   if (!employeeRole) {
+    //     employeeRole = await Role.create([{ name: "employee" }], { session });
+    //   }
+
+    //   userAccount = await User.create(
+    //     [
+    //       {
+    //         fullName: name,
+    //         email,
+    //         password: hashedPassword,
+    //         phone,
+    //         isEmailVerified: false,
+    //         isPhoneVerified: false,
+    //         emailOTP: "123456",
+    //         countryCode: "+91",
+    //         roles: [employeeRole._id],
+    //       },
+    //     ],
+    //     { session }
+    //   );
+    //   userAccount = userAccount[0];
+    // }
+
     let userAccount = await User.findOne({ email });
 
-    let plainPassword = null;
     let isNewUser = false;
+    let plainPassword = null;
 
-    // ✅ Step 2: Create user if not exists
     if (!userAccount) {
+      // user not found → create new user
       isNewUser = true;
+
       plainPassword = crypto.randomBytes(6).toString("hex");
       const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
@@ -463,13 +499,26 @@ exports.addEmployee = async (req, res) => {
             isPhoneVerified: false,
             emailOTP: "123456",
             countryCode: "+91",
+            isNewUser: false,
             roles: [employeeRole._id],
           },
         ],
         { session }
       );
       userAccount = userAccount[0];
+    } else {
+      // user exists → check if they already have employee data
+      const existingEmpForUser = await Employee.findOne({ linkedUser: userAccount._id });
+
+      if (!existingEmpForUser) {
+        // user exists but no employee created yet → new user for employee system
+        isNewUser = true;
+      } else {
+        // user already has employee record → not new
+        isNewUser = false;
+      }
     }
+
 
     // ✅ Step 3: Create employee only if user exists
     if (!userAccount?._id) {

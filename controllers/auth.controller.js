@@ -108,6 +108,16 @@ exports.register = async (req, res) => {
       },
     ];
     await Sound.insertMany(defaultSounds);
+    if (role === "employee") {
+      const empExists = await Employee.findOne({ linkedUser: user._id });
+      if (empExists) {
+        await User.findByIdAndUpdate(user._id);
+        user.isNewUser = false;
+      } else {
+        await User.findByIdAndUpdate(user._id);
+        user.isNewUser = true;
+      }
+    }
     await user.save();
 
     // 8️⃣ Create default profile
