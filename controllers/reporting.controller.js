@@ -89,3 +89,43 @@ exports.searchEmployeeCustomers = async (req, res) => {
         res.status(500).json({ status: false, message: error.message });
     }
 };
+exports.updateReporting = async (req, res) => {
+    try {
+        const reporting = await Reporting.findByIdAndUpdate(
+            req.params.id,
+            req.body,
+            { new: true }
+        );
+
+        if (!reporting) {
+            return res.status(404).json({ status: false, message: "Reporting not found" });
+        }
+
+        res.json({
+            status: true,
+            message: "Reporting updated successfully",
+            data: reporting
+        });
+
+    } catch (error) {
+        res.status(500).json({ status: false, message: error.message });
+    }
+};
+
+exports.deleteReporting = async (req, res) => {
+    try {
+        const reporting = await Reporting.findByIdAndDelete(req.params.id);
+
+        if (!reporting) {
+            return res.status(404).json({ status: false, message: "Reporting not found" });
+        }
+
+        res.json({
+            status: true,
+            message: "Reporting deleted successfully"
+        });
+
+    } catch (error) {
+        res.status(500).json({ status: false, message: error.message });
+    }
+};
