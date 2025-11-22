@@ -78,6 +78,8 @@ exports.createFieldwork = async (req, res) => {
 exports.getFieldworks = async (req, res) => {
     try {
         const user = req.user;
+        console.log(user);
+        
         const fieldworks = await Fieldwork.find({ employee: user.id }).sort({ createdAt: -1 });
 
         return res.status(200).json({

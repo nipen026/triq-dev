@@ -15,6 +15,6 @@ router.post(
     createFieldwork
 );
 
-router.get("/getFieldworks", getFieldworks);
+router.get("/getFieldworks",auth, getFieldworks);
 
 module.exports = router;
