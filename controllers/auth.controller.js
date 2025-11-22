@@ -13,6 +13,7 @@ const ServicePricing = require('../models/servicePricing.model');
 const Sound = require('../models/sound.model')
 const sendSMS = require("../utils/smsOtp");
 const sendMail = require("../utils/mailer");
+const Employee = require("../models/employee.model");
 // Register new user
 
 exports.register = async (req, res) => {
