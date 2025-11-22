@@ -73,3 +73,19 @@ exports.createFieldwork = async (req, res) => {
         res.status(500).json({ status: 0, error: error.message });
     }
 };
+
+
+exports.getFieldworks = async (req, res) => {
+    try {
+        const user = req.user;
+        const fieldworks = await Fieldwork.find({ employee: user.id }).sort({ createdAt: -1 });
+
+        return res.status(200).json({
+            status: 1,
+            data: fieldworks
+        }); 
+    } catch (error) {
+        console.log(error);
+        res.status(500).json({ status: 0, error: error.message });
+    }
+};
