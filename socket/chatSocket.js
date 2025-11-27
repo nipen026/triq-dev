@@ -205,13 +205,13 @@ module.exports = (io) => {
             tokens: [receiver.fcmToken],
 
             // 1. Notification object title/body ke saath
-            // notification: {
-            //   title: `New message from ${socket.userId === room.organisation.id
-            //     ? room.organisation.fullName
-            //     : room.processor.fullName
-            //     }`,
-            //   body: translatedText,
-            // },
+            notification: {
+              title: `New message from ${socket.userId === room.organisation.id
+                ? room.organisation.fullName
+                : room.processor.fullName
+                }`,
+              body: translatedText,
+            },
 
             // 2. Data object me sirf navigation ka data hoga
             data: {
