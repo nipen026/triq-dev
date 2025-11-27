@@ -143,8 +143,8 @@ module.exports = (io) => {
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
           const soundData = await Sound.findOne({
-            // type: "chat",
-            user: new mongoose.Types.ObjectId(receiverId),
+            type: "chat",
+            user: receiverId,
           });
           console.log(soundData, receiverId, "soundData");
 
