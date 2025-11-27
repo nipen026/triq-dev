@@ -142,9 +142,8 @@ module.exports = (io) => {
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
-          const sound = await Sound.find({ user: receiverId });
-          const soundData = await Sound.findOne({ type: "chat", user: receiverId });
-          console.log(sound,receiverId,"soundData");
+          const soundData = await Sound.find({ type: "chat" });
+          console.log(soundData,receiverId,"soundData");
           
           const dynamicSoundName = soundData.soundName;
 
