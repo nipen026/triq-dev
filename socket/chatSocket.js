@@ -143,6 +143,8 @@ module.exports = (io) => {
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
           const soundData = await Sound.findOne({ type: "chat", user: receiverId });
+          console.log(soundData,receiverId,"soundData");
+          
           const dynamicSoundName = soundData.soundName;
 
           // Step B: Android ke notification options taiyaar karein
