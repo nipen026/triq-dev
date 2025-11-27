@@ -27,6 +27,8 @@ const expenseRoutes = require("./routes/expense.routes");
 const employeeCustomerRoutes = require("./routes/employeeCustomer.routes");
 const reportingRoutes = require("./routes/reporting.routes");
 const fieldWorkRoutes = require("./routes/fieldwork.routes");
+const LiveKitRoutes = require("./routes/livekit.routes");
+const StripeRoutes = require("./routes/stripe.routes");
 const path = require("path");
 
 const app = express();
@@ -61,6 +63,8 @@ app.use("/api/expense",expenseRoutes);
 app.use("/api/employeeCustomer",employeeCustomerRoutes);
 app.use("/api/reporting",reportingRoutes);
 app.use("/api/fieldwork",fieldWorkRoutes);
+app.use("/api/livekit", LiveKitRoutes);
+app.use("/api/stripe", StripeRoutes);
 
 
 // Static
@@ -71,4 +75,9 @@ app.use(
   express.static(path.join(__dirname, "node_modules/flag-icons/flags/4x3"))
 );
 
+// Stripe Webhook route
+app.post("/api/stripe/webhook",
+  express.raw({ type: "application/json" }),
+  StripeRoutes
+);
 module.exports = app;

@@ -208,6 +208,8 @@ exports.createTicket = async (req, res) => {
           ticketId: String(ticket._id),
           Route: '/ticketDetails',
           screenName: 'TicketDetailsView',
+          soundName: dynamicSoundName,
+          
         },
         android: {
           priority: "high", // Priority ko yahan rakhein

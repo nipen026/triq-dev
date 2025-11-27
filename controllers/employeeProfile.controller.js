@@ -1,35 +1,38 @@
 const { format } = require("libphonenumber-js");
 const Employee = require("../models/employee.model");
+const User = require("../models/user.model");
 const Profile = require("../models/profile.model");
 const Designation = require("../models/designation.model");
 exports.getEmployeeProfile = async (req, res) => {
     try {
         const userId = req.user.id;
 
-        // Fetch Employee & Profile
-        const employee = await Employee.findOne({ user: userId }).populate("department").populate("designation");
+        const employee = await Employee.findOne({ user: userId })
+            .populate("department")
+            .populate("designation").populate('user');
+
         const profile = await Profile.findOne({ user: userId });
+
         if (!employee && !profile) {
             return res.status(404).json({
                 status: 0,
                 message: "Employee profile not found"
             });
-        } 
-        const formatted = employee.toObject();
-        formatted.corporateAddress = profile?.corporateAddress || {};
-        formatted.factoryAddress = profile?.factoryAddress || {};
+        }
+
+        // Ensure formatted is ALWAYS an object
+        const formatted = employee ? employee.toObject() : {};
+        console.log(employee);
+        // Merge Profile fields safely
+        formatted.corporateAddress = profile?.corporateAddress ?? {};
+        formatted.factoryAddress = profile?.factoryAddress ?? {};
+
         return res.json({
             status: 1,
             message: "Employee Profile Fetched Successfully",
             data: {
                 userId,
-                employee: formatted || {},
-                // profile: profile || {},
-                // personalAddress: employee?.personalAddress || {},
-                // emergencyContact: employee?.emergencyContact || {},
-                // corporateAddress: profile?.corporateAddress || {},
-                // factoryAddress: profile?.factoryAddress || {},
-                // postalAddress: employee?.postalAddress || {}
+                employee: formatted,
             }
         });
 

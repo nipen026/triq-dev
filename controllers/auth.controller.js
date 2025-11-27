@@ -16,49 +16,251 @@ const sendMail = require("../utils/mailer");
 const Employee = require("../models/employee.model");
 // Register new user
 
+// exports.register = async (req, res) => {
+//   try {
+//     const { fullName, email, password, phone, countryCode, role, fcmToken, processorType } = req.body;
+//     console.log(fcmToken, "frontend side fcmtoken");
+
+//     // 1️⃣ Required fields check
+//     if (!fullName || !email || !password || !phone || !countryCode || !role) {
+//       return res.status(400).json({ error: "All fields are required" });
+//     }
+
+//     // 2️⃣ Email format validation
+//     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+//     if (!emailRegex.test(email)) {
+//       return res.status(400).json({ error: "Invalid email format" });
+//     }
+
+//     // 3️⃣ Password strength validation
+//     if (password.length < 6) {
+//       return res.status(400).json({ error: "Password must be at least 6 characters long" });
+//     }
+
+//     // 4️⃣ Phone validation
+//     const phoneRegex = /^[0-9]{7,15}$/;
+//     if (!phoneRegex.test(phone)) {
+//       return res.status(400).json({ error: "Invalid phone number" });
+//     }
+
+//     // 5️⃣ Check if email/phone already exists
+//     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
+//     if (existingUser) {
+//       return res.status(400).json({ error: "Email or phone already registered" });
+//     }
+
+//     // 🔑 Hash password
+//     const hash = await bcrypt.hash(password, 10);
+
+//     // 6️⃣ Check or create role
+//     let userRole = await Role.findOne({ name: role });
+//     if (!userRole) {
+//       userRole = await Role.create({ name: role });
+//     }
+//     let isNewUser = true;
+    
+
+//     // 7️⃣ Create user
+//     const user = new User({
+//       fullName,
+//       email,
+//       password: hash,
+//       phone,
+//       countryCode,
+//       roles: [userRole._id],
+//       emailOTP: "123456",
+//       fcmToken,
+//       isPhoneVerified: true,
+//       isNewUser
+//     });
+//     if (role === "employee") {
+//       const empExists = await Employee.findOne({ linkedUser: user._id });
+//       if (empExists) {
+//         isNewUser = false;
+//       } else {
+//         isNewUser = true;
+//       }
+//     }
+//     if (role === "processor") {
+//       if (!processorType) {
+//         return res.status(400).json({ error: "Processor type is required for processor role" });
+//       }
+//       user.processorType = processorType; // 👈 Add field dynamically
+//     }
+//     const defaultSounds = [
+//       {
+//         user: user._id,
+//         soundName: "bell",
+//         type: "chat",
+//         channelId: "triq_custom_sound_channel",
+//       },
+//       {
+//         user: user._id,
+//         soundName: "bell",
+//         type: "voice_call",
+//         channelId: "triq_custom_sound_channel",
+//       },
+//       {
+//         user: user._id,
+//         soundName: "bell",
+//         type: "video_call",
+//         channelId: "triq_custom_sound_channel",
+//       },
+//       {
+//         user: user._id,
+//         soundName: "bell",
+//         type: "ticket_notification",
+//         channelId: "triq_custom_sound_channel",
+//       },
+//       {
+//         user: user._id,
+//         soundName: "bell",
+//         type: "alert",
+//         channelId: "triq_custom_sound_channel",
+//       },
+//     ];
+//     await Sound.insertMany(defaultSounds);
+
+
+//     await user.save();
+
+//     // 8️⃣ Create default profile
+//     await Profile.create({
+//       user: user._id,
+//       email: user.email,
+//       phone: user.phone,
+//       profileImage: "",
+//       chatLanguage: 'en',
+//       corporateAddress: {},
+//       factoryAddress: {},
+//       designation: "",
+//       unitName: "",
+//     });
+
+//     // 9️⃣ If role is processor, create customer entry
+//     if (role === "processor") {
+//       const customerData = {
+//         customerName: fullName,
+//         contactPerson: fullName,
+//         email,
+//         phoneNumber: phone,
+//         organization: null,
+//         countryOrigin: getCountryFromPhone(countryCode + phone),
+//         users: [user._id],
+//       };
+//       await Customer.create(customerData);
+//     }
+
+//     // 🔟 If role is organization, create static pricing
+//     if (role === "organization") {
+//       const staticPricing = [
+//         {
+//           supportMode: "Online",
+//           warrantyStatus: "In warranty",
+//           ticketType: "General Check Up",
+//           cost: 10,
+//           currency: "USD",
+//         },
+//         {
+//           supportMode: "Online",
+//           warrantyStatus: "In warranty",
+//           ticketType: "Full Machine Service",
+//           cost: 10,
+//           currency: "USD",
+//         },
+//         {
+//           supportMode: "Online",
+//           warrantyStatus: "Out Of Warranty",
+//           ticketType: "Full Machine Service",
+//           cost: 10,
+//           currency: "USD",
+//         },
+//         {
+//           supportMode: "Offline",
+//           warrantyStatus: "In warranty",
+//           ticketType: "General Check Up",
+//           cost: 10,
+//           currency: "USD",
+//         },
+//         {
+//           supportMode: "Offline",
+//           warrantyStatus: "In warranty",
+//           ticketType: "Full Machine Service",
+//           cost: 10,
+//           currency: "USD",
+//         },
+//         {
+//           supportMode: "Offline",
+//           warrantyStatus: "Out Of Warranty",
+//           ticketType: "Full Machine Service",
+//           cost: 10,
+//           currency: "USD",
+//         },
+//       ];
+
+//       await ServicePricing.create({
+//         organisation: user._id,
+//         pricing: staticPricing,
+//       });
+//     }
+
+//     // 🔐 Generate token
+//     const token = jwt.sign(
+//       { id: user._id, roles: userRole.name },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" }
+//     );
+
+//     const userData = await User.findById(user._id).populate("roles");
+
+//     res.status(200).json({
+//       success: true,
+//       token,
+//       user: userData,
+//     });
+//   } catch (err) {
+//     console.error("Registration error:", err);
+//     res.status(500).json({ error: "Server error, please try again." });
+//   }
+// };
 exports.register = async (req, res) => {
   try {
     const { fullName, email, password, phone, countryCode, role, fcmToken, processorType } = req.body;
-    console.log(fcmToken, "frontend side fcmtoken");
 
-    // 1️⃣ Required fields check
     if (!fullName || !email || !password || !phone || !countryCode || !role) {
       return res.status(400).json({ error: "All fields are required" });
     }
 
-    // 2️⃣ Email format validation
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email)) {
       return res.status(400).json({ error: "Invalid email format" });
     }
 
-    // 3️⃣ Password strength validation
     if (password.length < 6) {
       return res.status(400).json({ error: "Password must be at least 6 characters long" });
     }
 
-    // 4️⃣ Phone validation
     const phoneRegex = /^[0-9]{7,15}$/;
     if (!phoneRegex.test(phone)) {
       return res.status(400).json({ error: "Invalid phone number" });
     }
 
-    // 5️⃣ Check if email/phone already exists
     const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
     if (existingUser) {
       return res.status(400).json({ error: "Email or phone already registered" });
     }
 
-    // 🔑 Hash password
     const hash = await bcrypt.hash(password, 10);
 
-    // 6️⃣ Check or create role
     let userRole = await Role.findOne({ name: role });
     if (!userRole) {
       userRole = await Role.create({ name: role });
     }
 
-    // 7️⃣ Create user
+    // Default new user
+    let isNewUser = true;
+
+    // Create User (NOW we can use user._id)
     const user = new User({
       fullName,
       email,
@@ -69,74 +271,54 @@ exports.register = async (req, res) => {
       emailOTP: "123456",
       fcmToken,
       isPhoneVerified: true,
+      isNewUser
     });
+
+    // Processor extra field
     if (role === "processor") {
       if (!processorType) {
         return res.status(400).json({ error: "Processor type is required for processor role" });
       }
-      user.processorType = processorType; // 👈 Add field dynamically
+      user.processorType = processorType;
     }
-    const defaultSounds = [
-      {
-        user: user._id,
-        soundName: "bell",
-        type: "chat",
-        channelId: "triq_custom_sound_channel",
-      },
-      {
-        user: user._id,
-        soundName: "bell",
-        type: "voice_call",
-        channelId: "triq_custom_sound_channel",
-      },
-      {
-        user: user._id,
-        soundName: "bell",
-        type: "video_call",
-        channelId: "triq_custom_sound_channel",
-      },
-      {
-        user: user._id,
-        soundName: "bell",
-        type: "ticket_notification",
-        channelId: "triq_custom_sound_channel",
-      },
-      {
-        user: user._id,
-        soundName: "bell",
-        type: "alert",
-        channelId: "triq_custom_sound_channel",
-      },
-    ];
-    await Sound.insertMany(defaultSounds);
-    if (role === "employee") {
-      const empExists = await Employee.findOne({ linkedUser: user._id });
-      if (empExists) {
-        await User.findByIdAndUpdate(user._id);
-        user.isNewUser = false;
-      } else {
-        await User.findByIdAndUpdate(user._id);
-        user.isNewUser = true;
-      }
-    }
+
+    // Save user
     await user.save();
 
-    // 8️⃣ Create default profile
+    // 🔥 Employee check AFTER user exists
+    if (role === "employee") {
+      const empExists = await Employee.findOne({ linkedUser: user._id });
+
+      if (empExists) {
+        // Update user flag
+        await User.findByIdAndUpdate(user._id, { isNewUser: false });
+      }
+    }
+
+    // Add default sounds
+    const defaultSounds = [
+      { user: user._id, soundName: "bell", type: "chat", channelId: "triq_custom_sound_channel" },
+      { user: user._id, soundName: "bell", type: "voice_call", channelId: "triq_custom_sound_channel" },
+      { user: user._id, soundName: "bell", type: "video_call", channelId: "triq_custom_sound_channel" },
+      { user: user._id, soundName: "bell", type: "ticket_notification", channelId: "triq_custom_sound_channel" },
+      { user: user._id, soundName: "bell", type: "alert", channelId: "triq_custom_sound_channel" },
+    ];
+    await Sound.insertMany(defaultSounds);
+
     await Profile.create({
       user: user._id,
       email: user.email,
       phone: user.phone,
       profileImage: "",
-      chatLanguage: 'en',
+      chatLanguage: "en",
       corporateAddress: {},
       factoryAddress: {},
       designation: "",
       unitName: "",
     });
 
-    // 9️⃣ If role is processor, create customer entry
     if (role === "processor") {
-      const customerData = {
+      await Customer.create({
         customerName: fullName,
         contactPerson: fullName,
         email,
@@ -144,64 +326,23 @@ exports.register = async (req, res) => {
         organization: null,
         countryOrigin: getCountryFromPhone(countryCode + phone),
         users: [user._id],
-      };
-      await Customer.create(customerData);
-    }
-
-    // 🔟 If role is organization, create static pricing
-    if (role === "organization") {
-      const staticPricing = [
-        {
-          supportMode: "Online",
-          warrantyStatus: "In warranty",
-          ticketType: "General Check Up",
-          cost: 10,
-          currency: "USD",
-        },
-        {
-          supportMode: "Online",
-          warrantyStatus: "In warranty",
-          ticketType: "Full Machine Service",
-          cost: 10,
-          currency: "USD",
-        },
-        {
-          supportMode: "Online",
-          warrantyStatus: "Out Of Warranty",
-          ticketType: "Full Machine Service",
-          cost: 10,
-          currency: "USD",
-        },
-        {
-          supportMode: "Offline",
-          warrantyStatus: "In warranty",
-          ticketType: "General Check Up",
-          cost: 10,
-          currency: "USD",
-        },
-        {
-          supportMode: "Offline",
-          warrantyStatus: "In warranty",
-          ticketType: "Full Machine Service",
-          cost: 10,
-          currency: "USD",
-        },
-        {
-          supportMode: "Offline",
-          warrantyStatus: "Out Of Warranty",
-          ticketType: "Full Machine Service",
-          cost: 10,
-          currency: "USD",
-        },
-      ];
-
-      await ServicePricing.create({
-        organisation: user._id,
-        pricing: staticPricing,
       });
     }
 
-    // 🔐 Generate token
+    if (role === "organization") {
+      await ServicePricing.create({
+        organisation: user._id,
+        pricing: [
+          { supportMode: "Online", warrantyStatus: "In warranty", ticketType: "General Check Up", cost: 10, currency: "USD" },
+          { supportMode: "Online", warrantyStatus: "In warranty", ticketType: "Full Machine Service", cost: 10, currency: "USD" },
+          { supportMode: "Online", warrantyStatus: "Out Of Warranty", ticketType: "Full Machine Service", cost: 10, currency: "USD" },
+          { supportMode: "Offline", warrantyStatus: "In warranty", ticketType: "General Check Up", cost: 10, currency: "USD" },
+          { supportMode: "Offline", warrantyStatus: "In warranty", ticketType: "Full Machine Service", cost: 10, currency: "USD" },
+          { supportMode: "Offline", warrantyStatus: "Out Of Warranty", ticketType: "Full Machine Service", cost: 10, currency: "USD" }
+        ]
+      });
+    }
+
     const token = jwt.sign(
       { id: user._id, roles: userRole.name },
       process.env.JWT_SECRET,
@@ -213,13 +354,16 @@ exports.register = async (req, res) => {
     res.status(200).json({
       success: true,
       token,
-      user: userData,
+      user: userData
     });
+
   } catch (err) {
     console.error("Registration error:", err);
     res.status(500).json({ error: "Server error, please try again." });
   }
 };
+
+
 // exports.sendOtp = async (req, res) => {
 //   try {
 //     const { email, phone, type } = req.body; // type = "email" | "phone"
