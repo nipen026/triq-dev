@@ -142,9 +142,12 @@ module.exports = (io) => {
         // 🟣 Optional: Push notification (if receiver offline)
         const isReceiverInRoom = userRooms.get(receiverId)?.has(roomId);
         if (!isReceiverInRoom && receiver?.fcmToken) {
-          const soundData = await Sound.findOne({ user:receiverId});
-          console.log(soundData,receiverId,"soundData");
-          
+          const soundData = await Sound.findOne({
+            // type: "chat",
+            user: new mongoose.Types.ObjectId(receiverId),
+          });
+          console.log(soundData, receiverId, "soundData");
+
           const dynamicSoundName = soundData.soundName;
 
           // Step B: Android ke notification options taiyaar karein
@@ -217,7 +220,7 @@ module.exports = (io) => {
               screenName: "chatView",
               route: '/chatView',
               android_channel_id: "triq_custom_sound_channel",
-              sound:dynamicSoundName,
+              sound: dynamicSoundName,
               // Yahan se 'sound' aur 'android_channel_id' hata diye gaye hain kyunki wo ab upar set hain.
               contactName: socket.userId === room.organisation.id
                 ? room.organisation.fullName
