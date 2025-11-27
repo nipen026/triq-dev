@@ -146,8 +146,6 @@ module.exports = (io) => {
             type: "chat",
             user: receiverId,
           });
-          console.log(soundData, receiverId, "soundData");
-
           const dynamicSoundName = soundData.soundName;
 
           // Step B: Android ke notification options taiyaar karein
@@ -201,27 +199,86 @@ module.exports = (io) => {
 
           //   },
           // };
+          // const message = {
+          //   tokens: [receiver.fcmToken],
+
+          //   // 1. Notification object title/body ke saath
+          //   notification: {
+          //     title: `New message from ${socket.userId === room.organisation.id
+          //       ? room.organisation.fullName
+          //       : room.processor.fullName
+          //       }`,
+          //     body: translatedText,
+          //   },
+
+          //   // 2. Data object me sirf navigation ka data hoga
+          //   data: {
+          //     type: "chat_message",
+          //     chatRoomId: room.id,
+          //     screenName: "chatView",
+          //     route: '/chatView',
+          //     android_channel_id: "triq_custom_sound_channel",
+          //     sound: dynamicSoundName,
+          //     // Yahan se 'sound' aur 'android_channel_id' hata diye gaye hain kyunki wo ab upar set hain.
+          //     contactName: socket.userId === room.organisation.id
+          //       ? room.organisation.fullName
+          //       : room.processor.fullName,
+          //     contactNumber: socket.userId === room.organisation.id
+          //       ? room.organisation.phone
+          //       : room.processor.phone,
+          //     roomId: room.id,
+          //     ticketId: room.ticket ? String(room.ticket._id) : "",
+          //     ticketStatus: room.ticket ? room.ticket.status : "",
+          //     ticketNumber: room.ticket ? room.ticket.ticketNumber : "",
+          //     userRole: socket.userId === room.organisation.id ? "organization" : "processor",
+          //     flag: socket.userId === room.organisation.id
+          //       ? getFlagWithCountryCode(room.organisation.countryCode)
+          //       : getFlagWithCountryCode(room.processor.countryCode),
+          //   },
+
+          //   // 3. Android ke liye priority aur notification options
+          //   android: {
+          //     priority: "high", // Priority ko yahan rakhein
+          //     notification: androidNotification,
+          //   },
+
+          //   // 4. iOS ke liye options
+          //   apns: {
+          //     headers: { "apns-priority": "10" },
+          //     payload: {
+          //       aps: {
+          //         // Sound file ka naam string me aur .aiff extension ke saath
+          //         sound: ` ${dynamicSoundName}.aiff`,
+          //         "mutable-content": 1,
+          //       },
+          //     },
+          //   }
+          // };
           const message = {
             tokens: [receiver.fcmToken],
 
-            // 1. Notification object title/body ke saath
-            notification: {
+            // ❌ ERROR THA: Maine ye 'notification' block poora HATA diya hai.
+            // Agar ye rahega to Android default sound bajayega aur 2 notification aayenge.
+
+            // ✅ CORRECT: Saara data (Title, Body, Sound) 'data' object me bhejein
+            data: {
+              type: "chat_message",
+
+              // --- NEW: Title aur Body yahan move kiye gaye hain ---
               title: `New message from ${socket.userId === room.organisation.id
                 ? room.organisation.fullName
                 : room.processor.fullName
                 }`,
               body: translatedText,
-            },
+              // -----------------------------------------------------
 
-            // 2. Data object me sirf navigation ka data hoga
-            data: {
-              type: "chat_message",
               chatRoomId: room.id,
               screenName: "chatView",
               route: '/chatView',
-              android_channel_id: "triq_custom_sound_channel",
+
+              // Sound ka naam bina extension ke (e.g., 'bell')
               sound: dynamicSoundName,
-              // Yahan se 'sound' aur 'android_channel_id' hata diye gaye hain kyunki wo ab upar set hain.
+
               contactName: socket.userId === room.organisation.id
                 ? room.organisation.fullName
                 : room.processor.fullName,
@@ -238,19 +295,21 @@ module.exports = (io) => {
                 : getFlagWithCountryCode(room.processor.countryCode),
             },
 
-            // 3. Android ke liye priority aur notification options
+            // 3. Android options (Yahan 'notification' nested object mat daliye)
             android: {
-              priority: "high", // Priority ko yahan rakhein
-              notification: androidNotification,
+              priority: "high",
             },
 
-            // 4. iOS ke liye options
+            // 4. iOS options
             apns: {
               headers: { "apns-priority": "10" },
               payload: {
                 aps: {
-                  // Sound file ka naam string me aur .aiff extension ke saath
-                  sound: ` ${dynamicSoundName}.aiff`,
+                  // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+                  sound: `${dynamicSoundName}.aiff`,
+
+                  // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+                  "content-available": 1,
                   "mutable-content": 1,
                 },
               },
