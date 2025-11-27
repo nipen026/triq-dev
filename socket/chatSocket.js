@@ -251,7 +251,7 @@ module.exports = (io) => {
               },
             }
           };
-
+          console.log(message, "message");
           // const message ={
           //   tokens: [receiver.fcmToken],
           //   notification: {
