@@ -407,9 +407,10 @@ exports.getAllContacts = async (req, res) => {
     // 1️⃣ Get current user's employee info
     const currentEmployee = await Employee.findOne({ user: user.id });
     if (!currentEmployee) {
-      return res.status(404).json({
-        status: 0,
+      return res.status(200).json({
+        status: 200,
         message: "Employee record not found for current user",
+        data: [],
       });
     }
 
