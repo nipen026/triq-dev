@@ -16,6 +16,7 @@ app.use((req, res, next) => {
 // load socket event handlers
 require("./socket/chatSocket")(io);
 require("./socket/contactChatSocket")(io);
+require("./socket/CallSocket")(io);
 require("./cron/ticketStatusUpdater");
 
 const PORT = process.env.PORT || 4000;

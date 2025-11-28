@@ -10,18 +10,19 @@ exports.createSession = async (req, res) => {
     }
 
     // Optional save to DB
+
+
+    const userId = identity || `user_${Math.random().toString(36).substring(2, 9)}`;
+
+    const token = await generateLivekitToken(roomName, userId, name || userId);
     let room = await Room.findOne({ roomName });
     if (!room) {
       room = await Room.create({
         roomName,
         createdBy: identity || "system",
+        token: token
       });
     }
-
-    const userId = identity || `user_${Math.random().toString(36).substring(2, 9)}`;
-
-    const token = generateLivekitToken(roomName, userId, name || userId);
-
     return res.json({
       status: 1,
       message: "Token generated successfully",

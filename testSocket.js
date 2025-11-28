@@ -1,5 +1,5 @@
-// import { io } from "socket.io-client";
-// const socket = io("http://localhost:4000");
+import { io } from "socket.io-client";
+const socket = io("http://localhost:4000");
 
 // socket.on("connect", () => {
 // // //   console.log("connected", socket.id);
@@ -69,26 +69,57 @@
 
 // --------------------------- Contact Chat --------------------
 
-import { io } from "socket.io-client";
+// import { io } from "socket.io-client";
 
-const socket = io("http://localhost:4000");
+// const socket = io("http://localhost:4000");
 
-// 1️⃣ Register user (on login)
-socket.emit("ContactRegisterUser", { userId: '69084e3069a8663fd73b0cbd' });
+// // 1️⃣ Register user (on login)
+// socket.emit("ContactRegisterUser", { userId: '69084e3069a8663fd73b0cbd' });
 
-// 2️⃣ Join chat room
-socket.emit("joinContactRoom", { roomId: '6915b224d5700e62b7bfa1bd' });
+// // 2️⃣ Join chat room
+// socket.emit("joinContactRoom", { roomId: '6915b224d5700e62b7bfa1bd' });
 
-// 3️⃣ Send message
-setTimeout(() => {
-  socket.emit("ContactSendMessage", {
-    roomId: '6915b224d5700e62b7bfa1bd',
-    content: "Hello!",
-    attachments: [],
-  });
-}, [500])
+// // 3️⃣ Send message
+// setTimeout(() => {
+//   socket.emit("ContactSendMessage", {
+//     roomId: '6915b224d5700e62b7bfa1bd',
+//     content: "Hello!",
+//     attachments: [],
+//   });
+// }, [500])
 
-// 4️⃣ Listen for new messages
-socket.on("ContactNewMessage", (msg) => {
-  console.log("📩 New message:", msg);
+// // 4️⃣ Listen for new messages
+// socket.on("ContactNewMessage", (msg) => {
+//   console.log("📩 New message:", msg);
+// });
+
+
+// Your server URL
+
+
+socket.on("connect", () => {
+    console.log("Connected with ID:", socket.id);
+
+    // Register this as dummy user 111
+    socket.emit("register", "6927d84cae91c77a626ada08");
+
+    console.log("Dummy User 6927d84cae91c77a626ada08 registered");
+
+    // Send call event after 2 seconds
+    setTimeout(() => {
+        socket.emit("call-event", {
+            type: "call-accepted",
+            room_id: "6927dcfeae91c77a626ada5b",
+            send_to: "6927d682e7fa3560059f1f65",  // receiver userId
+        });
+
+        console.log("📤 Dummy call-event sent");
+    }, 2000);
 });
+
+// When this test client receives a call
+socket.on("call-event", (data) => {
+    console.log("📩 Received call-event:", data);
+});
+
+socket.on("disconnect", () => console.log("Disconnected"));

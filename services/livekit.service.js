@@ -1,4 +1,4 @@
-const { AccessToken, RoomGrant } = require("livekit-server-sdk");
+const { AccessToken } = require("livekit-server-sdk");
 
 const generateLivekitToken = (roomName, identity, name) => {
   const apiKey = process.env.LIVEKIT_API_KEY;
@@ -13,17 +13,16 @@ const generateLivekitToken = (roomName, identity, name) => {
     name,
   });
 
-  const grant = new RoomGrant({
+  // Grant must be a plain object in latest SDK
+  const grant = {
     room: roomName,
+    roomJoin: true,
     canPublish: true,
     canSubscribe: true,
     canPublishData: true,
-  });
+  };
 
   at.addGrant(grant);
-
-  // Optional: expiry
-  // at.ttl = 60 * 60; // 1 hour
 
   return at.toJwt();
 };
