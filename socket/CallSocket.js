@@ -123,7 +123,8 @@ module.exports = (io) => {
 
                 const sender = await User.findById(senderId).select("fullName countryCode");
                 const profile = await Profile.findOne({ user: senderId }).select("profileImage");
-
+                const userID = await User.findOne({id:receiverId});
+                console.log(userID)
                 const payload = {
                     type,
                     room_id,
@@ -134,23 +135,24 @@ module.exports = (io) => {
                     callType,
                     roomToken: room?.token || null
                 };
-
+                const receiverData = await User.findById(receiverId).select("fcmToken fullName");
                 // 🔥 EMIT CALL TO RECEIVER ONLY
                 if (global.onlineUsers.has(receiverId)) {
                     io.to(global.onlineUsers.get(receiverId)).emit("call-event", payload);
                     console.log("📞 CALL SENT →", receiverId);
-                    const receiver = await User.find({_id:receiverId}).select("fcmToken fullName");
-                    console.log(receiver,"receiver")
-                    if (receiver?.fcmToken) {
+
+                    console.log(receiverData, "receiver");
+
+                    if (receiverData?.fcmToken) {
                         const userSound = await Sound.findOne({
                             user: receiverId,
                             type: callType === "audio" ? "voice_call" : "video_call"
                         }) || { soundName: "bell" };
 
                         const notify = {
-                            token: receiver.fcmToken,
+                            token: receiverData.fcmToken,
                             data: {
-                                ...payload_from_sender,
+                                ...payload,
                                 title: `${sender.fullName} is calling`,
                                 body: `Incoming ${callType} call`,
                                 screen: callType === "video" ? "video_call_view" : "audio_call_view",
@@ -169,7 +171,9 @@ module.exports = (io) => {
                         };
 
                         await admin.messaging().send(notify);
-                        console.log(`📨 PUSH SENT → ${receiver.fullName}`);
+                        console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
+                    } else {
+                        console.log("❌ No FCM Token found for receiver");
                     }
 
 
