@@ -31,6 +31,8 @@ exports.createSession = async (req, res) => {
       users === String(chatRoom.organisation._id)
         ? String(chatRoom.processor._id)
         : String(chatRoom.organisation._id);
+        console.log(receiverId, "receiverId");
+        
     const socketId = global.onlineUsers.get(receiverId);
     console.log(socketId, "socketId");
 
