@@ -31,9 +31,15 @@ exports.createSession = async (req, res) => {
       users === String(chatRoom.organisation._id)
         ? String(chatRoom.processor._id)
         : String(chatRoom.organisation._id);
-        console.log(receiverId, "receiverId");
-        
-    const socketId = global.onlineUsers.get([receiverId]);
+
+    const senderId =
+      users === String(chatRoom.organisation._id)
+        ? String(chatRoom.organisation._id)
+        : String(chatRoom.processor._id);
+
+    console.log(receiverId, "receiverId");
+
+    const socketId = global.onlineUsers.get([receiverId, senderId]);
     console.log(socketId, "socketId");
 
     if (socketId) {
