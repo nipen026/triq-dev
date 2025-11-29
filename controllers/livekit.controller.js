@@ -10,8 +10,17 @@ exports.createSession = async (req, res) => {
 
     const io = getIO();
     const userId = identity || `user_${Math.random().toString(36).substring(2, 9)}`;
-    const token = await generateLivekitToken(roomName, userId, name || userId);
-
+    let token = ''
+    if (eventType == 'call_request') {
+      token = await generateLivekitToken(roomName, userId, name || userId);
+    } else {
+      let room = await Room.findOne({ roomName });
+      if (room) {
+        token = room.token
+      } else {
+        return;
+      }
+    }
     let room = await Room.findOne({ roomName });
     if (!room) {
       room = await Room.create({
@@ -22,7 +31,12 @@ exports.createSession = async (req, res) => {
         callType,
         eventType    // <-- store latest event in DB
       });
+    } else {
+      room.eventType = eventType
     }
+
+
+
     const chatRoom = await ChatRoom.findById(roomName).populate("organisation processor");
     if (!chatRoom) return console.log("❌ ChatRoom Not Found");
 
