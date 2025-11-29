@@ -46,9 +46,9 @@ exports.createSession = async (req, res) => {
 
     // AUTO GET RECEIVER
     const receiverId =
-      users === chatRoom.organisation._id
-        ? chatRoom.processor._id
-        : chatRoom.organisation._id;
+      users === String(chatRoom.organisation._id)
+        ? String(chatRoom.processor._id)
+        : String(chatRoom.organisation._id);
 
     console.log(chatRoom,users,'chatRoom');
     
