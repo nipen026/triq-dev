@@ -3,6 +3,8 @@ const { generateLivekitToken } = require("../services/livekit.service");
 const { getIO } = require("../socket/socketInstance");
 const ChatRoom = require('../models/chatRoom.model');
 exports.createSession = async (req, res) => {
+  console.log(req.body,"body");
+  
   try {
     const { roomName, identity, name, users = "", callType = "video", eventType = "call_request" } = req.body;
 
