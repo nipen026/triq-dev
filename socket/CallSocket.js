@@ -13,7 +13,7 @@ module.exports = (io) => {
 
 
     io.on("connection", socket => {
-
+        console.log("✅ Call Socket connected:", socket.id);
         // Register user session ================================
         socket.on("register", userId => {
             socket.userId = userId;
@@ -21,93 +21,12 @@ module.exports = (io) => {
         });
 
 
-        // CALL EVENT ===========================================
-        // socket.on("call-event", async ({ type, room_id, callType = "video",users }) => {
-        //     try {
-        //         const senderId = users;
-        //         if (!senderId) return console.log("❌ Sender Not Registered");
 
-        //         // Fetch Livekit token from room table
-        //         const room = await Room.findOne({ roomName: room_id }).select("token");
-
-        //         // Fetch chat participants
-        //         const chatRoomData = await ChatRoom.findById(room_id)
-        //             .populate("organisation processor");
-
-        //         if (!chatRoomData) return console.log("❌ Chat Room Not Found");
-
-        //         // Auto detect receiver (sender ≠ receiver)
-        //         const receiverId =
-        //             senderId === String(chatRoomData.organisation._id)
-        //                 ? String(chatRoomData.processor._id)
-        //                 : String(chatRoomData.organisation._id);
-
-        //         // Fetch sender data
-        //         const sender = await User.findById(senderId).select("fullName countryCode");
-        //         const senderProfile = await Profile.findOne({ user: senderId }).select("profileImage");
-
-        //         // Payload sent to receiver
-        //         const payload_from_sender = {
-        //             type,
-        //             room_id,
-        //             user_id: senderId,
-        //             name: sender.fullName,
-        //             profile_pic: senderProfile?.profileImage || "",
-        //             flag: getFlagWithCountryCode(sender.countryCode),
-        //             callType,
-        //             roomToken: room?.token || null
-        //         };
-
-        //         // ================== SOCKET EMIT ==========================
-        //         if (global.onlineUsers.has(receiverId)) {
-        //             io.to(global.onlineUsers.get(receiverId)).emit("call-event", payload_from_sender);
-        //             console.log(`📞 CALL SENT → ${receiverId}`);
-        //         } else {
-        //             console.log("📵 Receiver offline — sending push only");
-        //         }
-
-
-        //         // ================== PUSH NOTIFICATION ======================
-        //         const receiver = await User.findById(receiverId).select("fcmToken fullName");
-
-        //         if (receiver?.fcmToken) {
-        //             const userSound = await Sound.findOne({
-        //                 user: receiverId,
-        //                 type: callType === "audio" ? "voice_call" : "video_call"
-        //             }) || { soundName: "bell" };
-
-        //             const notify = {
-        //                 token: receiver.fcmToken,
-        //                 data: {
-        //                     ...payload_from_sender,
-        //                     title: `${sender.fullName} is calling`,
-        //                     body: `Incoming ${callType} call`,
-        //                     screen: callType === "video" ? "video_call_view" : "audio_call_view",
-        //                     sound: userSound.soundName
-        //                 },
-        //                 android: { priority: "high" },
-        //                 apns: {
-        //                     payload: {
-        //                         aps: {
-        //                             sound: `${userSound.soundName}.aiff`,
-        //                             "content-available": 1,
-        //                             "mutable-content": 1
-        //                         }
-        //                     }
-        //                 }
-        //             };
-
-        //             await admin.messaging().send(notify);
-        //             console.log(`📨 PUSH SENT → ${receiver.fullName}`);
-        //         }
-
-        //     } catch (err) {
-        //         console.log("❌ CALL-EVENT ERROR:", err);
-        //     }
-        // });
 
         socket.on("call-event", async ({ type, room_id, callType = "video" }) => {
             try {
+                console.log(type, room_id, callType, "type, room_id, callType");
+
                 const senderId = socket.userId;                 // FIXED
                 if (!senderId) return console.log("❌ Unregistered Sender");
 
@@ -123,7 +42,7 @@ module.exports = (io) => {
 
                 const sender = await User.findById(senderId).select("fullName countryCode");
                 const profile = await Profile.findOne({ user: senderId }).select("profileImage");
-                const userID = await User.findOne({id:receiverId});
+                const userID = await User.findOne({ _id: receiverId });
                 console.log(userID)
                 const payload = {
                     type,
@@ -137,47 +56,47 @@ module.exports = (io) => {
                 };
                 const receiverData = await User.findById(receiverId).select("fcmToken fullName");
                 // 🔥 EMIT CALL TO RECEIVER ONLY
-                if (global.onlineUsers.has(receiverId)) {
-                    io.to(global.onlineUsers.get(receiverId)).emit("call-event", payload);
-                    console.log("📞 CALL SENT →", receiverId);
+                // if (global.onlineUsers.has(receiverId)) {   
+                io.to(global.onlineUsers.get(receiverId)).emit("call-event", payload);
+                console.log("📞 CALL SENTTT →", receiverId);
 
-                    console.log(receiverData, "receiver");
+                console.log(receiverData, "receiver");
 
-                    if (receiverData?.fcmToken) {
-                        const userSound = await Sound.findOne({
-                            user: receiverId,
-                            type: callType === "audio" ? "voice_call" : "video_call"
-                        }) || { soundName: "bell" };
+                if (receiverData?.fcmToken) {
+                    const userSound = await Sound.findOne({
+                        user: receiverId,
+                        type: callType === "audio" ? "voice_call" : "video_call"
+                    }) || { soundName: "bell" };
 
-                        const notify = {
-                            token: receiverData.fcmToken,
-                            data: {
-                                ...payload,
-                                title: `${sender.fullName} is calling`,
-                                body: `Incoming ${callType} call`,
-                                screen: callType === "video" ? "video_call_view" : "audio_call_view",
-                                sound: userSound.soundName
-                            },
-                            android: { priority: "high" },
-                            apns: {
-                                payload: {
-                                    aps: {
-                                        sound: `${userSound.soundName}.aiff`,
-                                        "content-available": 1,
-                                        "mutable-content": 1
-                                    }
+                    const notify = {
+                        token: receiverData.fcmToken,
+                        data: {
+                            ...payload,
+                            title: `${sender.fullName} is calling`,
+                            body: `Incoming ${callType} call`,
+                            screen: callType === "video" ? "video_call_view" : "audio_call_view",
+                            sound: userSound.soundName
+                        },
+                        android: { priority: "high" },
+                        apns: {
+                            payload: {
+                                aps: {
+                                    sound: `${userSound.soundName}.aiff`,
+                                    "content-available": 1,
+                                    "mutable-content": 1
                                 }
                             }
-                        };
+                        }
+                    };
 
-                        await admin.messaging().send(notify);
-                        console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
-                    } else {
-                        console.log("❌ No FCM Token found for receiver");
-                    }
+                    await admin.messaging().send(notify);
+                    console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
+                } else {
+                    console.log("❌ No FCM Token found for receiver");
+                }
 
 
-                } else console.log("📵 Receiver Offline — Push Only");
+                // } else console.log("📵 Receiver Offline — Push Only");
 
             } catch (err) {
                 console.log("❌ CALL ERROR:", err);

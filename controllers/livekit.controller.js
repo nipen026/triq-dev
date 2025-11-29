@@ -1,7 +1,7 @@
 const Room = require("../models/room.model");
 const { generateLivekitToken } = require("../services/livekit.service");
 const { getIO } = require("../socket/socketInstance");
-
+const ChatRoom = require('../models/chatRoom.model');
 exports.createSession = async (req, res) => {
   try {
     const { roomName, identity, name, users = "", callType = "video", eventType = "call_requesting" } = req.body;
@@ -23,21 +23,26 @@ exports.createSession = async (req, res) => {
         eventType    // <-- store latest event in DB
       });
     }
+    const chatRoom = await ChatRoom.findById(roomName).populate("organisation processor");
+    if (!chatRoom) return console.log("❌ ChatRoom Not Found");
 
-    // if (global.onlineUsers) {
-    // users.forEach(u => {
-    const receiverId = users;                         // field = ID of receiver
+    // AUTO GET RECEIVER
+    const receiverId =
+      users === String(chatRoom.organisation._id)
+        ? String(chatRoom.processor._id)
+        : String(chatRoom.organisation._id);
     const socketId = global.onlineUsers.get(receiverId);
+    console.log(socketId, "socketId");
+
     if (socketId) {
-      io.to(socketId).emit("call-event", {
+      io.to(socketId).emit("incoming-call", {
         eventType,
         roomName,
         token,
         callType,
-        from: userId,        // caller
-        to: receiverId       // receiver
+        user: users
       });
-      console.log("📞 CALL SENT →", receiverId);
+      console.log("📞 CALL SENT →", socketId);
     }
     // });
     // }
