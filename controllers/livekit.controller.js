@@ -46,15 +46,12 @@ exports.createSession = async (req, res) => {
 
     // AUTO GET RECEIVER
     const receiverId =
-      users === String(chatRoom.organisation._id)
-        ? String(chatRoom.processor._id)
-        : String(chatRoom.organisation._id);
+      users === chatRoom.organisation._id
+        ? chatRoom.processor._id
+        : chatRoom.organisation._id;
 
-    const senderId =
-      users === String(chatRoom.organisation._id)
-        ? String(chatRoom.organisation._id)
-        : String(chatRoom.processor._id);
-
+    console.log(chatRoom,users,'chatRoom');
+    
 
     const socketId = global.onlineUsers.get(receiverId);
     console.log(socketId, "🔹 Found Socket ID");
