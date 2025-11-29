@@ -13,16 +13,13 @@ const generateLivekitToken = (roomName, identity, name) => {
     name,
   });
 
-  // Grant must be a plain object in latest SDK
-  const grant = {
+  at.addGrant({
     room: roomName,
     roomJoin: true,
     canPublish: true,
     canSubscribe: true,
     canPublishData: true,
-  };
-
-  at.addGrant(grant);
+  });
 
   return at.toJwt();
 };
