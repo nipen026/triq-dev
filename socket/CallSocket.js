@@ -62,7 +62,7 @@ module.exports = (io) => {
 
                 console.log(receiverData, "receiver");
 
-                if (receiverData?.fcmToken && eventType == 'call_request') {
+                if (receiverData?.fcmToken && room.eventType == 'call_request') {
                     const userSound = await Sound.findOne({
                         user: receiverId,
                         type: callType === "audio" ? "voice_call" : "video_call"
