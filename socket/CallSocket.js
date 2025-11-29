@@ -23,7 +23,7 @@ module.exports = (io) => {
 
 
 
-        socket.on("call-event", async ({ type, room_id, callType = "video" }) => {
+        socket.on("call-event", async ({ type, room_id, callType = "video",eventType }) => {
             try {
                 console.log(type, room_id, callType, "type, room_id, callType");
 
@@ -62,7 +62,7 @@ module.exports = (io) => {
 
                 console.log(receiverData, "receiver");
 
-                if (receiverData?.fcmToken) {
+                if (receiverData?.fcmToken && eventType == 'call_request') {
                     const userSound = await Sound.findOne({
                         user: receiverId,
                         type: callType === "audio" ? "voice_call" : "video_call"
