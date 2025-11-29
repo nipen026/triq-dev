@@ -56,7 +56,7 @@ exports.createSession = async (req, res) => {
     const socketId = global.onlineUsers.get(receiverId);
     console.log(socketId, "🔹 Found Socket ID");
 
-    if (socketId) {
+    // if (socketId) {
       io.to(socketId).emit("incoming-call", {
         eventType,
         roomName,
@@ -65,9 +65,9 @@ exports.createSession = async (req, res) => {
         user: users
       });
       console.log("📞 CALL SENT →", receiverId, "→ Socket:", socketId);
-    } else {
-      console.log("📵 Receiver is offline OR not registered in socket");
-    }
+    // } else {
+    //   console.log("📵 Receiver is offline OR not registered in socket");
+    // }
     // });
     // }
 
