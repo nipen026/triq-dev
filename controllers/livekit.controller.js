@@ -33,7 +33,7 @@ exports.createSession = async (req, res) => {
         : String(chatRoom.organisation._id);
         console.log(receiverId, "receiverId");
         
-    const socketId = global.onlineUsers.get(receiverId);
+    const socketId = global.onlineUsers.get([receiverId]);
     console.log(socketId, "socketId");
 
     if (socketId) {
