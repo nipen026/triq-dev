@@ -34,7 +34,8 @@ exports.createSession = async (req, res) => {
         eventType    // <-- store latest event in DB
       });
     } else {
-      room.eventType = eventType
+      room.eventType = eventType,
+      room.users = users
       room.save();
     }
 
