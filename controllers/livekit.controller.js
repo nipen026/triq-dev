@@ -37,10 +37,9 @@ exports.createSession = async (req, res) => {
         ? String(chatRoom.organisation._id)
         : String(chatRoom.processor._id);
 
-    console.log(receiverId, "receiverId");
 
-    const socketId = global.onlineUsers.get([receiverId, senderId]);
-    console.log(socketId, "socketId");
+    const socketId = global.onlineUsers.get(receiverId);
+    console.log(socketId, "🔹 Found Socket ID");
 
     if (socketId) {
       io.to(socketId).emit("incoming-call", {
@@ -50,7 +49,9 @@ exports.createSession = async (req, res) => {
         callType,
         user: users
       });
-      console.log("📞 CALL SENT →", socketId);
+      console.log("📞 CALL SENT →", receiverId, "→ Socket:", socketId);
+    } else {
+      console.log("📵 Receiver is offline OR not registered in socket");
     }
     // });
     // }
