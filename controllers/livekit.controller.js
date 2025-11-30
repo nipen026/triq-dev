@@ -66,16 +66,7 @@ exports.createSession = async (req, res) => {
     });
     const senderId = senderUser;
     if (!senderId) return console.log("❌ Unregistered Sender");
-
-
-
-
-
     if (!chatRoom) return console.log("❌ ChatRoom Not Found");
-
-    // AUTO GET RECEIVER
-
-
     const sender = await User.findById(senderId).select("fullName countryCode");
     const profile = await Profile.findOne({ user: senderId }).select("profileImage");
     const userID = await User.findOne({ _id: receiverId });
@@ -109,7 +100,7 @@ exports.createSession = async (req, res) => {
       }) || { soundName: "bell" };
 
       const notify = {
-        tokens: [receiverData.fcmToken],
+        token: receiverData.fcmToken,
         data: {
           ...payload,
           title: `${sender.fullName} is calling`,
@@ -130,7 +121,7 @@ exports.createSession = async (req, res) => {
       };
       console.log(notify, "notify");
 
-      await admin.messaging().sendEachForMulticast(notify);
+      await admin.messaging().sendEach(notify);
       console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
     }
     console.log("📞 Incoming Call Sent via WebSocket →", receiverId);
