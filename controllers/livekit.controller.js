@@ -26,7 +26,7 @@ exports.createSession = async (req, res) => {
     //     return;
     //   }
     // }
-    let room = await Room.findOne({ roomName });
+    let room = await Room.findById(roomName);
     if (!room) {
       room = await Room.create({
         roomName,
@@ -67,20 +67,21 @@ exports.createSession = async (req, res) => {
       callType,
       user: users
     });
-    const receiver = await User.findById(receiverId).select("fcmToken fullName");
-    console.log(receiver,"receiver");
-    
-    if (receiver?.fcmToken) {
-      await admin.messaging().send({
-        token: receiver.fcmToken,
-        notification: {
-          title: "Incoming Call",
-          body: "You have an incoming call",
-        },
-        data: { roomName, callType, token }
-      }).then(()=>console.log('Notification Sent' )).catch((err)=>console.log(err));
-    }
-    console.log("📞 CALL SENT →", receiverId);
+    // const receiver = await User.findById(receiverId).select("fcmToken fullName");
+    // console.log(receiver, "receiver2");
+
+    // // if (receiver?.fcmToken) {
+    // const payloadData = {
+    //   token: receiver.fcmToken,
+    //   notification: {
+    //     title: "Incoming Call",
+    //     body: "You have an incoming call",
+    //   },
+    //   // data: { roomName, callType, token }
+    // }
+    // await admin.messaging().send(payloadData).then((res) => console.log('Notification Sent in create session')).catch((err) => console.log(err));
+    // }
+    // console.log("📞 CALL SENT →", receiverId);
     // } else {
     //   console.log("📵 Receiver is offline OR not registered in socket");
     // }

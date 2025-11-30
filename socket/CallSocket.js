@@ -31,6 +31,8 @@ module.exports = (io) => {
                 if (!senderId) return console.log("❌ Unregistered Sender");
 
                 const room = await Room.findOne({ roomName: room_id }).select("token");
+                console.log(room,"room");
+                
                 const chatRoom = await ChatRoom.findById(room_id).populate("organisation processor");
                 if (!chatRoom) return console.log("❌ ChatRoom Not Found");
 
@@ -45,14 +47,14 @@ module.exports = (io) => {
                 const userID = await User.findOne({ _id: receiverId });
                 console.log(userID)
                 const payload = {
-                    type,
+                    eventType,
                     room_id,
                     user_id: senderId,
                     name: sender.fullName,
                     profile_pic: profile?.profileImage || "",
                     flag: getFlagWithCountryCode(sender.countryCode),
                     callType,
-                    roomToken: room?.token || null
+                    roomToken: room?.token
                 };
                 const receiverData = await User.findById(receiverId).select("fcmToken fullName");
                 // 🔥 EMIT CALL TO RECEIVER ONLY
@@ -60,9 +62,11 @@ module.exports = (io) => {
                 io.to(receiverId).emit("call-event", payload);
                 console.log("📞 CALL SENTTT →", receiverId);
 
-                console.log(receiverData, "receiver");
+                console.log(receiverData,eventType, "receiver");
 
-                if (receiverData?.fcmToken && room.eventType == 'call_request') {
+                if (eventType == 'call_request') {
+                    console.log('hello');
+                    
                     const userSound = await Sound.findOne({
                         user: receiverId,
                         type: callType === "audio" ? "voice_call" : "video_call"
@@ -74,7 +78,7 @@ module.exports = (io) => {
                             ...payload,
                             title: `${sender.fullName} is calling`,
                             body: `Incoming ${callType} call`,
-                            screen: callType === "video" ? "video_call_view" : "audio_call_view",
+                            screenName: callType === "video" ? "video_call_view" : "audio_call_view",
                             sound: userSound.soundName
                         },
                         android: { priority: "high" },
@@ -88,7 +92,8 @@ module.exports = (io) => {
                             }
                         }
                     };
-
+                    console.log(notify,"notify");
+                    
                     await admin.messaging().send(notify);
                     console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
                 } else {

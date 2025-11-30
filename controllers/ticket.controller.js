@@ -374,7 +374,7 @@ exports.updateTicket = async (req, res) => {
     // 📲 Send FCM notification
     const otherUser = await User.findById(ticket.processor).select("fullName fcmToken");
     if (otherUser?.fcmToken) {
-      const soundData = await Sound.findOne({ type: "ticket_notification", user: receiverId });
+      const soundData = await Sound.findOne({ type: "ticket_notification", user: ticket.processor });
       const dynamicSoundName = soundData.soundName;
       const androidNotification = {
         channelId: "triq_custom_sound_channel",
