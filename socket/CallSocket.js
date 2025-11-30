@@ -23,7 +23,7 @@ module.exports = (io) => {
 
 
 
-        socket.on("call-event", async ({  room_id, callType = "video", eventType }) => {
+        socket.on("call-event", async ({eventType, room_id, callType = "video" }) => {
             try {
                 console.log(eventType, room_id, callType, "type, room_id, callType");
 
@@ -66,39 +66,39 @@ module.exports = (io) => {
 
                 console.log(receiverData, eventType, "receiver");
 
-                if (eventType == 'call_request') {
-                console.log('hello');
+                if (eventType === 'call_request') {
+                    console.log('hello');
 
-                const userSound = await Sound.findOne({
-                    user: receiverId,
-                    type: callType === "audio" ? "voice_call" : "video_call"
-                }) || { soundName: "bell" };
+                    const userSound = await Sound.findOne({
+                        user: receiverId,
+                        type: callType === "audio" ? "voice_call" : "video_call"
+                    }) || { soundName: "bell" };
 
-                const notify = {
-                    token: receiverData.fcmToken,
-                    data: {
-                        ...payload,
-                        title: `${sender.fullName} is calling`,
-                        body: `Incoming ${callType} call`,
-                        screenName: callType === "video" ? "video_call_view" : "audio_call_view",
-                        sound: userSound.soundName
-                    },
-                    android: { priority: "high" },
-                    apns: {
-                        payload: {
-                            aps: {
-                                sound: `${userSound.soundName}.aiff`,
-                                "content-available": 1,
-                                "mutable-content": 1
+                    const notify = {
+                        token: receiverData.fcmToken,
+                        data: {
+                            ...payload,
+                            title: `${sender.fullName} is calling`,
+                            body: `Incoming ${callType} call`,
+                            screenName: callType === "video" ? "video_call_view" : "audio_call_view",
+                            sound: userSound.soundName
+                        },
+                        android: { priority: "high" },
+                        apns: {
+                            payload: {
+                                aps: {
+                                    sound: `${userSound.soundName}.aiff`,
+                                    "content-available": 1,
+                                    "mutable-content": 1
+                                }
                             }
                         }
-                    }
-                };
-                console.log(notify, "notify");
+                    };
+                    console.log(notify, "notify");
 
-                await admin.messaging().send(notify);
-                console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
-            }
+                    await admin.messaging().send(notify);
+                    console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
+                }
                 // } else {
                 //     console.log("❌ No FCM Token found for receiver");
                 // }
