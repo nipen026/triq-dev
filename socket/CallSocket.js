@@ -14,7 +14,7 @@ module.exports = (io) => {
     io.on("connection", socket => {
         console.log("✅ Call Socket connected:", socket.id);
         // Register user session ================================
-         socket.on("register", (userId) => {
+        socket.on("register", (userId) => {
             socket.userId = userId;
             socket.join(userId);
             console.log("🟢 Registered in room:", userId);
@@ -27,12 +27,12 @@ module.exports = (io) => {
             try {
                 console.log(type, room_id, callType, "type, room_id, callType");
 
-                const senderId = socket.userId;                
+                const senderId = socket.userId;
                 if (!senderId) return console.log("❌ Unregistered Sender");
 
                 const room = await Room.findOne({ roomName: room_id }).select("token");
-                console.log(room,"room");
-                
+                console.log(room, "room");
+
                 const chatRoom = await ChatRoom.findById(room_id).populate("organisation processor");
                 if (!chatRoom) return console.log("❌ ChatRoom Not Found");
 
@@ -51,6 +51,8 @@ module.exports = (io) => {
                     room_id,
                     user_id: receiverId,
                     name: sender.fullName,
+                    sender_name: senderId === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
+                    receiver_name: senderId === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) : String(chatRoom.organisation.fullName),
                     profile_pic: profile?.profileImage || "",
                     flag: getFlagWithCountryCode(sender.countryCode),
                     callType,
@@ -62,40 +64,40 @@ module.exports = (io) => {
                 io.to(receiverId).emit("call-event", payload);
                 console.log("📞 CALL SENTTT →", receiverId);
 
-                console.log(receiverData,eventType, "receiver");
+                console.log(receiverData, eventType, "receiver");
 
                 // if (eventType == 'call_request') {
-                    console.log('hello');
-                    
-                    const userSound = await Sound.findOne({
-                        user: receiverId,
-                        type: callType === "audio" ? "voice_call" : "video_call"
-                    }) || { soundName: "bell" };
+                console.log('hello');
 
-                    const notify = {
-                        token: receiverData.fcmToken,
-                        data: {
-                            ...payload,
-                            title: `${sender.fullName} is calling`,
-                            body: `Incoming ${callType} call`,
-                            screenName: callType === "video" ? "video_call_view" : "audio_call_view",
-                            sound: userSound.soundName
-                        },
-                        android: { priority: "high" },
-                        apns: {
-                            payload: {
-                                aps: {
-                                    sound: `${userSound.soundName}.aiff`,
-                                    "content-available": 1,
-                                    "mutable-content": 1
-                                }
+                const userSound = await Sound.findOne({
+                    user: receiverId,
+                    type: callType === "audio" ? "voice_call" : "video_call"
+                }) || { soundName: "bell" };
+
+                const notify = {
+                    token: receiverData.fcmToken,
+                    data: {
+                        ...payload,
+                        title: `${sender.fullName} is calling`,
+                        body: `Incoming ${callType} call`,
+                        screenName: callType === "video" ? "video_call_view" : "audio_call_view",
+                        sound: userSound.soundName
+                    },
+                    android: { priority: "high" },
+                    apns: {
+                        payload: {
+                            aps: {
+                                sound: `${userSound.soundName}.aiff`,
+                                "content-available": 1,
+                                "mutable-content": 1
                             }
                         }
-                    };
-                    console.log(notify,"notify");
-                    
-                    await admin.messaging().send(notify);
-                    console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
+                    }
+                };
+                console.log(notify, "notify");
+
+                await admin.messaging().send(notify);
+                console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
                 // } else {
                 //     console.log("❌ No FCM Token found for receiver");
                 // }
@@ -108,7 +110,7 @@ module.exports = (io) => {
             }
         });
         // On disconnect ======================================
-       socket.on("disconnect", () => {
+        socket.on("disconnect", () => {
             console.log("🔴 User Disconnected:", socket.userId);
         });
     });
