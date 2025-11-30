@@ -64,7 +64,7 @@ module.exports = (io) => {
 
                 console.log(receiverData,eventType, "receiver");
 
-                if (eventType == 'call_request') {
+                // if (eventType == 'call_request') {
                     console.log('hello');
                     
                     const userSound = await Sound.findOne({
@@ -96,9 +96,9 @@ module.exports = (io) => {
                     
                     await admin.messaging().send(notify);
                     console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
-                } else {
-                    console.log("❌ No FCM Token found for receiver");
-                }
+                // } else {
+                //     console.log("❌ No FCM Token found for receiver");
+                // }
 
 
                 // } else console.log("📵 Receiver Offline — Push Only");
