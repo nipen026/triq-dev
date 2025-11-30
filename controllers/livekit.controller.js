@@ -28,8 +28,8 @@ exports.createSession = async (req, res) => {
     //   }
     // }
     let room = await Room.findById(roomName);
-    console.log(room,"room");
-    
+    console.log(room, "room");
+
     if (!room) {
       room = await Room.create({
         roomName,
@@ -57,24 +57,25 @@ exports.createSession = async (req, res) => {
         : String(chatRoom.organisation._id);
 
     console.log(chatRoom, users, 'chatRoom');
- 
-    console.log(chatRoom.organisation,chatRoom.processor,"chatData");
-    
+
+
     // const socketId = global.onlineUsers.get(receiverId);
     // console.log(socketId, "🔹 Found Socket ID")
 
-    if (eventType == 'call_request') {
-    io.to(receiverId).emit("incoming-call", {
-      eventType,
-      roomName,
-      sender_name:users === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) :  String(chatRoom.processor.fullName),
-      receiver_name:users === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) :  String(chatRoom.organisation.fullName),
-      flag:users === String(chatRoom.organisation._id) ? getFlagWithCountryCode(chatRoom.organisation.countryCode) :  getFlagWithCountryCode(chatRoom.processor.countryCode),
-      token,
-      callType,
-      user: users
-    });
-  }
+    if (eventType === 'call_request') {
+      console.log('hello2');
+      
+      io.to(receiverId).emit("incoming-call", {
+        eventType,
+        roomName,
+        sender_name: users === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
+        receiver_name: users === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) : String(chatRoom.organisation.fullName),
+        flag: users === String(chatRoom.organisation._id) ? getFlagWithCountryCode(chatRoom.organisation.countryCode) : getFlagWithCountryCode(chatRoom.processor.countryCode),
+        token,
+        callType,
+        user: users
+      });
+    }
     // const receiver = await User.findById(receiverId).select("fcmToken fullName");
     // console.log(receiver, "receiver2");
 
