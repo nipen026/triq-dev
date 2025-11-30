@@ -121,7 +121,7 @@ exports.createSession = async (req, res) => {
       };
       console.log(notify, "notify");
 
-      await admin.messaging().sendEach(notify);
+      await admin.messaging().send(notify);
       console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
     }
     console.log("📞 Incoming Call Sent via WebSocket →", receiverId);
