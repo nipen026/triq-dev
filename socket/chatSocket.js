@@ -255,7 +255,7 @@ module.exports = (io) => {
           //   }
           // };
           const message = {
-            tokens: [receiver.fcmToken],
+            token: receiver.fcmToken,
 
             // ❌ ERROR THA: Maine ye 'notification' block poora HATA diya hai.
             // Agar ye rahega to Android default sound bajayega aur 2 notification aayenge.
@@ -263,7 +263,6 @@ module.exports = (io) => {
             // ✅ CORRECT: Saara data (Title, Body, Sound) 'data' object me bhejein
             data: {
               type: "chat_message",
-
               // --- NEW: Title aur Body yahan move kiye gaye hain ---
               title: `New message from ${socket.userId === room.organisation.id
                 ? room.organisation.fullName
@@ -333,7 +332,7 @@ module.exports = (io) => {
           // }
 
 
-          await admin.messaging().sendEachForMulticast(message);
+          await admin.messaging().send(message);
         }
       } catch (err) {
         console.error("sendMessage error:", err);

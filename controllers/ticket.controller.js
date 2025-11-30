@@ -196,13 +196,12 @@ exports.createTicket = async (req, res) => {
         channelId: "triq_custom_sound_channel",
         sound: dynamicSoundName,
       };
-      const response = await admin.messaging().sendEachForMulticast({
-        tokens: [otherUser.fcmToken],
-        notification: {
+      const response = await admin.messaging().send({
+        token: otherUser.fcmToken,
+
+        data: {
           title: `New Ticket #${ticket.ticketNumber}`,
           body: `Problem: ${ticket.problem}`,
-        },
-        data: {
           type: 'ticket_created',
           ticketNumber: String(ticket.ticketNumber),
           ticketId: String(ticket._id),
@@ -212,17 +211,19 @@ exports.createTicket = async (req, res) => {
 
         },
         android: {
-          priority: "high", // Priority ko yahan rakhein
-          notification: androidNotification,
+          priority: "high",
         },
 
-        // 4. iOS ke liye options
+        // 4. iOS options
         apns: {
           headers: { "apns-priority": "10" },
           payload: {
             aps: {
-              // Sound file ka naam string me aur .aiff extension ke saath
-              sound: ` ${dynamicSoundName}.aiff`,
+              // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+              sound: `${dynamicSoundName}.aiff`,
+
+              // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+              "content-available": 1,
               "mutable-content": 1,
             },
           },
@@ -381,38 +382,36 @@ exports.updateTicket = async (req, res) => {
         sound: dynamicSoundName,
       };
 
-      const notifPayload = {
-        notification: {
+
+
+      await admin.messaging().send({
+        token: otherUser.fcmToken,
+        data: {
           title: `Ticket #${ticket.ticketNumber} has been updated: ${changes}.`,
           body: changes,
-        },
-        data: {
           type: "ticket_updated",
           ticketNumber: ticket.ticketNumber,
           screenName: "ticket",
+          soundName: dynamicSoundName
         },
         android: {
-          priority: "high", // Priority ko yahan rakhein
-          notification: androidNotification,
+          priority: "high",
         },
 
-        // 4. iOS ke liye options
+        // 4. iOS options
         apns: {
           headers: { "apns-priority": "10" },
           payload: {
             aps: {
-              // Sound file ka naam string me aur .aiff extension ke saath
-              sound: ` ${dynamicSoundName}.aiff`,
+              // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+              sound: `${dynamicSoundName}.aiff`,
+
+              // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+              "content-available": 1,
               "mutable-content": 1,
             },
           },
         }
-      };
-
-      await admin.messaging().sendEachForMulticast({
-        tokens: [otherUser.fcmToken],
-        notification: notifPayload.notification,
-        data: notifPayload.data,
       });
     }
     await ticket.save();

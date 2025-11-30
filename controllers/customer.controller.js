@@ -419,37 +419,36 @@ exports.updateCustomer = async (req, res) => {
             channelId: "triq_custom_sound_channel",
             sound: dynamicSoundName,
           };
-          const notifPayload = {
-            notification: {
-              title: "Customer Assigned",
-              body: notificationMessage
-            },
+
+          const response = await admin.messaging().send({
+            token: UserData.fcmToken,
             data: {
+              title: "Customer Assigned",
+              body: notificationMessage,
               type: "customer_assigned",
               processorId: String(UserData._id),
               screenName: "CustomerEditDetailsView",
-              route: '/customerEditDetailsView'
+              route: '/customerEditDetailsView',
+              soundName: dynamicSoundName
             },
             android: {
-              priority: "high", // Priority ko yahan rakhein
-              notification: androidNotification,
+              priority: "high",
             },
+
+            // 4. iOS options
             apns: {
               headers: { "apns-priority": "10" },
               payload: {
                 aps: {
-                  // Sound file ka naam string me aur .aiff extension ke saath
-                  sound: ` ${dynamicSoundName}.aiff`,
+                  // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+                  sound: `${dynamicSoundName}.aiff`,
+
+                  // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+                  "content-available": 1,
                   "mutable-content": 1,
                 },
               },
             }
-          };
-
-          const response = await admin.messaging().sendEachForMulticast({
-            tokens: [UserData.fcmToken],
-            notification: notifPayload.notification,
-            data: notifPayload.data
           });
 
           console.log("FCM sent:", response.successCount, "success,", response.failureCount, "failures");

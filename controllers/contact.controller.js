@@ -186,7 +186,7 @@ exports.searchContacts = async (req, res) => {
           name: e.name,
           organizationName: e.organizationName ?? '',
           profilePhoto: e.profilePhoto,
-          flag:getFlag(e.country),
+          flag: getFlag(e.country),
           designation: e.designation?.name,
           type: "external",
         })),
@@ -616,30 +616,32 @@ exports.sendExternalEmployeeRequest = async (req, res) => {
 
         await admin.messaging().send({
           token: receiverUser.fcmToken,
-          notification: {
+
+          data: {
             title: notification.title,
             body: notification.body,
-          },
-          data: {
             type: "externalEmployeeRequest",
             senderId: String(senderUserId),
+            soundName:dynamicSoundName
           },
           android: {
             priority: "high",
-            notification: {
-              channelId: "triq_custom_sound_channel",
-              sound: dynamicSoundName,
-            },
           },
+
+          // 4. iOS options
           apns: {
             headers: { "apns-priority": "10" },
             payload: {
               aps: {
+                // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
                 sound: `${dynamicSoundName}.aiff`,
+
+                // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+                "content-available": 1,
                 "mutable-content": 1,
               },
             },
-          },
+          }
         });
       } catch (err) {
         console.error("FCM error:", err.message);

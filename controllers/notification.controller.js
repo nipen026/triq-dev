@@ -62,26 +62,28 @@ exports.sendOrganizationRequest = async (req, res) => {
         };
         await admin.messaging().send({
           token: organization.fcmToken,
-          notification: {
+
+          data: {
             title: notification.title,
             body: notification.body,
-          },
-          data: {
             type: "organizationRequest",
             senderId: String(processorId),
+            soundName:dynamicSoundName
           },
           android: {
-            priority: "high", // Priority ko yahan rakhein
-            notification: androidNotification,
+            priority: "high",
           },
 
-          // 4. iOS ke liye options
+          // 4. iOS options
           apns: {
             headers: { "apns-priority": "10" },
             payload: {
               aps: {
-                // Sound file ka naam string me aur .aiff extension ke saath
-                sound: ` ${dynamicSoundName}.aiff`,
+                // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+                sound: `${dynamicSoundName}.aiff`,
+
+                // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+                "content-available": 1,
                 "mutable-content": 1,
               },
             },
