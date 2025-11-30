@@ -60,8 +60,8 @@ exports.sendOrganizationRequest = async (req, res) => {
           channelId: "triq_custom_sound_channel",
           sound: dynamicSoundName,
         };
-        await admin.messaging().send({
-          token: organization.fcmToken,
+        await admin.messaging().sendEachForMulticast({
+          tokens: [organization.fcmToken],
 
           data: {
             title: notification.title,

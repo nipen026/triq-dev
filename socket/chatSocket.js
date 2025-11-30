@@ -255,7 +255,7 @@ module.exports = (io) => {
           //   }
           // };
           const message = {
-            token: receiver.fcmToken,
+            tokens: [receiver.fcmToken],
 
             // ❌ ERROR THA: Maine ye 'notification' block poora HATA diya hai.
             // Agar ye rahega to Android default sound bajayega aur 2 notification aayenge.
@@ -332,7 +332,7 @@ module.exports = (io) => {
           // }
 
 
-          await admin.messaging().send(message);
+          await admin.messaging().sendEachForMulticast(message);
         }
       } catch (err) {
         console.error("sendMessage error:", err);

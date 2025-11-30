@@ -420,8 +420,8 @@ exports.updateCustomer = async (req, res) => {
             sound: dynamicSoundName,
           };
 
-          const response = await admin.messaging().send({
-            token: UserData.fcmToken,
+          const response = await admin.messaging().sendEachForMulticast({
+            tokens: [UserData.fcmToken],
             data: {
               title: "Customer Assigned",
               body: notificationMessage,

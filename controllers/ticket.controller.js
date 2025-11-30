@@ -196,8 +196,8 @@ exports.createTicket = async (req, res) => {
         channelId: "triq_custom_sound_channel",
         sound: dynamicSoundName,
       };
-      const response = await admin.messaging().send({
-        token: otherUser.fcmToken,
+      const response = await admin.messaging().sendEachForMulticast({
+        tokens: [otherUser.fcmToken],
 
         data: {
           title: `New Ticket #${ticket.ticketNumber}`,
@@ -384,8 +384,8 @@ exports.updateTicket = async (req, res) => {
 
 
 
-      await admin.messaging().send({
-        token: otherUser.fcmToken,
+      await admin.messaging().sendEachForMulticast({
+        tokens: [otherUser.fcmToken],
         data: {
           title: `Ticket #${ticket.ticketNumber} has been updated: ${changes}.`,
           body: changes,

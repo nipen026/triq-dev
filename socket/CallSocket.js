@@ -75,7 +75,7 @@ module.exports = (io) => {
                     }) || { soundName: "bell" };
 
                     const notify = {
-                        token: receiverData.fcmToken,
+                        tokens: [receiverData.fcmToken],
                         data: {
                             ...payload,
                             title: `${sender.fullName} is calling`,
@@ -96,7 +96,7 @@ module.exports = (io) => {
                     };
                     console.log(notify, "notify");
 
-                    await admin.messaging().send(notify);
+                    await admin.messaging().sendEachForMulticast(notify);
                     console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
                 }
                 // } else {

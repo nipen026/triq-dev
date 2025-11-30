@@ -614,8 +614,8 @@ exports.sendExternalEmployeeRequest = async (req, res) => {
         const soundData = await Sound.findOne({ type: "alert", user: receiverUserId });
         const dynamicSoundName = soundData?.soundName || "default";
 
-        await admin.messaging().send({
-          token: receiverUser.fcmToken,
+        await admin.messaging().sendEachForMulticast({
+          tokens: [receiverUser.fcmToken],
 
           data: {
             title: notification.title,
