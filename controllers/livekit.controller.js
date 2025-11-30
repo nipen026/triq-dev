@@ -41,7 +41,7 @@ exports.createSession = async (req, res) => {
     }
 
     // 🔥 FIXED — DO NOT USE findById(roomName)
-    const chatRoom = await ChatRoom.findOne({ roomName }).populate("organisation processor");
+   const chatRoom = await ChatRoom.findById(roomName).populate("organisation processor")
     if (!chatRoom) return console.log("❌ ChatRoom Not Found");
 
     const receiverId =
