@@ -51,7 +51,7 @@ exports.createSession = async (req, res) => {
     // const socketId = global.onlineUsers.get(receiverId);
     console.log(eventType, receiverId, "receiverId");
 
-    if (receiverId && eventType === "call_request") {
+    // if (receiverId && eventType === "call_request") {
       const io = getIO();
       io.to(receiverId).emit("incoming-call", {
         eventType,
@@ -65,7 +65,7 @@ exports.createSession = async (req, res) => {
       });
 
       console.log("📞 Incoming Call Sent via WebSocket →", receiverId);
-    }
+    // }
 
     // Always send Notification (even if offline)
     // const receiver = await User.findById(receiverId).select("fcmToken fullName");
