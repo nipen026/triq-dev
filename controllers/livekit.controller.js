@@ -41,16 +41,17 @@ exports.createSession = async (req, res) => {
     }
 
     // 🔥 FIXED — DO NOT USE findById(roomName)
-   const chatRoom = await ChatRoom.findById(roomName).populate("organisation processor")
+    const chatRoom = await ChatRoom.findById(roomName).populate("organisation processor")
     if (!chatRoom) return console.log("❌ ChatRoom Not Found");
 
     const receiverId =
       users === String(chatRoom.organisation._id)
         ? String(chatRoom.processor._id)
         : String(chatRoom.organisation._id);
-
+    const senderUser = users === String(chatRoom.organisation._id) ? chatRoom.organisation : chatRoom.processor; 
+    const receiverUser = users === String(chatRoom.organisation._id) ? chatRoom.processor : chatRoom.organisation;
     const io = getIO();
-    io.to(receiverId).emit("incoming-call", { roomName, token, callType, eventType });
+    io.to(receiverId).emit("incoming-call", { eventType, roomName, callType, token, sender_name: senderUser.fullName, receiver_name: receiverUser.fullName, flag: getFlagWithCountryCode(senderUser.countryCode), user: users });
 
     console.log(`📞 SOCKET SENT TO → ${receiverId}`);
 
@@ -81,7 +82,7 @@ exports.createSession = async (req, res) => {
       }
     }
 
-   return res.json({ status: 1, message: "Livekit session created", token, eventType, identity: userId, callType, livekitUrl: process.env.LIVEKIT_URL });
+    return res.json({ status: 1, message: "Livekit session created", token, eventType, identity: userId, callType, livekitUrl: process.env.LIVEKIT_URL });
 
   } catch (err) {
     console.error("LIVEKIT ERROR", err);
