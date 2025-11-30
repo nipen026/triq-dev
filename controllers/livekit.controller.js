@@ -3,6 +3,8 @@ const User = require("../models/user.model");
 const { generateLivekitToken } = require("../services/livekit.service");
 const { getIO } = require("../socket/socketInstance");
 const ChatRoom = require('../models/chatRoom.model');
+const admin = require("../config/firebase");
+
 exports.createSession = async (req, res) => {
   console.log(req.body, "body");
 
