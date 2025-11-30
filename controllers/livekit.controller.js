@@ -68,6 +68,8 @@ exports.createSession = async (req, res) => {
       user: users
     });
     const receiver = await User.findById(receiverId).select("fcmToken fullName");
+    console.log(receiver,"receiver");
+    
     if (receiver?.fcmToken) {
       await admin.messaging().send({
         token: receiver.fcmToken,
@@ -76,7 +78,7 @@ exports.createSession = async (req, res) => {
           body: "You have an incoming call",
         },
         data: { roomName, callType, token }
-      });
+      }).then(()=>console.log('Notification Sent' )).catch((err)=>console.log(err));
     }
     console.log("📞 CALL SENT →", receiverId);
     // } else {
