@@ -415,9 +415,9 @@ exports.updateTicket = async (req, res) => {
         data: notifPayload.data,
       });
     }
+    await ticket.save();
     const io = socket.getIO();
     io.emit("ticketStatusUpdated", ticket);
-    await ticket.save();
     res.json({ message: "Ticket updated successfully", updatedFields, ticket });
   } catch (err) {
     res.status(500).json({ message: err.message });
