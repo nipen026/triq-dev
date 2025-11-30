@@ -82,7 +82,7 @@ exports.createSession = async (req, res) => {
     console.log(userID)
     const payload = {
       eventType,
-      room_id,
+      roomName,
       user_id: receiverId,
       name: sender.fullName,
       sender_name: senderId === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
@@ -95,7 +95,7 @@ exports.createSession = async (req, res) => {
     const receiverData = await User.findById(receiverId).select("fcmToken fullName");
     // 🔥 EMIT CALL TO RECEIVER ONLY
     // if (global.onlineUsers.has(receiverId)) {  
-    io.to(receiverId).emit("call-event", payload);
+    // io.to(receiverId).emit("call-event", payload);
     console.log("📞 CALL SENTTT →", receiverId);
 
     console.log(receiverData, eventType, "receiver");
