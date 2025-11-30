@@ -49,7 +49,7 @@ module.exports = (io) => {
                 const payload = {
                     eventType,
                     room_id,
-                    user_id: senderId,
+                    user_id: receiverId,
                     name: sender.fullName,
                     profile_pic: profile?.profileImage || "",
                     flag: getFlagWithCountryCode(sender.countryCode),
@@ -58,7 +58,7 @@ module.exports = (io) => {
                 };
                 const receiverData = await User.findById(receiverId).select("fcmToken fullName");
                 // 🔥 EMIT CALL TO RECEIVER ONLY
-                // if (global.onlineUsers.has(receiverId)) {   
+                // if (global.onlineUsers.has(receiverId)) {  
                 io.to(receiverId).emit("call-event", payload);
                 console.log("📞 CALL SENTTT →", receiverId);
 
