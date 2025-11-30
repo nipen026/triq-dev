@@ -23,9 +23,9 @@ module.exports = (io) => {
 
 
 
-        socket.on("call-event", async ({ type, room_id, callType = "video", eventType }) => {
+        socket.on("call-event", async ({  room_id, callType = "video", eventType }) => {
             try {
-                console.log(type, room_id, callType, "type, room_id, callType");
+                console.log(eventType, room_id, callType, "type, room_id, callType");
 
                 const senderId = socket.userId;
                 if (!senderId) return console.log("❌ Unregistered Sender");
@@ -66,7 +66,7 @@ module.exports = (io) => {
 
                 console.log(receiverData, eventType, "receiver");
 
-                // if (eventType == 'call_request') {
+                if (eventType == 'call_request') {
                 console.log('hello');
 
                 const userSound = await Sound.findOne({
@@ -98,6 +98,7 @@ module.exports = (io) => {
 
                 await admin.messaging().send(notify);
                 console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
+            }
                 // } else {
                 //     console.log("❌ No FCM Token found for receiver");
                 // }
