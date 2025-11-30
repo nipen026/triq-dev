@@ -209,7 +209,7 @@ exports.createTicket = async (req, res) => {
           Route: '/ticketDetails',
           screenName: 'TicketDetailsView',
           soundName: dynamicSoundName,
-          
+
         },
         android: {
           priority: "high", // Priority ko yahan rakhein
@@ -416,8 +416,12 @@ exports.updateTicket = async (req, res) => {
       });
     }
     await ticket.save();
+    const receiverId =
+      user.id === String(ticket.organisation)
+        ? String(ticket.processor)
+        : String(ticket.organisation);
     const io = socket.getIO();
-    io.emit("ticketStatusUpdated", ticket);
+    io.to(receiverId).emit("ticketStatusUpdated", ticket);
     res.json({ message: "Ticket updated successfully", updatedFields, ticket });
   } catch (err) {
     res.status(500).json({ message: err.message });
