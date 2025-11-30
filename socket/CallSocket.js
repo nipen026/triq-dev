@@ -9,25 +9,25 @@ const { getFlagWithCountryCode } = require("../utils/flagHelper");
 
 
 module.exports = (io) => {
-    global.onlineUsers = new Map();
 
 
     io.on("connection", socket => {
         console.log("✅ Call Socket connected:", socket.id);
         // Register user session ================================
-        socket.on("register", userId => {
+         socket.on("register", (userId) => {
             socket.userId = userId;
-            global.onlineUsers.set(userId, socket.id);
+            socket.join(userId);
+            console.log("🟢 Registered in room:", userId);
         });
 
 
 
 
-        socket.on("call-event", async ({ type, room_id, callType = "video",eventType }) => {
+        socket.on("call-event", async ({ type, room_id, callType = "video", eventType }) => {
             try {
                 console.log(type, room_id, callType, "type, room_id, callType");
 
-                const senderId = socket.userId;                 // FIXED
+                const senderId = socket.userId;                
                 if (!senderId) return console.log("❌ Unregistered Sender");
 
                 const room = await Room.findOne({ roomName: room_id }).select("token");
@@ -57,7 +57,7 @@ module.exports = (io) => {
                 const receiverData = await User.findById(receiverId).select("fcmToken fullName");
                 // 🔥 EMIT CALL TO RECEIVER ONLY
                 // if (global.onlineUsers.has(receiverId)) {   
-                io.to(global.onlineUsers.get(receiverId)).emit("call-event", payload);
+                io.to(receiverId).emit("call-event", payload);
                 console.log("📞 CALL SENTTT →", receiverId);
 
                 console.log(receiverData, "receiver");
@@ -103,10 +103,8 @@ module.exports = (io) => {
             }
         });
         // On disconnect ======================================
-        socket.on("disconnect", () => {
-            global.onlineUsers.forEach((s, id) => {
-                if (s === socket.id) global.onlineUsers.delete(id);
-            });
+       socket.on("disconnect", () => {
+            console.log("🔴 User Disconnected:", socket.userId);
         });
     });
 

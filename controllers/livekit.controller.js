@@ -1,10 +1,11 @@
 const Room = require("../models/room.model");
+const User = require("../models/user.model");
 const { generateLivekitToken } = require("../services/livekit.service");
 const { getIO } = require("../socket/socketInstance");
 const ChatRoom = require('../models/chatRoom.model');
 exports.createSession = async (req, res) => {
-  console.log(req.body,"body");
-  
+  console.log(req.body, "body");
+
   try {
     const { roomName, identity, name, users = "", callType = "video", eventType = "call_request" } = req.body;
 
@@ -12,7 +13,7 @@ exports.createSession = async (req, res) => {
 
     const io = getIO();
     const userId = identity || `user_${Math.random().toString(36).substring(2, 9)}`;
-    
+
     // if (eventType == 'call_request') {
     const token = await generateLivekitToken(roomName, userId, name || userId);
     // } else {
@@ -35,7 +36,7 @@ exports.createSession = async (req, res) => {
       });
     } else {
       room.eventType = eventType,
-      room.users = users
+        room.users = users
       room.save();
     }
 
@@ -50,21 +51,32 @@ exports.createSession = async (req, res) => {
         ? String(chatRoom.processor._id)
         : String(chatRoom.organisation._id);
 
-    console.log(chatRoom,users,'chatRoom');
-    
+    console.log(chatRoom, users, 'chatRoom');
 
-    const socketId = global.onlineUsers.get(receiverId);
+
+    // const socketId = global.onlineUsers.get(receiverId);
     console.log(socketId, "🔹 Found Socket ID");
 
     // if (socketId) {
-      io.to(socketId).emit("incoming-call", {
-        eventType,
-        roomName,
-        token,
-        callType,
-        user: users
+    io.to(receiverId).emit("incoming-call", {
+      eventType,
+      roomName,
+      token,
+      callType,
+      user: users
+    });
+    const receiver = await User.findById(receiverId).select("fcmToken fullName");
+    if (receiver?.fcmToken) {
+      await admin.messaging().send({
+        token: receiver.fcmToken,
+        notification: {
+          title: "Incoming Call",
+          body: "You have an incoming call",
+        },
+        data: { roomName, callType, token }
       });
-      console.log("📞 CALL SENT →", receiverId, "→ Socket:", socketId);
+    }
+    console.log("📞 CALL SENT →", receiverId, "→ Socket:", socketId);
     // } else {
     //   console.log("📵 Receiver is offline OR not registered in socket");
     // }
