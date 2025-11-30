@@ -1,10 +1,14 @@
 const express = require("express");
 const router = express.Router();
-const StripeController = require("../controllers/stripe.controller");
+const { createCheckout, stripeWebhook, verifyPayment } = require("../controllers/stripe.controller");
 
-router.post("/create-payment", StripeController.createPayment);
+// Route to create payment and get redirect URL
+router.post("/create-checkout", createCheckout);
 
-// Raw body required for webhook
-router.post("/webhook", express.raw({ type: "application/json" }), StripeController.stripeWebhook);
+// Stripe webhook (must have rawBody)
+router.post("/stripe/webhook", express.raw({ type: 'application/json' }), stripeWebhook);
+
+// Verify payment after redirect on app
+router.get("/verify-payment", verifyPayment);
 
 module.exports = router;

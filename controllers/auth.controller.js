@@ -862,7 +862,7 @@ exports.autoVerify = async (req, res) => {
         <div style="text-align:center;padding:40px;font-family:sans-serif">
           <h2>Email already verified ✅</h2>
           <script>
-            setTimeout(() => window.close(), 10000);
+            setTimeout(() => window.close(), 1000);
           </script>
         </div>
       `);
@@ -878,7 +878,7 @@ exports.autoVerify = async (req, res) => {
         <h2>🎉 Email Verified Successfully!</h2>
         <p>You can now close this tab and return to the app.</p>
         <script>
-          setTimeout(() => window.close(), 10000);
+          setTimeout(() => window.close(), 1000);
         </script>
       </div>
     `);
@@ -888,14 +888,14 @@ exports.autoVerify = async (req, res) => {
       return res.status(400).send(`
         <div style="text-align:center;padding:40px;font-family:sans-serif">
           <h3>Verification link expired ⏰</h3>
-          <script>setTimeout(() => window.close(), 10000);</script>
+          <script>setTimeout(() => window.close(), 1000);</script>
         </div>
       `);
     }
     res.status(400).send(`
       <div style="text-align:center;padding:40px;font-family:sans-serif">
         <h3>Invalid or expired link ❌</h3>
-        <script>setTimeout(() => window.close(), 10000);</script>
+        <script>setTimeout(() => window.close(), 1000);</script>
       </div>
     `);
   }
