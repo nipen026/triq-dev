@@ -8,80 +8,65 @@ const Payment = require("../models/payment.model");
 exports.createCheckout = async (req, res) => {
   try {
     const { amount, userId } = req.body;
-    if (!amount) 
-      return res.status(400).json({ status: 0, msg: "amount is required" });
 
-    // Create Checkout Session
     const session = await stripe.checkout.sessions.create({
       payment_method_types: ["card", "upi", "netbanking"],
       line_items: [
         {
           price_data: {
             currency: "inr",
-            product_data: { name: "Order Payment" },
-            unit_amount: amount * 100, // paise format
+            product_data: { name: "App Order Payment" },
+            unit_amount: amount * 100, 
           },
           quantity: 1,
-        },
+        }
       ],
       mode: "payment",
 
-      // ⚠ Deep link return to APP instead of website
+      // 🔥 DIRECT REDIRECT AFTER PAYMENT SUCCESS
       success_url: `myapp://payment-success?session_id={CHECKOUT_SESSION_ID}`,
       cancel_url: `myapp://payment-failed`,
     });
 
-    // Save payment
     await Payment.create({
       userId,
       amount,
       currency: "inr",
+      status: "pending",
       checkoutSessionId: session.id,
-      paymentIntentId: session.payment_intent,
-      status: "pending"
     });
 
-    return res.json({
-      status: 1,
-      redirect_url: session.url,  // open in browser
-      sessionId: session.id,
-    });
-
-  } catch (error) {
-    return res.status(500).json({ status: 0, error: error.message });
+    return res.json({ url: session.url }); // open in browser
+  }
+  catch (err) {
+    return res.json({ status: 0, error: err.message });
   }
 };
+
+
 
 
 /*-------------------------------------------
     2. STRIPE WEBHOOK PAYMENT AUTO VERIFY
 --------------------------------------------*/
 exports.stripeWebhook = async (req, res) => {
-  let event;
-
   try {
-    const signature = req.headers["stripe-signature"];
-    event = stripe.webhooks.constructEvent(
-      req.rawBody, // raw body important
-      signature,
-      process.env.STRIPE_WEBHOOK_SECRET
-    );
+    const sig = req.headers["stripe-signature"];
+    const event = stripe.webhooks.constructEvent(req.rawBody, sig, process.env.STRIPE_WEBHOOK_SECRET);
+
+    if (event.type === "checkout.session.completed") {
+      const session = event.data.object;
+      await Payment.findOneAndUpdate(
+        { checkoutSessionId: session.id },
+        { status: "succeeded" }
+      );
+      console.log("✔ Payment verified:", session.id);
+    }
+
+    res.json({ received: true });
   } catch (err) {
-    return res.status(400).send(`Webhook Error: ${err.message}`);
+    res.status(400).send(`Webhook error: ${err.message}`);
   }
-
-  if (event.type === "checkout.session.completed") {
-    const session = event.data.object;
-
-    await Payment.findOneAndUpdate(
-      { checkoutSessionId: session.id },
-      { status: "succeeded" }
-    );
-
-    console.log("✔ Payment verified:", session.id);
-  }
-
-  res.json({ received: true });
 };
 
 
@@ -90,20 +75,27 @@ exports.stripeWebhook = async (req, res) => {
 --------------------------------------------*/
 exports.verifyPayment = async (req, res) => {
   try {
-    const { session_id } = req.query;
-    if (!session_id) return res.json({ status: 0, msg: "session_id required" });
-
+    const session_id = req.query.session_id;
     const payment = await Payment.findOne({ checkoutSessionId: session_id });
 
-    if (!payment) return res.json({ status: 0, msg: "Payment not found" });
+    if (!payment) return res.send("Payment not found");
 
-    return res.json({
-      status: 1,
-      payment_status: payment.status,
-      data: payment
-    });
+    // Wait until webhook updates status (max 5 sec retry)
+    let tries = 0;
+    while (payment.status !== "succeeded" && tries < 10) {
+      await new Promise(resolve => setTimeout(resolve, 500));
+      tries++;
+      await payment.reload(); // recheck database
+    }
 
-  } catch (error) {
-    return res.status(500).json({ status: 0, error: error.message });
+    if (payment.status === "succeeded") {
+      // 👇 Redirect to App after verification
+      return res.redirect(`myapp://payment-success?session_id=${session_id}`);
+    } else {
+      return res.redirect(`myapp://payment-failed`);
+    }
+
+  } catch (err) {
+    res.send("Error verifying payment");
   }
 };
