@@ -50,6 +50,8 @@ exports.createSession = async (req, res) => {
 
     // If receiver online -> emit socket event directly
     // const socketId = global.onlineUsers.get(receiverId);
+    console.log(eventType, receiverId , "receiverId");
+    
     if (receiverId && eventType === "call_request") {
       io.to(receiverId).emit("incoming-call", {
         eventType,
