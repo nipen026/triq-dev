@@ -27,6 +27,8 @@ exports.createSession = async (req, res) => {
     //   }
     // }
     let room = await Room.findById(roomName);
+    console.log(room,"room");
+    
     if (!room) {
       room = await Room.create({
         roomName,
