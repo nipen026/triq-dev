@@ -66,7 +66,7 @@ module.exports = (io) => {
 
                 console.log(receiverData, eventType, "receiver");
 
-                if (eventType === 'call_request') {
+                if (eventType === 'call-request') {
                     console.log('hello');
 
                     const userSound = await Sound.findOne({
