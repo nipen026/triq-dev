@@ -11,7 +11,6 @@ exports.createSession = async (req, res) => {
     const { roomName, identity, name, users = "", callType = "video", eventType = "call_request" } = req.body;
     if (!roomName) return res.status(400).json({ error: "roomName is required" });
 
-    const io = getIO();
     const userId = identity || `user_${Math.random().toString(36).substring(2, 9)}`;
 
     const token = await generateLivekitToken(roomName, userId, name || userId);
@@ -50,9 +49,10 @@ exports.createSession = async (req, res) => {
 
     // If receiver online -> emit socket event directly
     // const socketId = global.onlineUsers.get(receiverId);
-    console.log(eventType, receiverId , "receiverId");
-    
+    console.log(eventType, receiverId, "receiverId");
+
     if (receiverId && eventType === "call_request") {
+      const io = getIO();
       io.to(receiverId).emit("incoming-call", {
         eventType,
         roomName,
