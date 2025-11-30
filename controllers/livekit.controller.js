@@ -18,9 +18,9 @@ exports.createSession = async (req, res) => {
     let room = await Room.findOne({ roomName });
 
     // 🚫 Prevent duplicate call request - if already ringing, do not notify again
-    if (room && room.eventType === "call-request") {
-      return res.json({ status: 2, msg: "Call already ringing...", roomName });
-    }
+    // if (room && room.eventType === "call-request") {
+    //   return res.json({ status: 2, msg: "Call already ringing...", roomName });
+    // }
 
     const token = await generateLivekitToken(roomName, userId, name || userId);
 
