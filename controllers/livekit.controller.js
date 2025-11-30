@@ -7,28 +7,17 @@ const admin = require("../config/firebase");
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
 
 exports.createSession = async (req, res) => {
-  console.log(req.body, "body");
-
   try {
     const { roomName, identity, name, users = "", callType = "video", eventType = "call_request" } = req.body;
-
     if (!roomName) return res.status(400).json({ error: "roomName is required" });
 
     const io = getIO();
     const userId = identity || `user_${Math.random().toString(36).substring(2, 9)}`;
 
-    // if (eventType == 'call_request') {
     const token = await generateLivekitToken(roomName, userId, name || userId);
-    // } else {
-    //   let room = await Room.findOne({ roomName });
-    //   if (room) {
-    //     token = room.token
-    //   } else {
-    //     return;
-    //   }
-    // }
-    let room = await Room.findById(roomName);
-    console.log(room, "room");
+
+    // FIX ❗ Find room by roomName, NOT _id
+    let room = await Room.findOne({ roomName });
 
     if (!room) {
       room = await Room.create({
@@ -37,74 +26,74 @@ exports.createSession = async (req, res) => {
         token,
         users,
         callType,
-        eventType    // <-- store latest event in DB
+        eventType
       });
     } else {
-      room.eventType = eventType,
-        room.users = users
-      room.save();
+      room.eventType = eventType;
+      room.users = users;
+      await room.save();
     }
-
-
 
     const chatRoom = await ChatRoom.findById(roomName).populate("organisation processor");
     if (!chatRoom) return console.log("❌ ChatRoom Not Found");
 
-    // AUTO GET RECEIVER
+    // AUTO DETECT CALL RECEIVER
     const receiverId =
       users === String(chatRoom.organisation._id)
         ? String(chatRoom.processor._id)
         : String(chatRoom.organisation._id);
 
-    console.log(chatRoom, users, 'chatRoom');
+    const senderUser =
+      users === String(chatRoom.organisation._id) ? chatRoom.organisation : chatRoom.processor;
+    const receiverUser =
+      users === String(chatRoom.organisation._id) ? chatRoom.processor : chatRoom.organisation;
 
-
+    // If receiver online -> emit socket event directly
     // const socketId = global.onlineUsers.get(receiverId);
-    // console.log(socketId, "🔹 Found Socket ID")
-
-    if (eventType === 'call_request') {
-      console.log('hello2');
-      
+    if (receiverId && eventType === "call_request") {
       io.to(receiverId).emit("incoming-call", {
         eventType,
         roomName,
-        sender_name: users === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
-        receiver_name: users === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) : String(chatRoom.organisation.fullName),
-        flag: users === String(chatRoom.organisation._id) ? getFlagWithCountryCode(chatRoom.organisation.countryCode) : getFlagWithCountryCode(chatRoom.processor.countryCode),
-        token,
         callType,
+        token,
+        sender_name: senderUser.fullName,
+        receiver_name: receiverUser.fullName,
+        flag: getFlagWithCountryCode(senderUser.countryCode),
         user: users
       });
-    }
-    // const receiver = await User.findById(receiverId).select("fcmToken fullName");
-    // console.log(receiver, "receiver2");
 
-    // // if (receiver?.fcmToken) {
-    // const payloadData = {
-    //   token: receiver.fcmToken,
-    //   notification: {
-    //     title: "Incoming Call",
-    //     body: "You have an incoming call",
-    //   },
-    //   // data: { roomName, callType, token }
-    // }
-    // await admin.messaging().send(payloadData).then((res) => console.log('Notification Sent in create session')).catch((err) => console.log(err));
-    // }
-    // console.log("📞 CALL SENT →", receiverId);
-    // } else {
-    //   console.log("📵 Receiver is offline OR not registered in socket");
-    // }
-    // });
+      console.log("📞 Incoming Call Sent via WebSocket →", receiverId);
+    }
+
+    // Always send Notification (even if offline)
+    // const receiver = await User.findById(receiverId).select("fcmToken fullName");
+    // if (receiver?.fcmToken) {
+    //   const payload = {
+    //     token: receiver.fcmToken,   // FIX 🔥 token only (not tokens)
+    //     notification: {
+    //       title: `${senderUser.fullName} is calling`,
+    //       body: `Incoming ${callType.toUpperCase()} Call`,
+    //     },
+    //     data: {
+    //       roomName,
+    //       callType,
+    //       token,
+    //       eventType: "call_request"
+    //     }
+    //   };
+
+    //   await admin.messaging().send(payload);
+    //   console.log("📨 Push Notification Delivered →", receiver.fullName);
     // }
 
     return res.json({
       status: 1,
       message: "Livekit session created",
-      eventType,
       token,
+      eventType,
       identity: userId,
-      livekitUrl: process.env.LIVEKIT_URL,
-      callType
+      callType,
+      livekitUrl: process.env.LIVEKIT_URL
     });
 
   } catch (err) {
