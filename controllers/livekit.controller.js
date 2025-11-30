@@ -48,10 +48,21 @@ exports.createSession = async (req, res) => {
       users === String(chatRoom.organisation._id)
         ? String(chatRoom.processor._id)
         : String(chatRoom.organisation._id);
-    const senderUser = users === String(chatRoom.organisation._id) ? chatRoom.organisation : chatRoom.processor; 
+    const senderUser = users === String(chatRoom.organisation._id) ? chatRoom.organisation : chatRoom.processor;
     const receiverUser = users === String(chatRoom.organisation._id) ? chatRoom.processor : chatRoom.organisation;
     const io = getIO();
-    io.to(receiverId).emit("incoming-call", { eventType, roomName, callType, token, sender_name: senderUser.fullName, receiver_name: receiverUser.fullName, flag: getFlagWithCountryCode(senderUser.countryCode), user: users });
+    io.to(receiverId).emit("incoming-call",
+      {
+        eventType,
+        roomName,
+        callType,
+        token,
+        sender_name: senderUser.fullName,
+        receiver_name: receiverUser.fullName,
+        flag: getFlagWithCountryCode(senderUser.countryCode),
+        user: users
+      }
+    );
 
     console.log(`📞 SOCKET SENT TO → ${receiverId}`);
 
@@ -63,16 +74,25 @@ exports.createSession = async (req, res) => {
           user: receiverId,
           type: callType === "audio" ? "voice_call" : "video_call"
         }) || { soundName: "bell" };
-
+        const sender = await User.findById(users).select("fullName countryCode");
+        const profile = await Profile.findOne({ user: users }).select("profileImage");
         await admin.messaging().send({
           token: receiver.fcmToken,
           data: {
-            title: `${name} is calling`,
+            title: `${sender.fullName} is calling`,
             body: `Incoming ${callType} call`,
-            roomName,
+            eventType,
+            room_id: roomName,
+            user_id: receiverId,
+            name: sender.fullName,
+            sender_name: users === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
+            receiver_name: users === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) : String(chatRoom.organisation.fullName),
+            profile_pic: profile?.profileImage || "",
+            flag: getFlagWithCountryCode(sender.countryCode),
             callType,
-            token,
-            eventType
+            roomToken: room?.token,
+            screenName: callType === "video" ? "video_call_view" : "audio_call_view",
+            sound: soundData.soundName
           },
           android: { priority: "high" },
           apns: { payload: { aps: { sound: `${soundData.soundName}.aiff`, "content-available": 1 } } }
