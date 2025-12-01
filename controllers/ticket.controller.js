@@ -745,7 +745,41 @@ exports.updateTicketRating = async (req, res) => {
     ticket.rating = rating;
     ticket.feedback = feedback;
     await ticket.save();
+    const receiverId =
+      user.id === String(ticket.organisation)
+        ? String(ticket.processor)
+        : String(ticket.organisation);
+    const userData = await User.findById({ receiverId }).select('fcmToken');
+    const soundData = await Sound.findOne({ type: "ticket_notification", user: receiverId });
+    const dynamicSoundName = soundData.soundName;
+    await admin.messaging().sendEachForMulticast({
+      tokens: [userData.fcmToken],
+      data: {
+        title: `Ticket #${ticket.ticketNumber} has been added feedback.`,
+        body: changes,
+        type: "ticket_feedback",
+        ticketNumber: ticket.ticketNumber,
+        screenName: "ticket",
+        soundName: dynamicSoundName
+      },
+      android: {
+        priority: "high",
+      },
+      // 4. iOS options
+      apns: {
+        headers: { "apns-priority": "10" },
+        payload: {
+          aps: {
+            // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+            sound: `${dynamicSoundName}.aiff`,
 
+            // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+            "content-available": 1,
+            "mutable-content": 1,
+          },
+        },
+      }
+    });
     res.json({ message: "Ticket rating updated successfully", ticket });
   } catch (err) {
     res.status(500).json({ message: err.message });
