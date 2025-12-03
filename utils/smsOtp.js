@@ -34,9 +34,9 @@
 // var request = require('request');
 // var options = {
 // 'method': 'POST',
-// 'url': 'https://cpaas.messagecentral.com/verification/v3/send?countryCode=91&customerId=C-F59D75B8976E490&senderId=UTOMOB&type=SMS&flowType=SMS&mobileNumber=8469838559&message=Welcome to Message Central. We are delighted to have you here! - Powered by U2opia',
+// 'url': 'https://cpaas.messagecentral.com/verification/v3/send?countryCode=91&customerId=C-8A37F23E5257494&senderId=UTOMOB&type=SMS&flowType=SMS&mobileNumber=8469838559&message=Welcome to Message Central. We are delighted to have you here! - Powered by U2opia',
 // 'headers': {
-// 'authToken': eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJDLUY1OUQ3NUI4OTc2RTQ5MCIsImlhdCI6MTc2NDY1MTA5MCwiZXhwIjoxOTIyMzMxMDkwfQ.zJXTEEFjVb3ppsjy5cSJ9yzkrm6z0aMXomAPPRpI04rarzQHOou9tAve3t4InJgIgJ27c9RxvGOjrVk15jhdrw
+// 'authToken': eyJhbGciOiJIUzUxMiJ9.eyJzdWIiOiJDLThBMzdGMjNFNTI1NzQ5NCIsImlhdCI6MTc2NDczNjc2NiwiZXhwIjoxOTIyNDE2NzY2fQ.4dODr29-kQXzkDVQXGtGFALjLDupgutYEznWrj7vOClgYOyZCjh3_tfz8vQWUBAH_N7Mlulo4O_jH7mxMGOIlQ
 // }
 // };
 // request(options, function (error, response) {
@@ -61,7 +61,7 @@ const sendSMS = async (phoneNumber,code) => {
   try {
     const cleanNumber = phoneNumber.replace("+", "");
 
-    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=91&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${cleanNumber}&message=${code}`;
+    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=91&customerId=C-8A37F23E5257494&senderId=UTOMOB&type=SMS&flowType=SMS&mobileNumber=${cleanNumber}&message='Your TRIQ INNVOATION OTP is ${code}'`;
 
     const headers = {
       authToken: AUTH_TOKEN,
