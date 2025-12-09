@@ -63,6 +63,8 @@ module.exports = (io) => {
     // 🔥 Handle sending message with translation
     socket.on("sendMessage", async ({ roomId, content, attachments }) => {
       try {
+        console.log(attachments,"attachments");
+        
         if (!socket.userId || !roomId) return;
         const room = await ChatRoom.findById(roomId).populate("organisation processor ticket");
         if (!room) return;
