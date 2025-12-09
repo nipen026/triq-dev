@@ -57,11 +57,11 @@ if (!admin.apps.length) {
 const AUTH_TOKEN = process.env.AUTHTOKEN;     // JWT Token from MessageCentral
 const CUSTOMER_ID = process.env.CUSTOMERID;   // C-xxxxxxx
 
-const sendSMS = async (phoneNumber,code) => {
+const sendSMS = async (phoneNumber,countryCode) => {
   try {
     const cleanNumber = phoneNumber.replace("+", "");
 
-    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=91&customerId=C-8A37F23E5257494&senderId=UTOMOB&type=SMS&flowType=SMS&mobileNumber=${cleanNumber}&message='Your TRIQ INNVOATION OTP is ${code}'`;
+    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode}&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${cleanNumber}&otpLength=6`;
 
     const headers = {
       authToken: AUTH_TOKEN,

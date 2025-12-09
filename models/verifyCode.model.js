@@ -5,6 +5,8 @@ const verifyCodeSchema = new mongoose.Schema({
   phone: { type: String },
   code: { type: String, required: true },
   type: { type: String, enum: ["email", "phone"], required: true },
+  verficationid:String,
+  countryCode:String,
   createdAt: { type: Date, default: Date.now, expires: 3600 } // auto-delete after 1 hour
 });
 
