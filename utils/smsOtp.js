@@ -56,12 +56,30 @@ if (!admin.apps.length) {
 
 const AUTH_TOKEN = process.env.AUTHTOKEN;     // JWT Token from MessageCentral
 const CUSTOMER_ID = process.env.CUSTOMERID;   // C-xxxxxxx
+function splitPhone(fullNumber) {
+  const clean = fullNumber.replace("+", "").trim();
 
-const sendSMS = async (phoneNumber,countryCode) => {
+  // India has 2-digit country code (91)
+  // But handle generically for other countries too
+  let countryCode = "";
+  let mobileNumber = "";
+
+  if (clean.length > 10) {
+    countryCode = clean.slice(0, clean.length - 10);
+    mobileNumber = clean.slice(clean.length - 10);
+  } else {
+    // Fallback
+    mobileNumber = clean;
+  }
+
+  return { countryCode, mobileNumber };
+}
+
+const sendSMS = async (phoneNumber) => {
   try {
-    const cleanNumber = phoneNumber.replace("+", "");
+      const { countryCode, mobileNumber } = splitPhone(phoneNumber);
 
-    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode}&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${cleanNumber}&otpLength=6`;
+    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode}&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${mobileNumber}&otpLength=6`;
 
     const headers = {
       authToken: AUTH_TOKEN,
