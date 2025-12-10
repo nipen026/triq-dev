@@ -904,19 +904,24 @@ exports.deleteEmployee = async (req, res) => {
 // 👤 GET Employee By ID (populated)
 exports.getEmployeeById = async (req, res) => {
   try {
-    console.log(req.params.id);
-    
-    const employee = await Employee.findOne({linkedUser:req.params.id})
+    const userId = req.params.id
+
+    const employee = await Employee.findOne({
+      $or: [
+        { linkedUser: userId },
+        { id: userId }
+      ]
+    })
       .populate("department", "name")
       .populate("designation", "name");
-    console.log(employee,"employee");
-    
+    console.log(employee, "employee");
+
     if (!employee) {
       return res.status(404).json({ status: 0, message: "Employee not found" });
     }
     const employePermissionData = await EmployeePermission.findOne({ employee: employee._id });
-    console.log(employePermissionData,"employePermissionData");
-    
+    console.log(employePermissionData, "employePermissionData");
+
     const qrCode = await QRCode.toDataURL(employee.id);
     const obj = employee.toObject();
     obj.qrCode = qrCode;
