@@ -1,4 +1,5 @@
-const Designation = require('../models/designation.model')
+const Designation = require('../models/designation.model');
+const Employee = require('../models/employee.model');
 // const DESIGNATION_LEVELS = {
 //   // Common Across Departments
 //   "Director": 1,
@@ -129,21 +130,21 @@ const DESIGNATION_LEVELS = {
 
   // Production
   "plant / unit head": 3,
-  "dispatch head/coordinator":4,
-  'dispatch executive':5,
-  'account manager':4,
-  'admin / accounts':3,
-  'pi executive':5,
-  'account executive':5,
-  'intern/ executive':5,
+  "dispatch head/coordinator": 4,
+  'dispatch executive': 5,
+  'account manager': 4,
+  'admin / accounts': 3,
+  'pi executive': 5,
+  'account executive': 5,
+  'intern/ executive': 5,
   "production supervisor head": 4,
   "production supervisor": 5,
   "quality control engineer": 6,
   "production executive": 7,
   "machine operator": 7,
   "line incharge": 5,
-  "labour":5,
-  "worker":5,
+  "labour": 5,
+  "worker": 5,
   "maintenance head": 5,
 };
 
@@ -157,7 +158,7 @@ exports.addDesignation = async (req, res) => {
     }
 
     // Normalize
-    const originalName = name.trim(); 
+    const originalName = name.trim();
     const keyName = originalName.toLowerCase(); // for matching case-insensitive
 
     // Fetch level (case insensitive)
@@ -208,6 +209,11 @@ exports.addDesignation = async (req, res) => {
 exports.getAllDesignation = async (req, res) => {
   try {
     const user = req.user;
+    if (user.roles == 'employee') {
+      const employeData = await Employee.findOne({ linkedUser: user.id });
+      const designation = await Designation.find({ user: employeData.user }).select("name id").sort({ createdAt: -1 });
+      return res.status(200).json({ status: 1, data: designation });
+    }
     const designation = await Designation.find({ user: user.id }).select("name id").sort({ createdAt: -1 });
     return res.status(200).json({ status: 1, data: designation });
   } catch (error) {

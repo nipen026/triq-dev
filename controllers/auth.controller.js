@@ -488,7 +488,7 @@ exports.verifyPhone = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, password, fcmToken, role } = req.body;
-    console.log(fcmToken, "frontend side thi login ma")
+    console.log(req.body, "frontend side thi login ma")
     // 1️⃣ Find user with roles
     const user = await User.findOne({ email }).populate("roles");
     if (!user || !(await bcrypt.compare(password, user.password))) {

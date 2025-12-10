@@ -1,5 +1,5 @@
 const Department = require('../models/department.model')
-
+const Employee = require('../models/employee.model')
 // exports.addDepartment = async (req, res) => {
 //   try {
 //     const user = req.user;
@@ -81,7 +81,12 @@ exports.addDepartment = async (req, res) => {
 
 exports.getAllDepartment = async (req, res) => {
   try {
-    const user = req.user;
+    const user = req.user;    
+    if (user.roles == 'employee') {
+      const employeData = await Employee.findOne({ linkedUser: user.id });
+      const department = await Department.find({ user: employeData.user }).select("name id").sort({ createdAt: -1 });
+      return res.status(200).json({ status: 1, data: department });
+    }
     const department = await Department.find({ user: user.id }).select("name id").sort({ createdAt: -1 });
     return res.status(200).json({ status: 1, data: department });
   } catch (error) {

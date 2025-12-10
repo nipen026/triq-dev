@@ -1,5 +1,5 @@
 const Fieldwork = require("../models/fieldWork.model");
-
+const Employee = require('../models/employee.model');
 exports.createFieldwork = async (req, res) => {
     try {
         const user = req.user;
@@ -79,15 +79,29 @@ exports.getFieldworks = async (req, res) => {
     try {
         const user = req.user;
         console.log(user);
-        
+
         const fieldworks = await Fieldwork.find({ employee: user.id }).sort({ createdAt: -1 });
 
         return res.status(200).json({
             status: 1,
             data: fieldworks
-        }); 
+        });
     } catch (error) {
         console.log(error);
         res.status(500).json({ status: 0, error: error.message });
     }
 };
+
+exports.getCCMemberList = async (req, res) => {
+    try {
+        const user = req.user;        
+        const employeeData = await Employee.findOne({ linkedUser: user.id });
+        if (employeeData) {
+            const ccList = await Employee.find({ user: employeeData.user });            
+            res.status(200).json({ status: 1, data: ccList });
+        }
+    }
+    catch (err) {
+        res.status(500).json({ status: 0, error: err.message });
+    }
+}

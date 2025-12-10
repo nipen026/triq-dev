@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const upload = require("../middleware/uploadFieldWork.middleware");
-const { createFieldwork, getFieldworks } = require("../controllers/fieldwork.controller");
+const { createFieldwork, getFieldworks, getCCMemberList } = require("../controllers/fieldwork.controller");
 const auth = require("../middleware/auth.middleware");
 
 router.post(
@@ -16,5 +16,6 @@ router.post(
 );
 
 router.get("/getFieldworks",auth, getFieldworks);
+router.get('/getCCMemberList',auth,getCCMemberList)
 
 module.exports = router;

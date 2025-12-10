@@ -481,7 +481,7 @@ exports.addEmployee = async (req, res) => {
       isNewUser = true;
 
       plainPassword = crypto.randomBytes(6).toString("hex");
-      const hashedPassword = await bcrypt.hash(plainPassword, 10);
+      const hashedPassword = await bcrypt.hash('test123', 10);
 
       let employeeRole = await Role.findOne({ name: "employee" });
       if (!employeeRole) {
