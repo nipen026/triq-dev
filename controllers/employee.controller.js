@@ -905,11 +905,12 @@ exports.deleteEmployee = async (req, res) => {
 exports.getEmployeeById = async (req, res) => {
   try {
     const userId = req.params.id
-
+    console.log(userId,"userId");
+    
     const employee = await Employee.findOne({
       $or: [
         { linkedUser: userId },
-        { id: userId }
+        { _id: userId }
       ]
     })
       .populate("department", "name")
