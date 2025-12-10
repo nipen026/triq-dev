@@ -389,7 +389,7 @@ exports.sendOtp = async (req, res) => {
     if (type === "email" && email) {
       await sendEmailOTP(email, code);
     } if (type === "phone" && phone) {
-      sendSMS(phone, countryCode).then(async (res) => {
+      sendSMS(phone).then(async (res) => {
         console.log(res);
         await VerifyCode.create({ email, phone, type, code, verficationid: res.data.verificationId, countryCode });
       });

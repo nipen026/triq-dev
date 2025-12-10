@@ -904,18 +904,25 @@ exports.deleteEmployee = async (req, res) => {
 // 👤 GET Employee By ID (populated)
 exports.getEmployeeById = async (req, res) => {
   try {
-    const employee = await Employee.findById(req.params.id)
+    console.log(req.params.id);
+    
+    const employee = await Employee.findOne({linkedUser:req.params.id})
       .populate("department", "name")
       .populate("designation", "name");
-
+    console.log(employee,"employee");
+    
     if (!employee) {
       return res.status(404).json({ status: 0, message: "Employee not found" });
     }
     const employePermissionData = await EmployeePermission.findOne({ employee: employee._id });
+    console.log(employePermissionData,"employePermissionData");
+    
     const qrCode = await QRCode.toDataURL(employee.id);
     const obj = employee.toObject();
     obj.qrCode = qrCode;
-    obj.permissions = employePermissionData.permissions
+    if (employePermissionData) {
+      obj.permissions = employePermissionData.permissions
+    }
     return res.status(200).json({ status: 1, data: obj });
   } catch (error) {
     console.error("❌ Error fetching employee:", error);
