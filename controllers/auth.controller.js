@@ -489,10 +489,16 @@ exports.verifyPhone = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email, password, fcmToken, role } = req.body;
+    const { email,phone, password, fcmToken, role } = req.body;
     console.log(req.body, "frontend side thi login ma")
     // 1️⃣ Find user with roles
-    const user = await User.findOne({ email }).populate("roles");
+    let user;
+    if (email) {
+      user = await User.findOne({ email }).populate("roles");
+    }
+    if (phone) {
+      user = await User.findOne({ phone }).populate("roles");
+    }
     if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ msg: "Invalid credentials" });
     }
