@@ -16,6 +16,6 @@ router.post("/verify-forgot-otp", auth.verifyForgotOTP);
 router.post("/reset-password", auth.resetPassword);
 router.post("/send-verify-email", auth.sendVerifyEmail);
 router.get("/auto-verify", auth.autoVerify);
-
+router.delete('/delete-user/:id',auth.DeleteUser);
 
 module.exports = router;

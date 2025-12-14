@@ -14,6 +14,8 @@ const Sound = require('../models/sound.model')
 const sendSMS = require("../utils/smsOtp");
 const sendMail = require("../utils/mailer");
 const Employee = require("../models/employee.model");
+const Ticket = require('../models/ticket.model');
+const ChatRoom = require('../models/chatRoom.model')
 const { default: axios } = require("axios");
 // Register new user
 const CUSTOMER_ID = process.env.CUSTOMERID
@@ -432,7 +434,7 @@ exports.verifyOtp = async (req, res) => {
         },
       }
     );
-    
+
     if (otpRes.data.responseCode !== 200) {
       return res.status(400).json({
         status: 0,
@@ -765,5 +767,35 @@ exports.autoVerify = async (req, res) => {
         <script>setTimeout(() => window.close(), 1000);</script>
       </div>
     `);
+  }
+};
+exports.DeleteUser = async (req, res) => {
+  try {
+    const userId = req.params.id;
+
+    const user = await User.findById(userId);
+    if (!user) return res.status(404).json({ msg: "User not found" });
+
+    // 🧹 Cleanup relations
+    await Promise.all([
+      Profile.deleteOne({ user: userId }),
+      Sound.deleteMany({ user: userId }),
+      VerifyCode.deleteMany({ $or: [{ email: user.email }, { phone: user.phone }] }),
+      Customer.updateMany({ users: userId }, { $pull: { users: userId } }),
+      Employee.deleteOne({ linkedUser: userId }),
+      ServicePricing.deleteOne({ organisation: userId }),
+      Ticket.deleteMany({ $or: [{ organisation: userId }, { processor: userId }] }),
+      ChatRoom.deleteMany({ $or: [{ organisation: userId }, { processor: userId }] })
+    ]);
+
+    await User.findByIdAndDelete(userId);
+
+    res.status(200).json({
+      success: true,
+      msg: "User permanently deleted"
+    });
+  } catch (err) {
+    console.error("Hard delete error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };
