@@ -489,7 +489,7 @@ exports.verifyPhone = async (req, res) => {
 
 exports.login = async (req, res) => {
   try {
-    const { email,phone, password, fcmToken, role } = req.body;
+    const { email, phone, password, fcmToken, role } = req.body;
     console.log(req.body, "frontend side thi login ma")
     // 1️⃣ Find user with roles
     let user;
@@ -611,21 +611,37 @@ exports.logout = async (req, res) => {
 // 1️⃣ Send OTP for Forgot Password
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email } = req.body;
-    if (!email) return res.status(400).json({ msg: "Email is required" });
+    const { email, phone } = req.body;
+    // if (!email) return res.status(400).json({ msg: "Email is required" });
 
-    const user = await User.findOne({ email });
+    let user;
+    if (email) {
+      user = await User.findOne({ email });
+    }
+    if (phone) {
+      user = await User.findOne({ phone });
+    }
     if (!user) return res.status(404).json({ msg: "User not found" });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
     user.resetPasswordOTP = '123456';
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // valid for 10 min
     await user.save();
-
-    // 📧 Send OTP via email
-    await sendEmailOTP(user.email, '123456');
-
+    if (email) {
+      await sendEmailOTP(user.email, '123456');
     res.status(200).json({ msg: "OTP sent to registered email" });
+
+    }
+    if (phone) {
+       sendSMS(phone).then(async (res) => {
+        console.log(res);
+        await VerifyCode.create({ email, phone, type, code, verficationid: res.data.verificationId, countryCode });
+      });
+      res.status(200).json({ msg: "OTP sent to registered phone number" });
+    }
+    // 📧 Send OTP via email
+
+
   } catch (err) {
     console.error("Forgot Password Error:", err);
     res.status(500).json({ error: "Server error" });

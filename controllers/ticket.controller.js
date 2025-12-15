@@ -478,6 +478,8 @@ exports.getTicketsByStatus = async (req, res) => {
       // no filter – show all statuses
     } else if (status.toLowerCase() === "active") {
       query.status = { $ne: "Resolved" };
+      query.status = { $ne: "Rejected" };
+
     } else {
       query.status = status;
     }
@@ -715,73 +717,169 @@ exports.getResolvedTickets = async (req, res) => {
   }
 };
 
+// exports.updateTicketRating = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     const { id } = req.params;
+//     const { rating, feedback } = req.body;
+
+//     // Validate input
+//     if (!rating) {
+//       return res.status(400).json({ message: "Rating is required" });
+//     }
+
+//     // Find the ticket
+//     const ticket = await Ticket.findById(id);
+//     ticket.isFirstTimeServiceDone = false;
+//     //Proccessor can rate only organisation tickets
+
+//     const processorRole = await Role.findOne({ name: "processor" });
+//     if (!user.roles.includes(processorRole.name)) {
+//       return res.status(403).json({ message: "Only processor can add rating" });
+//     }
+
+
+//     if (!ticket) {
+//       return res.status(404).json({ message: "Ticket not found" });
+//     }
+
+//     // Update the ticket with rating and feedback
+//     ticket.rating = rating;
+//     ticket.feedback = feedback;
+//     await ticket.save();
+//     const receiverId =
+//       user.id === String(ticket.organisation)
+//         ? String(ticket.processor)
+//         : String(ticket.organisation);
+//     const userData = await User.findById({ receiverId }).select('fcmToken');
+//     const soundData = await Sound.findOne({ type: "ticket_notification", user: receiverId });
+//     const dynamicSoundName = soundData.soundName;
+//     await admin.messaging().sendEachForMulticast({
+//       tokens: [userData.fcmToken],
+//       data: {
+//         title: `Ticket #${ticket.ticketNumber} has been added feedback.`,
+//         body: changes,
+//         type: "ticket_feedback",
+//         ticketNumber: ticket.ticketNumber,
+//         screenName: "ticket",
+//         soundName: dynamicSoundName
+//       },
+//       android: {
+//         priority: "high",
+//       },
+//       // 4. iOS options
+//       apns: {
+//         headers: { "apns-priority": "10" },
+//         payload: {
+//           aps: {
+//             // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+//             sound: `${dynamicSoundName}.aiff`,
+
+//             // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+//             "content-available": 1,
+//             "mutable-content": 1,
+//           },
+//         },
+//       }
+//     });
+//     res.json({ message: "Ticket rating updated successfully", ticket });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// }
+
 exports.updateTicketRating = async (req, res) => {
   try {
     const user = req.user;
     const { id } = req.params;
     const { rating, feedback } = req.body;
 
-    // Validate input
     if (!rating) {
       return res.status(400).json({ message: "Rating is required" });
     }
 
-    // Find the ticket
+    // 1️⃣ Find ticket
     const ticket = await Ticket.findById(id);
-    ticket.isFirstTimeServiceDone = false;
-    //Proccessor can rate only organisation tickets
-
-    const processorRole = await Role.findOne({ name: "processor" });
-    if (!user.roles.includes(processorRole.name)) {
-      return res.status(403).json({ message: "Only processor can add rating" });
-    }
-
-
     if (!ticket) {
       return res.status(404).json({ message: "Ticket not found" });
     }
 
-    // Update the ticket with rating and feedback
+    // 2️⃣ Role validation (processor only)
+    const processorRole = await Role.findOne({ name: "processor" });
+    const hasProcessorRole = user.roles.some(
+      r => r.toString() === processorRole._id.toString()
+    );
+
+    if (!hasProcessorRole) {
+      return res.status(403).json({ message: "Only processor can add rating" });
+    }
+
+    // 3️⃣ Update ticket
     ticket.rating = rating;
-    ticket.feedback = feedback;
+    ticket.feedback = feedback || "";
+    ticket.isFirstTimeServiceDone = false;
     await ticket.save();
+
+    // 4️⃣ Identify receiver
     const receiverId =
       user.id === String(ticket.organisation)
         ? String(ticket.processor)
         : String(ticket.organisation);
-    const userData = await User.findById({ receiverId }).select('fcmToken');
-    const soundData = await Sound.findOne({ type: "ticket_notification", user: receiverId });
-    const dynamicSoundName = soundData.soundName;
-    await admin.messaging().sendEachForMulticast({
-      tokens: [userData.fcmToken],
+
+    const receiver = await User.findById(receiverId).select("fcmToken");
+    if (!receiver?.fcmToken) {
+      return res.json({
+        message: "Rating updated (receiver has no FCM token)",
+        ticket
+      });
+    }
+
+    // 5️⃣ Sound
+    const soundData = await Sound.findOne({
+      user: receiverId,
+      type: "ticket_notification"
+    });
+
+    const soundName = soundData?.soundName || "default";
+
+    // 6️⃣ Send notification
+    await admin.messaging().send({
+      token: receiver.fcmToken,
+      notification: {
+        title: `Ticket #${ticket.ticketNumber} rated`,
+        body: feedback || "New feedback added"
+      },
       data: {
-        title: `Ticket #${ticket.ticketNumber} has been added feedback.`,
-        body: changes,
         type: "ticket_feedback",
-        ticketNumber: ticket.ticketNumber,
+        ticketId: ticket._id.toString(),
+        ticketNumber: ticket.ticketNumber.toString(),
         screenName: "ticket",
-        soundName: dynamicSoundName
+        soundName
       },
       android: {
         priority: "high",
+        notification: {
+          sound: soundName
+        }
       },
-      // 4. iOS options
       apns: {
-        headers: { "apns-priority": "10" },
+        headers: {
+          "apns-priority": "10"
+        },
         payload: {
           aps: {
-            // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
-            sound: `${dynamicSoundName}.aiff`,
-
-            // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+            sound: `${soundName}.aiff`,
             "content-available": 1,
-            "mutable-content": 1,
-          },
-        },
+            "mutable-content": 1
+          }
+        }
       }
     });
+
     res.json({ message: "Ticket rating updated successfully", ticket });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    console.error("updateTicketRating error:", err);
+    res.status(500).json({ message: "Server error" });
   }
-}
+};
