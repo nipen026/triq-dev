@@ -642,7 +642,7 @@ exports.forgotPassword = async (req, res) => {
           phone,
           type: "forgot_password",
           code: otp,
-          verficationid: smsRes?.data?.verificationId,
+          verficationid: res?.data?.verificationId,
           countryCode: cleanCountryCode
         });
       });
