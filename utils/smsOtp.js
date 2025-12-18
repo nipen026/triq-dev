@@ -61,25 +61,25 @@ function splitPhone(fullNumber) {
 
   // India has 2-digit country code (91)
   // But handle generically for other countries too
-  let countryCode = "";
+  let countryCode2 = "";
   let mobileNumber = "";
 
   if (clean.length > 10) {
-    countryCode = clean.slice(0, clean.length - 10);
+    countryCode2 = clean.slice(0, clean.length - 10);
     mobileNumber = clean.slice(clean.length - 10);
   } else {
     // Fallback
     mobileNumber = clean;
   }
 
-  return { countryCode, mobileNumber };
+  return { countryCode2, mobileNumber };
 }
 
-const sendSMS = async (phoneNumber) => {
+const sendSMS = async (phoneNumber, countryCode) => {
   try {
-      const { countryCode, mobileNumber } = splitPhone(phoneNumber);
+      const { countryCode2, mobileNumber } = splitPhone(phoneNumber);
 
-    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode}&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${mobileNumber}&otpLength=6`;
+    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode ? countryCode : countryCode2}&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${mobileNumber}&otpLength=6`;
 
     const headers = {
       authToken: AUTH_TOKEN,
