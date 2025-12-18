@@ -640,7 +640,7 @@ exports.forgotPassword = async (req, res) => {
         await VerifyCode.create({
           email,
           phone,
-          type: "forgot_password",
+          type: "phone",
           code: otp,
           verficationid: res?.data?.verificationId,
           countryCode: cleanCountryCode
