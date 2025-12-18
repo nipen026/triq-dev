@@ -613,7 +613,8 @@ exports.forgotPassword = async (req, res) => {
   try {
     const { email, phone } = req.body;
     // if (!email) return res.status(400).json({ msg: "Email is required" });
-
+    console.log(req.body, "forgot password body");
+    
     let user;
     if (email) {
       user = await User.findOne({ email });
