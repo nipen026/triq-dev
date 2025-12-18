@@ -76,10 +76,12 @@ function splitPhone(fullNumber) {
 }
 
 const sendSMS = async (phoneNumber, countryCode) => {
+  console.log(phoneNumber,countryCode,"send otp sms body");
+  
   try {
       const { countryCode2, mobileNumber } = splitPhone(phoneNumber);
 
-    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode ? countryCode : countryCode2}&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${mobileNumber}&otpLength=6`;
+    const url = `https://cpaas.messagecentral.com/verification/v3/send?countryCode=${countryCode2 ? countryCode2 : countryCode}&customerId=${CUSTOMER_ID}&senderId=UTOMOB&flowType=SMS&mobileNumber=${mobileNumber}&otpLength=6`;
 
     const headers = {
       authToken: AUTH_TOKEN,
