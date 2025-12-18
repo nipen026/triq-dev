@@ -391,7 +391,7 @@ exports.sendOtp = async (req, res) => {
     if (type === "email" && email) {
       await sendEmailOTP(email, code);
     } if (type === "phone" && phone) {
-      sendSMS(phone,countryCode).then(async (res) => {
+      sendSMS(phone, countryCode).then(async (res) => {
         console.log(res);
         await VerifyCode.create({ email, phone, type, code, verficationid: res.data.verificationId, countryCode });
       });
@@ -614,7 +614,7 @@ exports.forgotPassword = async (req, res) => {
     const { email, phone, countryCode } = req.body;
     // if (!email) return res.status(400).json({ msg: "Email is required" });
     console.log(req.body, "forgot password body");
-    
+
     let user;
     if (email) {
       user = await User.findOne({ email });
@@ -630,11 +630,11 @@ exports.forgotPassword = async (req, res) => {
     await user.save();
     if (email) {
       await sendEmailOTP(user.email, '123456');
-    res.status(200).json({ msg: "OTP sent to registered email" });
+      res.status(200).json({ msg: "OTP sent to registered email" });
 
     }
     if (phone) {
-       sendSMS(phone,countryCode).then(async (res) => {
+      sendSMS(phone, countryCode).then(async (res) => {
         console.log(res);
         await VerifyCode.create({ email, phone, type, code, verficationid: res.data.verificationId, countryCode });
       });
@@ -803,12 +803,21 @@ exports.DeleteUser = async (req, res) => {
     await Promise.all([
       Profile.deleteOne({ user: userId }),
       Sound.deleteMany({ user: userId }),
-      VerifyCode.deleteMany({ $or: [{ email: user.email }, { phone: user.phone }] }),
-      Customer.updateMany({ users: userId }, { $pull: { users: userId } }),
+      VerifyCode.deleteMany({
+        $or: [{ email: user.email }, { phone: user.phone }]
+      }),
+      Customer.updateMany(
+        { users: { $type: "array", $in: [userId] } },
+        { $pull: { users: userId } }
+      ),
       Employee.deleteOne({ linkedUser: userId }),
       ServicePricing.deleteOne({ organisation: userId }),
-      Ticket.deleteMany({ $or: [{ organisation: userId }, { processor: userId }] }),
-      ChatRoom.deleteMany({ $or: [{ organisation: userId }, { processor: userId }] })
+      Ticket.deleteMany({
+        $or: [{ organisation: userId }, { processor: userId }]
+      }),
+      ChatRoom.deleteMany({
+        $or: [{ organisation: userId }, { processor: userId }]
+      })
     ]);
 
     await User.findByIdAndDelete(userId);
