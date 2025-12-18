@@ -634,10 +634,17 @@ exports.forgotPassword = async (req, res) => {
 
     }
     if (phone) {
-       const cleanCountryCode = countryCode?.replace("+", ""); // "+91" → "91"
+      const cleanCountryCode = countryCode?.replace("+", ""); // "+91" → "91"
       sendSMS(phone, cleanCountryCode).then(async (res) => {
         console.log(res);
-        await VerifyCode.create({ email, phone, type, code, verficationid: res.data.verificationId, countryCode: cleanCountryCode });
+        await VerifyCode.create({
+          email,
+          phone,
+          type: "forgot_password",
+          code: otp,
+          verficationid: smsRes?.data?.verificationId,
+          countryCode: cleanCountryCode
+        });
       });
       res.status(200).json({ msg: "OTP sent to registered phone number" });
     }
