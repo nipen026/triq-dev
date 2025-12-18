@@ -611,7 +611,7 @@ exports.logout = async (req, res) => {
 // 1️⃣ Send OTP for Forgot Password
 exports.forgotPassword = async (req, res) => {
   try {
-    const { email, phone } = req.body;
+    const { email, phone, countryCode } = req.body;
     // if (!email) return res.status(400).json({ msg: "Email is required" });
     console.log(req.body, "forgot password body");
     
@@ -634,7 +634,7 @@ exports.forgotPassword = async (req, res) => {
 
     }
     if (phone) {
-       sendSMS(phone).then(async (res) => {
+       sendSMS(phone,countryCode).then(async (res) => {
         console.log(res);
         await VerifyCode.create({ email, phone, type, code, verficationid: res.data.verificationId, countryCode });
       });
