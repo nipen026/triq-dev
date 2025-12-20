@@ -2,17 +2,20 @@
 const nodemailer = require("nodemailer");
 
 const sendEmailOTP = async (email, otp) => {
-console.log(otp);
-    
   const transporter = nodemailer.createTransport({
-    service: "gmail",
+    host: "smtp.zoho.in",
+    port: 465,
+    secure: true,
     auth: {
-      user: process.env.EMAIL_USER,
-      pass: process.env.EMAIL_PASS, // App password, not normal password
+      user: process.env.ZOHO_EMAIL,
+      pass: process.env.ZOHO_APP_PASSWORD,
     },
   });
+
+  await transporter.verify();
+
   await transporter.sendMail({
-    from: process.env.EMAIL_USER,
+    from: `"TRIQ" <${process.env.ZOHO_EMAIL}>`,
     to: email,
     subject: "Your OTP Code",
     text: `Your OTP is ${otp}`,
