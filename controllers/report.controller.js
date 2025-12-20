@@ -15,7 +15,7 @@ exports.reportProblem = async (req, res) => {
 
         // await sendReportMail({ title, description, email, phone, name });
         await sendMail({
-            to: process.env.SES_EMAIL_FROM,
+            to: process.env.ZOHO_EMAIL, // your receiving email
             subject: "Report Issue",
             html: `
           <h2>📢 New Problem Reported</h2>
@@ -52,7 +52,7 @@ exports.SendFeedback = async (req, res) => {
     const name = user?.fullName;
 
     await sendMail({
-      to: process.env.SES_EMAIL_FROM, // your receiving email
+      to: process.env.ZOHO_EMAIL, // your receiving email
       subject: "📢 New Feedback Received",
       html: `
         <h2>New Feedback Submitted</h2>
