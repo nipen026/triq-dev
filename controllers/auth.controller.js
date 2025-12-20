@@ -684,15 +684,19 @@ exports.verifyForgotOTP = async (req, res) => {
 // 3️⃣ Reset Password after OTP verification
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, newPassword } = req.body;
-    if (!email || !newPassword) return res.status(400).json({ msg: "Email & new password are required" });
+    const { email, newPassword , phone } = req.body;
+    if ( !newPassword) return res.status(400).json({ msg: "new password are required" });
 
-    const user = await User.findOne({ email });
-    if (!user) return res.status(404).json({ msg: "User not found" });
-
-    if (!user.isOtpVerifiedForReset) {
-      return res.status(403).json({ msg: "OTP verification required" });
+    let user;
+    if (email) {
+      user = await User.findOne({ email });
     }
+    if (phone) {
+      user = await User.findOne({ phone });
+    }
+    // if (!user.isOtpVerifiedForReset) {
+    //   return res.status(403).json({ msg: "OTP verification required" });
+    // }
 
     const hash = await bcrypt.hash(newPassword, 10);
     user.password = hash;
