@@ -43,7 +43,8 @@ exports.SendFeedback = async (req, res) => {
     const { mail,feedback } = req.body; // take feedback message from request
     const { id } = req.user;       // user info comes from JWT
     const user = await User.findById(id);
-
+    console.log("user", user, req.body);
+    
     if (!feedback) {
       return res.status(400).json({ msg: "Feedback is required" });
     }
