@@ -72,7 +72,7 @@ const transporter = nodemailer.createTransport({
   },
 });
 
-async function sendMail(to, subject, html, text = "") {
+async function sendMail({to, subject, html, text = ""}) {
   try {
     const info = await transporter.sendMail({
       from: `"TRIQ" <${process.env.ZOHO_EMAIL}>`,
