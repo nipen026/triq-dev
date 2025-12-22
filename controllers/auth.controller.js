@@ -684,8 +684,8 @@ exports.verifyForgotOTP = async (req, res) => {
 // 3️⃣ Reset Password after OTP verification
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, newPassword , phone } = req.body;
-    if ( !newPassword) return res.status(400).json({ msg: "new password are required" });
+    const { email, newPassword, phone } = req.body;
+    if (!newPassword) return res.status(400).json({ msg: "new password are required" });
 
     let user;
     if (email) {
@@ -741,7 +741,7 @@ exports.sendVerifyEmail = async (req, res) => {
       </a>
     `;
 
-    await sendMail(email, subject, html);
+    await sendMail({ to: email, subject: subject, html: html });
     res.json({ success: true, msg: "Verification email sent successfully" });
   } catch (err) {
     console.error("sendVerifyEmail error:", err);
