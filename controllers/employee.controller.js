@@ -8,6 +8,7 @@ const bcrypt = require("bcryptjs");
 const crypto = require("crypto");
 const Role = require('../models/role.model')
 const ContactChatRoom = require('../models/contactChatRoom.model');
+const sendMail = require("../utils/mailer");
 // ➕ CREATE Employee
 // ➕ CREATE Employee
 
@@ -481,7 +482,7 @@ exports.addEmployee = async (req, res) => {
       isNewUser = true;
 
       plainPassword = crypto.randomBytes(6).toString("hex");
-      const hashedPassword = await bcrypt.hash('test123', 10);
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
       let employeeRole = await Role.findOne({ name: "employee" });
       if (!employeeRole) {
@@ -496,7 +497,7 @@ exports.addEmployee = async (req, res) => {
             password: hashedPassword,
             phone,
             isEmailVerified: false,
-            isPhoneVerified: false,
+            isPhoneVerified: true,
             emailOTP: "123456",
             countryCode: "+91",
             isNewUser: false,
@@ -506,6 +507,18 @@ exports.addEmployee = async (req, res) => {
         { session }
       );
       userAccount = userAccount[0];
+      await sendMail({
+        to: email,
+        subject: "Welcome! Your Employee Account is Ready",
+        html: `
+          <p>Hello ${name},</p>
+          <p>Your employee account has been created.</p>
+          <p><strong>Email:</strong> ${email}</p>
+          <p><strong>Password:</strong> ${plainPassword}</p>
+          <p>Please log in and change your password immediately.</p>
+        `,
+      });
+
     } else {
       // user exists → check if they already have employee data
       const existingEmpForUser = await Employee.findOne({ linkedUser: userAccount._id });
@@ -905,8 +918,8 @@ exports.deleteEmployee = async (req, res) => {
 exports.getEmployeeById = async (req, res) => {
   try {
     const userId = req.params.id
-    console.log(userId,"userId");
-    
+    console.log(userId, "userId");
+
     const employee = await Employee.findOne({
       $or: [
         { linkedUser: userId },

@@ -68,7 +68,7 @@ exports.sendOrganizationRequest = async (req, res) => {
             body: notification.body,
             type: "organizationRequest",
             senderId: String(processorId),
-            soundName:dynamicSoundName
+            soundName: dynamicSoundName
           },
           android: {
             priority: "high",
@@ -201,6 +201,39 @@ exports.updateNotificationTicket = async (req, res) => {
         },
         { isActive: false }
       );
+    }
+    const otherUser = await User.findById(ticketData.processor).select("fullName fcmToken");
+    if (otherUser?.fcmToken) {
+      const soundData = await Sound.findOne({ type: "ticket_notification", user: ticketData.processor });
+      const dynamicSoundName = soundData.soundName;
+      await admin.messaging().sendEachForMulticast({
+        tokens: [otherUser.fcmToken],
+        data: {
+          title: `Ticket #${ticketData.ticketNumber} has been updated.`,
+          body: changes,
+          type: "ticket_updated",
+          ticketNumber: ticketData.ticketNumber,
+          screenName: "ticket",
+          soundName: dynamicSoundName
+        },
+        android: {
+          priority: "high",
+        },
+        // 4. iOS options
+        apns: {
+          headers: { "apns-priority": "10" },
+          payload: {
+            aps: {
+              // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+              sound: `${dynamicSoundName}.aiff`,
+
+              // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+              "content-available": 1,
+              "mutable-content": 1,
+            },
+          },
+        }
+      });
     }
     return res.status(200).json({
       success: true,
