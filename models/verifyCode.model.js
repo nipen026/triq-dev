@@ -5,13 +5,17 @@ const verifyCodeSchema = new mongoose.Schema({
   phone: { type: String },
   code: { type: String, required: true },
   type: { type: String, enum: ["email", "phone"], required: true },
-  verficationid:String,
-  countryCode:String,
-  createdAt: { type: Date, default: Date.now, expires: 3600 } // auto-delete after 1 hour
+  verificationId: String,
+  countryCode: String,
+  createdAt: {
+    type: Date,
+    default: Date.now,
+    expires: 600 // auto delete after 10 minutes
+  }
 });
 
-// Ensure one OTP per email/phone
-verifyCodeSchema.index({ email: 1, type: 1 }, { unique: true, sparse: true });
-verifyCodeSchema.index({ phone: 1, type: 1 }, { unique: true, sparse: true });
+// Optional but recommended: fast lookup
+verifyCodeSchema.index({ email: 1, createdAt: -1 });
+verifyCodeSchema.index({ phone: 1, createdAt: -1 });
 
 module.exports = mongoose.model("VerifyCode", verifyCodeSchema);
