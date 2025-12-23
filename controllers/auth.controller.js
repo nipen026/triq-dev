@@ -410,7 +410,7 @@ exports.sendOtp = async (req, res) => {
 exports.verifyOtp = async (req, res) => {
   try {
     const { email, type, code, phone } = req.body;
-
+    console.log(req.body, "verify otp body");
     const verifyData = await VerifyCode.findOne({
       $or: [{ email }, { phone }],
       type
@@ -643,7 +643,7 @@ exports.forgotPassword = async (req, res) => {
           type: "phone",
           code: otp,
           verficationid: res?.data?.verificationId,
-          countryCode: cleanCountryCode
+          countryCode: countryCode
         });
       });
       res.status(200).json({ msg: "OTP sent to registered phone number" });
