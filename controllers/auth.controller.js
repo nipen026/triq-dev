@@ -392,8 +392,8 @@ exports.sendOtp = async (req, res) => {
       await sendEmailOTP(email, code);
     } if (type === "phone" && phone) {
       sendSMS(phone, countryCode).then(async (res) => {
-        console.log(res);
-        await VerifyCode.create({ email, phone, type, code, verficationid: res.data.verificationId, countryCode });
+        console.log(res, "response from sms otp");
+        await VerifyCode.create({ email, phone, type, code, verificationId: res.data.verificationId, countryCode });
       });
     }
 
@@ -416,7 +416,7 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ msg: "Email or phone is required" });
     }
 
-    if (!otp) {
+    if (!code) {
       return res.status(400).json({ msg: "OTP is required" });
     }
 
@@ -661,13 +661,13 @@ exports.forgotPassword = async (req, res) => {
     if (phone) {
       const cleanCountryCode = countryCode?.replace("+", ""); // "+91" → "91"
       sendSMS(phone, cleanCountryCode).then(async (res) => {
-        console.log(res);
+        console.log(res,"response from sms otp");
         await VerifyCode.create({
           email,
           phone,
           type: "phone",
           code: otp,
-          verficationid: res?.data?.verificationId,
+          verificationId: res?.data?.verificationId,
           countryCode: countryCode
         });
       });
