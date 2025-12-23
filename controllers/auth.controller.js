@@ -409,18 +409,18 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   try {
-    const { email, phone, type, code } = req.body;
+    const { email, phone, otp } = req.body;
     console.log(req.body, "verify otp body");
 
     if (!email && !phone) {
       return res.status(400).json({ msg: "Email or phone is required" });
     }
 
-    if (!code) {
+    if (!otp) {
       return res.status(400).json({ msg: "OTP is required" });
     }
 
-    const type2 = email ? "email" : "phone";
+    const type = email ? "email" : "phone";
 
     const query = email
       ? { email, type: "email" }
@@ -436,7 +436,7 @@ exports.verifyOtp = async (req, res) => {
     }
 
     // ================= PHONE OTP (3rd party verify) =================
-    if (type2 === "phone") {
+    if (type === "phone") {
       const AUTH_TOKEN = process.env.AUTHTOKEN;
 
       const url = `${BASE_URL}/verification/v3/validateOtp` +
@@ -444,7 +444,7 @@ exports.verifyOtp = async (req, res) => {
         `&mobileNumber=${phone}` +
         `&verificationId=${verifyData.verificationId}` +
         `&customerId=C-8A37F23E5257494` +
-        `&code=${code}`;
+        `&code=${otp}`;
 
       const otpRes = await axios.get(url, {
         headers: { authToken: AUTH_TOKEN }
@@ -463,8 +463,8 @@ exports.verifyOtp = async (req, res) => {
     }
 
     // ================= EMAIL OTP (local verify) =================
-    if (type2 === "email") {
-      if (verifyData.code !== code) {
+    if (type === "email") {
+      if (verifyData.code !== otp) {
         return res.status(400).json({ msg: "Invalid OTP" });
       }
     }
@@ -482,6 +482,7 @@ exports.verifyOtp = async (req, res) => {
     return res.status(500).json({ error: "Server error" });
   }
 };
+
 
 
 
