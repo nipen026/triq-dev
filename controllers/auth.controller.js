@@ -409,55 +409,80 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   try {
-    const { email, type, code, phone } = req.body;
+    const { email, phone, type, code } = req.body;
     console.log(req.body, "verify otp body");
-    const verifyData = await VerifyCode.findOne({
-      $or: [{ email }, { phone }],
-      type
-    });
+
+    if (!email && !phone) {
+      return res.status(400).json({ msg: "Email or phone is required" });
+    }
+
+    if (!otp) {
+      return res.status(400).json({ msg: "OTP is required" });
+    }
+
+    const type2 = email ? "email" : "phone";
+
+    const query = email
+      ? { email, type: "email" }
+      : { phone, type: "phone" };
+
+    const verifyData = await VerifyCode.findOne(query)
+      .sort({ createdAt: -1 });
+
     console.log(verifyData, "verify data");
-    // if (!verifyData) {
-    //   return res.status(400).json({ msg: "OTP not found" });
-    // }
 
-    // Ensure auth token exists
-    const AUTH_TOKEN = process.env.AUTHTOKEN;
+    if (!verifyData) {
+      return res.status(400).json({ msg: "OTP expired or not found" });
+    }
 
-    const url = `${BASE_URL}/verification/v3/validateOtp?countryCode=${verifyData.countryCode}&mobileNumber=${phone}&verificationId=${verifyData.verficationid}&customerId=C-8A37F23E5257494&code=${code}`;
+    // ================= PHONE OTP (3rd party verify) =================
+    if (type2 === "phone") {
+      const AUTH_TOKEN = process.env.AUTHTOKEN;
 
-    const otpRes = await axios.get(
-      url,
-      {
-        headers: {
-          authToken: AUTH_TOKEN,
-          // "Content-Type": "application/json",
-        },
-      }
-    );
+      const url = `${BASE_URL}/verification/v3/validateOtp` +
+        `?countryCode=${verifyData.countryCode}` +
+        `&mobileNumber=${phone}` +
+        `&verificationId=${verifyData.verificationId}` +
+        `&customerId=C-8A37F23E5257494` +
+        `&code=${code}`;
 
-    if (otpRes.data.responseCode !== 200) {
-      return res.status(400).json({
-        status: 0,
-        message: otpRes.data.message || "Invalid or expired OTP",
+      const otpRes = await axios.get(url, {
+        headers: { authToken: AUTH_TOKEN }
       });
+
+      if (otpRes.data.responseCode !== 200) {
+        return res.status(400).json({
+          status: 0,
+          message: otpRes.data.message || "Invalid or expired OTP"
+        });
+      }
+
+      if (otpRes.data.data.verificationStatus !== "VERIFICATION_COMPLETED") {
+        return res.status(400).json({ status: 0, msg: "Invalid OTP" });
+      }
     }
 
-    const status = otpRes.data.data.verificationStatus;
-
-    if (status !== "VERIFICATION_COMPLETED") {
-      return res.status(400).json({ status: 0, msg: "Invalid OTP" });
+    // ================= EMAIL OTP (local verify) =================
+    if (type2 === "email") {
+      if (verifyData.code !== code) {
+        return res.status(400).json({ msg: "Invalid OTP" });
+      }
     }
 
-    // Remove OTP after successful verification
-    await VerifyCode.deleteOne({ _id: verifyData._id });
+    // Cleanup all OTPs for this user
+    await VerifyCode.deleteMany(query);
 
-    res.status(200).json({ success: true, msg: "OTP verified successfully" });
+    return res.status(200).json({
+      success: true,
+      msg: "OTP verified successfully"
+    });
 
   } catch (err) {
     console.error("verifyOtp error:", err.response?.data || err);
-    res.status(500).json({ error: "Server error" });
+    return res.status(500).json({ error: "Server error" });
   }
 };
+
 
 
 
