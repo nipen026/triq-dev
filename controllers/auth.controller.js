@@ -734,6 +734,51 @@ exports.resetPassword = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+exports.resetNewPassword = async (req, res) => {
+  try {
+    const { email, phone, oldPassword, newPassword } = req.body;
+
+    if (!newPassword || !oldPassword) {
+      return res.status(400).json({ msg: "Old and new password are required" });
+    }
+
+    let user;
+    if (email) user = await User.findOne({ email });
+    if (phone) user = await User.findOne({ phone });
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // 🔐 Check old password
+    const isMatch = await bcrypt.compare(oldPassword, user.password);
+    if (!isMatch) {
+      return res.status(400).json({ msg: "Old password is incorrect" });
+    }
+
+    // 🚫 Prevent same password reuse
+    const isSame = await bcrypt.compare(newPassword, user.password);
+    if (isSame) {
+      return res.status(400).json({
+        msg: "New password must be different from old password"
+      });
+    }
+
+    // 🔒 Hash new password
+    const hash = await bcrypt.hash(newPassword, 10);
+    user.password = hash;
+    user.isOtpVerifiedForReset = false;
+
+    await user.save();
+
+    return res.status(200).json({ msg: "Password updated successfully" });
+
+  } catch (err) {
+    console.error("resetPassword error:", err);
+    return res.status(500).json({ error: err.message });
+  }
+};
+
 exports.sendVerifyEmail = async (req, res) => {
   try {
     const { email } = req.body;

@@ -14,6 +14,7 @@ router.post("/logout",verifyToken, auth.logout);
 router.post("/forgot-password", auth.forgotPassword);
 router.post("/verify-forgot-otp", auth.verifyForgotOTP);
 router.post("/reset-password", auth.resetPassword);
+router.post("/resetNewPassword", auth.resetNewPassword);
 router.post("/send-verify-email", auth.sendVerifyEmail);
 router.get("/auto-verify", auth.autoVerify);
 router.delete('/delete-user/:id',auth.DeleteUser);
