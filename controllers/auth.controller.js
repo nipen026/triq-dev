@@ -415,10 +415,10 @@ exports.verifyOtp = async (req, res) => {
       $or: [{ email }, { phone }],
       type
     });
-
-    if (!verifyData) {
-      return res.status(400).json({ msg: "OTP not found" });
-    }
+    console.log(verifyData, "verify data");
+    // if (!verifyData) {
+    //   return res.status(400).json({ msg: "OTP not found" });
+    // }
 
     // Ensure auth token exists
     const AUTH_TOKEN = process.env.AUTHTOKEN;
