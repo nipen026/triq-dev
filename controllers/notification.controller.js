@@ -204,8 +204,8 @@ exports.updateNotificationTicket = async (req, res) => {
     }
     const otherUser = await User.findById(ticketData.processor).select("fullName fcmToken");
     if (otherUser?.fcmToken) {
-      const soundData = await Sound.findOne({ type: "ticket_notification", user: ticketData.processor });
-      const dynamicSoundName = soundData.soundName;
+      const soundData = await Sound.findOne({ type: "ticket_notification", user: otherUser._id });
+      const dynamicSoundName = soundData.soundName ?? 'bell';
       await admin.messaging().sendEachForMulticast({
         tokens: [otherUser.fcmToken],
         data: {

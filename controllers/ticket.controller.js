@@ -477,8 +477,8 @@ exports.getTicketsByStatus = async (req, res) => {
     if (!status || status === "all") {
       // no filter – show all statuses
     } else if (status.toLowerCase() === "active") {
-      query.status = { $ne: "Resolved" };
-      query.status = { $ne: "Rejected" };
+     query.status = { $nin: ["Resolved", "Rejected"] };
+      // query.status = { $ne: "Rejected" };
 
     } else {
       query.status = status;
@@ -805,10 +805,7 @@ exports.updateTicketRating = async (req, res) => {
     }
 
     // 2️⃣ Role validation (processor only)
-    const processorRole = await Role.findOne({ name: "processor" });
-    const hasProcessorRole = user.roles.some(
-      r => r.toString() === processorRole._id.toString()
-    );
+    const hasProcessorRole = user.roles.includes("processor");
 
     if (!hasProcessorRole) {
       return res.status(403).json({ message: "Only processor can add rating" });
