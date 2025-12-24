@@ -46,12 +46,16 @@ exports.getTasks = async (req, res) => {
     const limit = parseInt(req.query.limit) || 10;
     const tab = req.query.tab;
     const status = req.query.status;
+    const priorityFilter =
+  status === "all"
+    ? { $in: ["Low", "Medium", "High"] }
+    : status.charAt(0).toUpperCase() + status.slice(1); // low → Low
     // Calculate skip value
     const skip = (page - 1) * limit;
 
     // Fetch paginated tasks
     const [tasks, total] = await Promise.all([
-      Task.find({ user: user.id, isActive: true, priority: status === "all" || status === "All" ? { $in: ["Low", "Medium", "High"] } : status })
+      Task.find({ user: user.id, isActive: true, priority: priorityFilter })
         .sort({ createdAt: -1 })
         .skip(skip)
         .limit(limit),
