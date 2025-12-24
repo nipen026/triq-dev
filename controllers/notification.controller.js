@@ -203,6 +203,8 @@ exports.updateNotificationTicket = async (req, res) => {
       );
     }
     const otherUser = await User.findById(ticketData.processor).select("fullName fcmToken");
+    console.log(otherUser,ticketData.processor, "otherUser");
+
     if (otherUser?.fcmToken) {
       const soundData = await Sound.findOne({ type: "ticket_notification", user: otherUser._id });
       const dynamicSoundName = soundData.soundName ?? 'bell';
