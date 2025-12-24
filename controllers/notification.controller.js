@@ -210,7 +210,6 @@ exports.updateNotificationTicket = async (req, res) => {
         tokens: [otherUser.fcmToken],
         data: {
           title: `Ticket #${ticketData.ticketNumber} has been updated.`,
-          body: changes,
           type: "ticket_updated",
           ticketNumber: ticketData.ticketNumber,
           screenName: "ticket",
