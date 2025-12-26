@@ -728,34 +728,55 @@ exports.verifyForgotOTP = async (req, res) => {
 // 3️⃣ Reset Password after OTP verification
 exports.resetPassword = async (req, res) => {
   try {
-    const { email, newPassword, phone } = req.body;
-    console.log(req.body,"req.body");
-    
-    if (!newPassword) return res.status(400).json({ msg: "new password are required" });
+    const { email, phone, newPassword } = req.body;
 
-    let user;
-    if (email) {
-      user = await User.findOne({ email });
+    console.log(req.body, "req.body");
+
+    // Validation
+    if (!newPassword) {
+      return res.status(400).json({ msg: "New password is required" });
     }
-    if (phone) {
-      user = await User.findOne({ phone });
+
+    if (!email && !phone) {
+      return res.status(400).json({ msg: "Email or phone is required" });
     }
-    console.log(user,"user");
-    
+
+    // Find user (email OR phone)
+    const user = await User.findOne({
+      $or: [
+        email ? { email } : null,
+        phone ? { phone } : null
+      ].filter(Boolean),
+    });
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // Optional OTP verification (recommended)
     // if (!user.isOtpVerifiedForReset) {
     //   return res.status(403).json({ msg: "OTP verification required" });
     // }
 
-    const hash = await bcrypt.hash(newPassword, 10);
-    user.password = hash;
-    user.isOtpVerifiedForReset = false; // reset flag
+    // Hash password
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+
+    // Update user
+    user.password = hashedPassword;
+    user.isOtpVerifiedForReset = false;
+
     await user.save();
 
+    console.log("Password reset successful for:", user.email || user.phone);
+
     res.status(200).json({ msg: "Password reset successful" });
+
   } catch (err) {
-    res.status(500).json({ error: err.message });
+    console.error("Reset password error:", err);
+    res.status(500).json({ msg: "Internal server error" });
   }
 };
+
 exports.resetNewPassword = async (req, res) => {
   try {
     const { email, phone, oldPassword, newPassword } = req.body;
