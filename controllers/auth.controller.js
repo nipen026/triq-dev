@@ -729,6 +729,8 @@ exports.verifyForgotOTP = async (req, res) => {
 exports.resetPassword = async (req, res) => {
   try {
     const { email, newPassword, phone } = req.body;
+    console.log(req.body,"req.body");
+    
     if (!newPassword) return res.status(400).json({ msg: "new password are required" });
 
     let user;
