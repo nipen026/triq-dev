@@ -409,14 +409,14 @@ exports.sendOtp = async (req, res) => {
 
 exports.verifyOtp = async (req, res) => {
   try {
-    const { email, phone, otp } = req.body;
+    const { email, phone, otp, code } = req.body;
     console.log(req.body, "verify otp body");
 
     if (!email && !phone) {
       return res.status(400).json({ msg: "Email or phone is required" });
     }
 
-    if (!otp) {
+    if (!otp && !code) {
       return res.status(400).json({ msg: "OTP is required" });
     }
 
@@ -444,7 +444,7 @@ exports.verifyOtp = async (req, res) => {
         `&mobileNumber=${phone}` +
         `&verificationId=${verifyData.verificationId}` +
         `&customerId=C-8A37F23E5257494` +
-        `&code=${otp}`;
+        `&code=${otp ? otp : code}`;
 
       const otpRes = await axios.get(url, {
         headers: { authToken: AUTH_TOKEN }
@@ -464,7 +464,7 @@ exports.verifyOtp = async (req, res) => {
 
     // ================= EMAIL OTP (local verify) =================
     if (type === "email") {
-      if (verifyData.code !== otp) {
+      if (verifyData.code !== code && verifyData.code !== otp) {
         return res.status(400).json({ msg: "Invalid OTP" });
       }
     }
