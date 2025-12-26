@@ -740,6 +740,8 @@ exports.resetPassword = async (req, res) => {
     if (phone) {
       user = await User.findOne({ phone });
     }
+    console.log(user,"user");
+    
     // if (!user.isOtpVerifiedForReset) {
     //   return res.status(403).json({ msg: "OTP verification required" });
     // }
