@@ -406,7 +406,24 @@ exports.sendOtp = async (req, res) => {
   }
 };
 
+function splitPhone(fullNumber) {
+  const clean = fullNumber.replace("+", "").trim();
 
+  // India has 2-digit country code (91)
+  // But handle generically for other countries too
+  let countryCode2 = "";
+  let mobileNumber = "";
+
+  if (clean.length > 10) {
+    countryCode2 = clean.slice(0, clean.length - 10);
+    mobileNumber = clean.slice(clean.length - 10);
+  } else {
+    // Fallback
+    mobileNumber = clean;
+  }
+
+  return { countryCode2, mobileNumber };
+}
 exports.verifyOtp = async (req, res) => {
   try {
     const { email, phone, otp, code } = req.body;
@@ -420,11 +437,12 @@ exports.verifyOtp = async (req, res) => {
       return res.status(400).json({ msg: "OTP is required" });
     }
 
+    const { countryCode2, mobileNumber } = splitPhone(phone);
     const type = email ? "email" : "phone";
 
     const query = email
       ? { email, type: "email" }
-      : { phone, type: "phone" };
+      : { phone: mobileNumber, type: "phone" };
 
     const verifyData = await VerifyCode.findOne(query)
       .sort({ createdAt: -1 });
