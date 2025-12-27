@@ -414,24 +414,17 @@ exports.updateTicket = async (req, res) => {
         }
       });
     }
+
+    await ticket.save();
     const receiverId =
       user.id === String(ticket.organisation)
         ? String(ticket.processor)
         : String(ticket.organisation);
     const io = socket.getIO();
-    io.timeout(3000).to(receiverId).emit(
+    io.to(receiverId).emit(
       "ticketStatusUpdated",
-      ticket,
-      (err, responses) => {
-        if (err) {
-          console.warn("⚠️ No ACK from client");
-        } else {
-          console.log("✅ ACK received:", responses);
-        }
-      }
+      ticket
     );
-    await ticket.save();
-
     res.json({ message: "Ticket updated successfully", updatedFields, ticket });
   } catch (err) {
     res.status(500).json({ message: err.message });
