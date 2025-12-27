@@ -55,7 +55,7 @@ exports.getTasks = async (req, res) => {
 
         // Fetch paginated tasks
         const [tasks, total] = await Promise.all([
-            Task.find({ user: user.id, isActive: true, priority: priorityFilter }).populate("assignTo")
+            Task.find({ user: user.id, isActive: true, priority: priorityFilter }).populate("assignTo","name")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
