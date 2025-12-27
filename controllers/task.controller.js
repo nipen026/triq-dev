@@ -25,7 +25,7 @@ exports.createTask = async (req, res) => {
             endDateTime,
             priority,
             webUrl,
-            assignTo,
+            assignTo: assignTo,
             user: user.id, // Associate task with the authenticated user
         });
 
@@ -38,42 +38,42 @@ exports.createTask = async (req, res) => {
 
 // ✅ Get All Tasks
 exports.getTasks = async (req, res) => {
-  const user = req.user; // authenticated user
+    const user = req.user; // authenticated user
 
-  try {
-    // Get pagination params (default page=1, limit=10)
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const tab = req.query.tab;
-    const status = req.query.status;
-    const priorityFilter =
-  status === "all"
-    ? { $in: ["Low", "Medium", "High"] }
-    : status.charAt(0).toUpperCase() + status.slice(1); // low → Low
-    // Calculate skip value
-    const skip = (page - 1) * limit;
+    try {
+        // Get pagination params (default page=1, limit=10)
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const tab = req.query.tab;
+        const status = req.query.status;
+        const priorityFilter =
+            status === "all"
+                ? { $in: ["Low", "Medium", "High"] }
+                : status.charAt(0).toUpperCase() + status.slice(1); // low → Low
+        // Calculate skip value
+        const skip = (page - 1) * limit;
 
-    // Fetch paginated tasks
-    const [tasks, total] = await Promise.all([
-      Task.find({ user: user.id, isActive: true, priority: priorityFilter })
-        .sort({ createdAt: -1 })
-        .skip(skip)
-        .limit(limit),
-      Task.countDocuments({ user: user.id, isActive: true }),
-    ]);
+        // Fetch paginated tasks
+        const [tasks, total] = await Promise.all([
+            Task.find({ user: user.id, isActive: true, priority: priorityFilter }).populate("assignTo")
+                .sort({ createdAt: -1 })
+                .skip(skip)
+                .limit(limit),
+            Task.countDocuments({ user: user.id, isActive: true }),
+        ]);
 
-    res.status(200).json({
-      success: true,
-      currentPage: page,
-      totalPages: Math.ceil(total / limit),
-      totalTasks: total,
-      count: tasks.length,
-      tasks,
-    });
-  } catch (error) {
-    console.error(error);
-    res.status(500).json({ success: false, message: "Server Error" });
-  }
+        res.status(200).json({
+            success: true,
+            currentPage: page,
+            totalPages: Math.ceil(total / limit),
+            totalTasks: total,
+            count: tasks.length,
+            tasks,
+        });
+    } catch (error) {
+        console.error(error);
+        res.status(500).json({ success: false, message: "Server Error" });
+    }
 };
 
 

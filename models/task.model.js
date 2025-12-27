@@ -14,7 +14,7 @@ const taskSchema = new mongoose.Schema(
     },
     webUrl: { type: String },
     isActive: { type: Boolean, default: true },
-    assignTo: { type: String },
+    assignTo: { type: mongoose.Schema.Types.ObjectId, ref: "Employee", required: true },
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
   },
   { timestamps: true }
