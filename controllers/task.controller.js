@@ -104,7 +104,7 @@ exports.getTasks = async (req, res) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const tab = req.query.tab || "mytask"; // mytask | assigned
+        const tab = req.query.tab || "mytask"; // mytask |  assignedtask
         const status = req.query.status || "all";
 
         const skip = (page - 1) * limit;
@@ -123,7 +123,7 @@ exports.getTasks = async (req, res) => {
         if (tab === "mytask") {
             // Tasks assigned TO me
             query.assignTo = user.id;
-        } else if (tab === "assigned") {
+        } else if (tab === "assignedtask") {
             // Tasks created BY me
             query.user = user.id;
         }
