@@ -57,12 +57,16 @@ exports.addDepartment = async (req, res) => {
     if (!name) {
       return res.status(400).json({ status: 0, message: "Missing required fields" });
     }
-
+    name = name.trim();
     // 🧠 Auto-append "Department" if missing
     if (!/department/i.test(name)) {
       name = `${name} Department`;
     }
-
+    name = name
+      .toLowerCase()
+      .split(" ")
+      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
+      .join(" ");
     const newDepartment = await Department.create({
       name,
       user: user.id,
@@ -81,7 +85,7 @@ exports.addDepartment = async (req, res) => {
 
 exports.getAllDepartment = async (req, res) => {
   try {
-    const user = req.user;    
+    const user = req.user;
     if (user.roles == 'employee') {
       const employeData = await Employee.findOne({ linkedUser: user.id });
       const department = await Department.find({ user: employeData.user }).select("name id").sort({ createdAt: -1 });
