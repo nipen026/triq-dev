@@ -873,7 +873,8 @@ exports.updateEmployee = async (req, res) => {
     if (existingUser) {
       updateData.linkedUser = existingUser._id; // 🔗 Relink employee
     }
-
+    updateData.personalAddress = personalAddress;
+    updateData.emergencyContact = emergencyContact;
     const updatedEmployee = await Employee.findByIdAndUpdate(id, updateData, {
       new: true,
     })
