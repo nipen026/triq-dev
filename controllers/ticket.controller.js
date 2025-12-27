@@ -419,9 +419,17 @@ exports.updateTicket = async (req, res) => {
         ? String(ticket.processor)
         : String(ticket.organisation);
     const io = socket.getIO();
-    io.to(receiverId).emit("ticketStatusUpdated", ticket, (ack) => {
-      console.log("✅ Client received ticketStatusUpdated:", ack);
-    });
+    io.timeout(3000).to(receiverId).emit(
+      "ticketStatusUpdated",
+      ticket,
+      (err, responses) => {
+        if (err) {
+          console.warn("⚠️ No ACK from client");
+        } else {
+          console.log("✅ ACK received:", responses);
+        }
+      }
+    );
     await ticket.save();
 
     res.json({ message: "Ticket updated successfully", updatedFields, ticket });
