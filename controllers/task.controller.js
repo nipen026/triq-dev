@@ -131,7 +131,7 @@ exports.getTasks = async (req, res) => {
         const [tasks, total] = await Promise.all([
             Task.find(query)
                 .populate("assignTo", "name")
-                .populate("user", "name")
+                // .populate("user", "name")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
