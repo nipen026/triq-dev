@@ -1,5 +1,7 @@
 const Task = require("../models/task.model");
-
+const User = require("../models/user.model");
+const Sound = require("../models/sound.model");
+const Employee = require("../models/employee.model");
 // ✅ Create Task
 exports.createTask = async (req, res) => {
     const user = req.user; // Get the authenticated user
@@ -30,6 +32,64 @@ exports.createTask = async (req, res) => {
         });
 
         res.status(201).json({ success: true, message: "Task created", task });
+        const employeeData = await Employee.findById(assignTo);
+        if (!employeeData) {
+            return res.status(404).json({ success: false, message: "Assigned employee not found" });
+        }
+
+        const receiverUser = await User.findById(employeeData.linkedUser);
+
+        // 3️⃣ Send Notification
+        if (receiverUser?.fcmToken) {
+            try {
+                const soundData = await Sound.findOne({
+                    type: "alert",
+                    user: receiverUser.id,
+                });
+
+                const dynamicSoundName = soundData?.soundName || "default";
+
+                // ✅ Notification content
+                const notification = {
+                    title: "New Task Assigned",
+                    body: `${user.name} assigned you a task: ${title}`,
+                };
+
+                await admin.messaging().sendEachForMulticast({
+                    tokens: [receiverUser.fcmToken],
+
+                    data: {
+                        title: notification.title,
+                        body: notification.body,
+                        type: "task_assigned",
+                        taskId: String(task._id),
+                        senderId: String(user.id),
+                        soundName: dynamicSoundName,
+                    },
+
+                    android: {
+                        priority: "high",
+                        notification: {
+                            sound: dynamicSoundName,
+                        },
+                    },
+
+                    apns: {
+                        headers: { "apns-priority": "10" },
+                        payload: {
+                            aps: {
+                                alert: notification,
+                                sound: `${dynamicSoundName}.aiff`,
+                                "content-available": 1,
+                                "mutable-content": 1,
+                            },
+                        },
+                    },
+                });
+            } catch (err) {
+                console.error("❌ FCM Error:", err.message);
+            }
+        }
     } catch (error) {
         console.error(error);
         res.status(500).json({ success: false, message: "Server Error" });
@@ -38,28 +98,44 @@ exports.createTask = async (req, res) => {
 
 // ✅ Get All Tasks
 exports.getTasks = async (req, res) => {
-    const user = req.user; // authenticated user
+    const user = req.user;
 
     try {
-        // Get pagination params (default page=1, limit=10)
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const tab = req.query.tab;
-        const status = req.query.status;
+        const tab = req.query.tab || "mytask"; // mytask | assigned
+        const status = req.query.status || "all";
+
+        const skip = (page - 1) * limit;
+
         const priorityFilter =
             status === "all"
                 ? { $in: ["Low", "Medium", "High"] }
-                : status.charAt(0).toUpperCase() + status.slice(1); // low → Low
-        // Calculate skip value
-        const skip = (page - 1) * limit;
+                : status.charAt(0).toUpperCase() + status.slice(1);
 
-        // Fetch paginated tasks
+        // 🧠 CORE LOGIC
+        let query = {
+            isActive: true,
+            priority: priorityFilter,
+        };
+
+        if (tab === "mytask") {
+            // Tasks assigned TO me
+            query.assignTo = user.id;
+        } else if (tab === "assigned") {
+            // Tasks created BY me
+            query.user = user.id;
+        }
+
         const [tasks, total] = await Promise.all([
-            Task.find({ user: user.id, isActive: true, priority: priorityFilter }).populate("assignTo","name")
+            Task.find(query)
+                .populate("assignTo", "name")
+                .populate("user", "name")
                 .sort({ createdAt: -1 })
                 .skip(skip)
                 .limit(limit),
-            Task.countDocuments({ user: user.id, isActive: true }),
+
+            Task.countDocuments(query),
         ]);
 
         res.status(200).json({
@@ -75,6 +151,7 @@ exports.getTasks = async (req, res) => {
         res.status(500).json({ success: false, message: "Server Error" });
     }
 };
+
 
 
 // ✅ Get Task by ID
