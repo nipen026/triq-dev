@@ -414,13 +414,16 @@ exports.updateTicket = async (req, res) => {
         }
       });
     }
-    await ticket.save();
     const receiverId =
       user.id === String(ticket.organisation)
         ? String(ticket.processor)
         : String(ticket.organisation);
     const io = socket.getIO();
-    io.to(receiverId).emit("ticketStatusUpdated", ticket);
+    io.to(receiverId).emit("ticketStatusUpdated", ticket, (ack) => {
+      console.log("✅ Client received ticketStatusUpdated:", ack);
+    });
+    await ticket.save();
+
     res.json({ message: "Ticket updated successfully", updatedFields, ticket });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -477,7 +480,7 @@ exports.getTicketsByStatus = async (req, res) => {
     if (!status || status === "all") {
       // no filter – show all statuses
     } else if (status.toLowerCase() === "active") {
-     query.status = { $nin: ["Resolved", "Rejected"] };
+      query.status = { $nin: ["Resolved", "Rejected"] };
       // query.status = { $ne: "Rejected" };
 
     } else {
