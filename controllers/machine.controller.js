@@ -42,7 +42,7 @@ exports.createMachine = async (req, res) => {
 exports.getMachines = async (req, res) => {
   const userId = req.user.id
   try {
-    const machines = await Machine.find({ isActive: true,user:userId });
+    const machines = await Machine.find({ isActive: true,user:userId }).sort({ createdAt: -1 });
     res.json({ count: machines.length, data: machines });
   } catch (err) {
     res.status(500).json({ message: err.message });

@@ -95,7 +95,7 @@ exports.createCustomer = async (req, res) => {
 
       // ✅ Generate random password
       const plainPassword = crypto.randomBytes(6).toString("hex");
-      const hashedPassword = await bcrypt.hash('test123', 10);
+      const hashedPassword = await bcrypt.hash(plainPassword, 10);
 
       // ✅ Create linked user
       user = new User({
@@ -196,7 +196,8 @@ exports.getCustomers = async (req, res) => {
     })
       .populate("machines.machine")
       .populate("users", "fullName email")
-      .populate("organization", "fullName email phone countryCode");
+      .populate("organization", "fullName email phone countryCode")
+      .sort({ createdAt: -1 });
 
     // Add flag for each customer
     customers = customers.map(c => {
