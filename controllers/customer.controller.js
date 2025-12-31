@@ -10,7 +10,8 @@ const { getFlag, getFlagWithCountryCode } = require("../utils/flagHelper");
 const sendMail = require("../utils/mailer");
 const { getCountryFromPhone } = require("../utils/phoneHelper");
 const QRCode = require("qrcode");
-const admin = require('firebase-admin')
+const admin = require('firebase-admin');
+const Profile = require("../models/profile.model");
 // Helper: pick only allowed fields
 const pickCustomerFields = (body) => {
   return {
@@ -108,6 +109,17 @@ exports.createCustomer = async (req, res) => {
         emailOTP: "123456",
         countryCode: "+91",
         roles: [processorRole._id],
+      });
+      await Profile.create({
+        user: user._id,
+        email: user.email,
+        phone: user.phone,
+        profileImage: "",
+        chatLanguage: "en",
+        corporateAddress: {},
+        factoryAddress: {},
+        designation: "",
+        unitName: "",
       });
       await user.save({ session });
 
