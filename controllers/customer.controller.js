@@ -105,7 +105,7 @@ exports.createCustomer = async (req, res) => {
         password: hashedPassword,
         phone: customer.phoneNumber,
         isEmailVerified: true,
-        isPhoneVerified: true,
+        isPhoneVerified: false,
         emailOTP: "123456",
         countryCode: "+91",
         roles: [processorRole._id],
