@@ -252,11 +252,34 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: "Invalid phone number" });
     }
 
-    const existingUser = await User.findOne({ $or: [{ email }, { phone }] });
-    if (existingUser) {
-      return res.status(400).json({ error: "Email or phone already registered" });
-    }
+    const existingUser = await User.findOne({
+      $or: [{ email }, { phone }]
+    }).populate("roles");
 
+    if (existingUser) {
+      const existingRoles = existingUser.roles.map(r => r.name);
+
+      // 🔴 Processor: block duplicate processor
+      if (role === "processor" && existingRoles.includes("processor")) {
+        return res.status(400).json({
+          error: "Processor with this email or phone already exists"
+        });
+      }
+
+      // 🔴 Organization cannot duplicate
+      if (role === "organization" && existingRoles.includes("organization")) {
+        return res.status(400).json({
+          error: "Organization with this email or phone already exists"
+        });
+      }
+
+      // 🔴 Employee cannot duplicate
+      if (role === "employee" && existingRoles.includes("employee")) {
+        return res.status(400).json({
+          error: "Employee with this email or phone already exists"
+        });
+      }
+    }
     const hash = await bcrypt.hash(password, 10);
 
     let userRole = await Role.findOne({ name: role });
@@ -531,52 +554,124 @@ exports.verifyPhone = async (req, res) => {
   }
 };
 
+// exports.login = async (req, res) => {
+//   try {
+//     const { email, phone, password, fcmToken, role } = req.body;
+//     console.log(req.body, "frontend side thi login ma")
+//     // 1️⃣ Find user with roles
+//     let user;
+//     if (email) {
+//       user = await User.findOne({ email }).populate("roles");
+//     }
+//     if (phone) {
+//       user = await User.findOne({ phone }).populate("roles");
+//     }
+//     if (!user || !(await bcrypt.compare(password, user.password))) {
+//       return res.status(401).json({ msg: "Invalid credentials" });
+//     }
+
+//     // 2️⃣ Email verification check
+//     if (!user.isEmailVerified && !user.isPhoneVerified) {
+//       return res.status(403).json({ msg: "Please verify your account" });
+//     }
+
+//     // 3️⃣ Check if role matches (optional: allow multiple roles per user)
+//     const userRoles = user.roles.map(r => r.name);
+//     if (role && !userRoles.includes(role)) {
+//       return res.status(403).json({ msg: `Invalid Role` });
+//     }
+
+//     // 4️⃣ Update FCM token if provided
+//     if (fcmToken) {
+//       user.fcmToken = fcmToken; // or push into array if multiple allowed
+//       await user.save();
+//     }
+
+//     // 5️⃣ Create JWT token
+//     const token = jwt.sign(
+//       { id: user._id, roles: userRoles },
+//       process.env.JWT_SECRET,
+//       { expiresIn: "7d" }
+//     );
+//     console.log(user, "login time user data");
+
+//     res.status(200).json({
+//       success: true,
+//       token,
+//       user
+//     });
+//   } catch (err) {
+//     console.error("Login error:", err);
+//     res.status(500).json({ error: "Server error, please try again." });
+//   }
+// };
+
 exports.login = async (req, res) => {
   try {
     const { email, phone, password, fcmToken, role } = req.body;
-    console.log(req.body, "frontend side thi login ma")
-    // 1️⃣ Find user with roles
-    let user;
-    if (email) {
-      user = await User.findOne({ email }).populate("roles");
+
+    if ((!email && !phone) || !password || !role) {
+      return res
+        .status(400)
+        .json({ msg: "Email/Phone, password and role are required" });
     }
-    if (phone) {
-      user = await User.findOne({ phone }).populate("roles");
-    }
-    if (!user || !(await bcrypt.compare(password, user.password))) {
+
+    // 1️⃣ Find ALL users with same email or phone
+    const query = email ? { email } : { phone };
+
+    const users = await User.find(query).populate("roles");
+
+    if (!users || users.length === 0) {
       return res.status(401).json({ msg: "Invalid credentials" });
     }
 
-    // 2️⃣ Email verification check
+    // 2️⃣ Pick user that matches ROLE
+    const user = users.find(u =>
+      u.roles.some(r => r.name === role)
+    );
+
+    if (!user) {
+      return res.status(403).json({
+        msg: `No account found for role ${role}`
+      });
+    }
+
+    // 3️⃣ Password check
+    const isMatch = await bcrypt.compare(password, user.password);
+    if (!isMatch) {
+      return res.status(401).json({ msg: "Invalid credentials" });
+    }
+
+    // 4️⃣ Verification check
     if (!user.isEmailVerified && !user.isPhoneVerified) {
       return res.status(403).json({ msg: "Please verify your account" });
     }
 
-    // 3️⃣ Check if role matches (optional: allow multiple roles per user)
-    const userRoles = user.roles.map(r => r.name);
-    if (role && !userRoles.includes(role)) {
-      return res.status(403).json({ msg: `Invalid Role` });
-    }
-
-    // 4️⃣ Update FCM token if provided
+    // 5️⃣ Update FCM token
     if (fcmToken) {
-      user.fcmToken = fcmToken; // or push into array if multiple allowed
+      user.fcmToken = fcmToken;
       await user.save();
     }
 
-    // 5️⃣ Create JWT token
+    const userRoles = user.roles.map(r => r.name);
+
+    // 6️⃣ JWT with ACTIVE ROLE
     const token = jwt.sign(
-      { id: user._id, roles: userRoles },
+      {
+        id: user._id,
+        role,          // active role
+        roles: userRoles
+      },
       process.env.JWT_SECRET,
       { expiresIn: "7d" }
     );
-    console.log(user, "login time user data");
 
     res.status(200).json({
       success: true,
       token,
       user
     });
+
   } catch (err) {
     console.error("Login error:", err);
     res.status(500).json({ error: "Server error, please try again." });
@@ -680,7 +775,7 @@ exports.forgotPassword = async (req, res) => {
     if (phone) {
       const cleanCountryCode = countryCode?.replace("+", ""); // "+91" → "91"
       sendSMS(phone, cleanCountryCode).then(async (res) => {
-        console.log(res,"response from sms otp");
+        console.log(res, "response from sms otp");
         await VerifyCode.create({
           email,
           phone,
