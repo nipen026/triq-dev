@@ -252,34 +252,39 @@ exports.register = async (req, res) => {
       return res.status(400).json({ error: "Invalid phone number" });
     }
 
-    const existingUser = await User.findOne({
+    const existingUsers = await User.find({
       $or: [{ email }, { phone }]
     }).populate("roles");
 
-    if (existingUser) {
-      const existingRoles = existingUser.roles.map(r => r.name);
+    // If any user found
+    if (existingUsers.length > 0) {
+      // Collect all role names from all matched users
+      const existingRoles = existingUsers.flatMap(user =>
+        user.roles.map(role => role.name)
+      );
 
       // 🔴 Processor: block duplicate processor
       if (role === "processor" && existingRoles.includes("processor")) {
         return res.status(400).json({
-          error: "Processor with this email or phone already exists"
+          error: "Processor with this email or phone already exists",
         });
       }
 
-      // 🔴 Organization cannot duplicate
+      // 🔴 Organization: block duplicate organization
       if (role === "organization" && existingRoles.includes("organization")) {
         return res.status(400).json({
-          error: "Organization with this email or phone already exists"
+          error: "Organization with this email or phone already exists",
         });
       }
 
-      // 🔴 Employee cannot duplicate
+      // 🔴 Employee: block duplicate employee
       if (role === "employee" && existingRoles.includes("employee")) {
         return res.status(400).json({
-          error: "Employee with this email or phone already exists"
+          error: "Employee with this email or phone already exists",
         });
       }
     }
+
     const hash = await bcrypt.hash(password, 10);
 
     let userRole = await Role.findOne({ name: role });
@@ -609,6 +614,7 @@ exports.verifyPhone = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, phone, password, fcmToken, role } = req.body;
+    console.log(req.body);
 
     if ((!email && !phone) || !password || !role) {
       return res
