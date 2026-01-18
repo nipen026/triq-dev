@@ -614,37 +614,18 @@ exports.verifyPhone = async (req, res) => {
 exports.login = async (req, res) => {
   try {
     const { email, phone, password, fcmToken, role } = req.body;
-    console.log(req.body);
+    console.log(req.body, "frontend side thi login ma")
+    // 1️⃣ Find user with roles
+    let user;
 
-    if ((!email && !phone) || !password || !role) {
-      return res
-        .status(400)
-        .json({ msg: "Email/Phone, password and role are required" });
+    if (email) {
+      user = await User.findOne({ email })
+        .populate("roles");
+    } else {
+      user = await User.findOne({ phone })
+        .populate("roles");
     }
-
-    // 1️⃣ Find ALL users with same email or phone
-    const query = email ? { email } : { phone };
-
-    const users = await User.find(query).populate("roles");
-
-    if (!users || users.length === 0) {
-      return res.status(401).json({ msg: "Invalid credentials" });
-    }
-
-    // 2️⃣ Pick user that matches ROLE
-    const user = users.find(u =>
-      u.roles.some(r => r.name === role)
-    );
-
-    if (!user) {
-      return res.status(403).json({
-        msg: `No account found for role ${role}`
-      });
-    }
-
-    // 3️⃣ Password check
-    const isMatch = await bcrypt.compare(password, user.password);
-    if (!isMatch) {
+    if (!user || !(await bcrypt.compare(password, user.password))) {
       return res.status(401).json({ msg: "Invalid credentials" });
     }
 
@@ -770,11 +751,11 @@ exports.forgotPassword = async (req, res) => {
     if (!user) return res.status(404).json({ msg: "User not found" });
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString(); // 6-digit OTP
-    user.resetPasswordOTP = '123456';
+    user.resetPasswordOTP = otp;
     user.resetPasswordExpires = Date.now() + 10 * 60 * 1000; // valid for 10 min
     await user.save();
     if (email) {
-      await sendEmailOTP(user.email, '123456');
+      await sendEmailOTP(user.email, otp);
       res.status(200).json({ msg: "OTP sent to registered email" });
 
     }
@@ -1056,5 +1037,29 @@ exports.DeleteUser = async (req, res) => {
   } catch (err) {
     console.error("Hard delete error:", err);
     res.status(500).json({ error: "Server error" });
+  }
+};
+exports.checkPassword = async (req, res) => {
+  try {
+    const { password } = req.body;
+    const userToken = req.user;
+    if (!password) {
+      return res.status(400).json({ msg: "Password is required" });
+    }
+
+    const user = await User.findById(userToken.id);
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+    const isSame = await bcrypt.compare(password, user.password);
+    if (isSame) {
+      return res.status(200).json({ msg: "Password authenticated successfully" });
+    }else{
+      return res.status(400).json({ msg: "Incorrect password" });
+    }
+
+  } catch (err) {
+    console.error("resetPassword error:", err);
+    return res.status(500).json({ error: err.message });
   }
 };
