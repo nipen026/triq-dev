@@ -49,7 +49,7 @@ exports.getMachineSupplierList = async (req, res) => {
       return { customer: customerObj };
     });
 
-    res.json({ data: result });
+    res.status(200).json({ success: true, data: result });
   } catch (err) {
     console.error("Error in getMachineSupplierList:", err);
     res.status(500).json({ error: err.message });
@@ -102,7 +102,7 @@ exports.getMachineOverview = async (req, res) => {
       }))
     );
 
-    res.json({ data: machines });
+    res.status(200).json({ success: true, data: machines });
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
