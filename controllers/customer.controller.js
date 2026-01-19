@@ -664,7 +664,7 @@ exports.getMyMachines = async (req, res) => {
 };
 exports.respondMachineAssignment = async (req, res) => {
   try {
-    const { machineId, customerId, action } = req.body;
+    const { machineId, customerId, action , notificationId } = req.body;
     const userId = req.user.id;
 
     const machine = await Machine.findById(machineId);
@@ -697,18 +697,11 @@ exports.respondMachineAssignment = async (req, res) => {
     await Machine.findByIdAndUpdate(machineId, { status });
 
     // 📌 DB Notification (Customer → Organization)
-    await Notification.create({
-      title: "Machine Assignment Response",
-      body: message,
-      receiver: orgUser._id,
-      sender: userId,
-      type: "machine_response",
-      read: false,
-      data: {
-        machineId,
-        action,
-      }
-    });
+    const notification = await Notification.findById(notificationId);
+    if (notification) {
+      notification.isActive = false;
+      await notification.save();
+    }
 
     // 🔔 Firebase Push to Organization
     if (orgUser.fcmToken) {
