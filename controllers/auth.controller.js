@@ -1053,9 +1053,9 @@ exports.checkPassword = async (req, res) => {
     }
     const isSame = await bcrypt.compare(password, user.password);
     if (isSame) {
-      return res.status(200).json({ msg: "Password authenticated successfully" });
+      return res.status(200).json({ success: true, msg: "Password authenticated successfully" });
     }else{
-      return res.status(400).json({ msg: "Incorrect password" });
+      return res.status(400).json({ success: false, msg: "Incorrect password" });
     }
 
   } catch (err) {
