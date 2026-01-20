@@ -83,7 +83,8 @@ exports.createCustomer = async (req, res) => {
       }
     }
 
-    await customer.save({ session });
+    customer.assignmentStatus = "Pending";
+    await customer.save();
 
     let user;
     if (existingUser) {
@@ -144,44 +145,38 @@ exports.createCustomer = async (req, res) => {
     customer.users = [user._id];
     await customer.save({ session });
     // 🔔 Notify processor for machine assignment
-    if (customerData.machines?.length > 0) {
-      for (let m of customerData.machines) {
-        const machine = await Machine.findById(m.machine);
+    const notificationMessage =
+      `Customer "${customer.customerName}" has been assigned. Please accept to proceed.`;
 
-        const notificationMessage =
-          `Machine ${machine.machineName} assigned.`;
-
-        // 📌 DB notification
-        await Notification.create({
-          title: "Machine Assigned",
-          body: notificationMessage,
-          receiver: user._id,        // ✅ processor
-          sender: req.user.id,       // ✅ organization
-          type: "machine_request",
-          read: false,
-          data: {
-            machineId: String(machine._id),
-            customerId: String(customer._id),
-            actionRequired: true,
-          }
-        });
-
-        // 🔔 Firebase notification
-        if (user.fcmToken) {
-          await admin.messaging().sendEachForMulticast({
-            tokens: [user.fcmToken],
-            notification: {
-              title: "New Machine Assigned",
-              body: notificationMessage,
-            },
-            data: {
-              type: "machine_request",
-              machineId: String(machine._id),
-              customerId: String(customer._id),
-            }
-          });
-        }
+    const notification = await Notification.create({
+      title: "Customer Assignment Request",
+      body: notificationMessage,
+      receiver: user._id,        // processor
+      sender: req.user.id,       // organization
+      type: "customer_request",
+      read: false,
+      isActive: true,
+      data: {
+        customerId: String(customer._id),
+        actionRequired: true,
+        screenName: "CustomerRequest"
       }
+    });
+
+    // 🔔 FCM
+    if (user.fcmToken) {
+      await admin.messaging().send({
+        token: user.fcmToken,
+        notification: {
+          title: "Customer Assignment Request",
+          body: notificationMessage
+        },
+        data: {
+          type: "customer_request",
+          customerId: String(customer._id),
+          notificationId: String(notification._id)
+        }
+      });
     }
 
     // const notificationMessage = `New customer "${customer.customerName}" has been created.`;
@@ -437,34 +432,30 @@ exports.getCustomerById = async (req, res) => {
 //   }
 // };
 
-const getNewMachines = (oldMachines = [], newMachines = []) => {
-  const oldIds = oldMachines.map(m => m.machine.toString());
-  return newMachines.filter(m => !oldIds.includes(m.machine.toString()));
-};
 
 exports.updateCustomer = async (req, res) => {
   try {
     const customerId = req.params.id;
-    const customerData = req.body;
+    const customerData = pickCustomerFields(req.body);
 
-    // 1️⃣ Fetch existing customer
     const existingCustomer = await Customer.findOne({
       _id: customerId,
       isActive: true
-    })
-      .populate("machines.machine")
-      .populate("users");
+    }).populate("users");
 
     if (!existingCustomer) {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    // 2️⃣ Detect newly added machines
-    const oldMachines = existingCustomer.machines || [];
-    const newMachines = customerData.machines || [];
-    const newlyAddedMachines = getNewMachines(oldMachines, newMachines);
+    // Update machines directly (NO approval flow)
+    if (customerData.machines?.length > 0) {
+      for (let m of customerData.machines) {
+        await Machine.findByIdAndUpdate(m.machine, {
+          status: "Assigned"
+        });
+      }
+    }
 
-    // 3️⃣ Update customer
     const updatedCustomer = await Customer.findOneAndUpdate(
       { _id: customerId, isActive: true },
       customerData,
@@ -473,82 +464,57 @@ exports.updateCustomer = async (req, res) => {
       .populate("machines.machine")
       .populate("users");
 
-    // 4️⃣ Processor (assumption: first user is processor)
+    // 🔔 Notify processor ONLY if customer newly assigned
     const processorUser = updatedCustomer.users?.[0];
 
-    // 5️⃣ Handle machine_request notification
-    if (newlyAddedMachines.length > 0 && processorUser) {
-      for (const m of newlyAddedMachines) {
-        const machine = await Machine.findById(m.machine);
-        if (!machine) continue;
+    if (
+      processorUser &&
+      String(existingCustomer.users?.[0]) !== String(processorUser._id)
+    ) {
+      const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
 
-        // 🔁 Prevent duplicate notification
-        const alreadySent = await Notification.findOne({
-          receiver: processorUser._id,
-          type: "machine_request",
-          "data.machineId": String(machine._id),
-          isActive: true
-        });
+      const notification = await Notification.create({
+        title: "Customer Request",
+        body: notificationMessage,
+        receiver: processorUser._id,
+        sender: req.user.id,
+        type: "customer_request",
+        read: false,
+        isActive: true,
+        data: {
+          customerId: String(updatedCustomer._id),
+          route: "/customer-details"
+        }
+      });
 
-        if (alreadySent) continue;
-
-        // 6️⃣ Update machine status
-        await Machine.findByIdAndUpdate(machine._id, {
-          status: "PendingAcceptance"
-        });
-
-        const notificationMessage = `Machine ${machine.machineName} assigned to customer ${updatedCustomer.customerName}`;
-
-        // 7️⃣ Save notification in DB
-        const notification = await Notification.create({
-          title: "Machine Assigned",
-          body: notificationMessage,
-          receiver: processorUser._id,
-          sender: req.user.id, // organization
-          type: "machine_request",
-          read: false,
-          isActive: true,
+      if (processorUser.fcmToken) {
+        await admin.messaging().send({
+          token: processorUser.fcmToken,
+          notification: {
+            title: "Customer Request",
+            body: notificationMessage
+          },
           data: {
-            machineId: String(machine._id),
+            type: "customer_request",
             customerId: String(updatedCustomer._id),
-            actionRequired: true
+            notificationId: String(notification._id)
           }
         });
-
-        // 8️⃣ Send FCM push notification
-        if (processorUser.fcmToken) {
-          await admin.messaging().send({
-            token: processorUser.fcmToken,
-            notification: {
-              title: "New Machine Assignment",
-              body: notificationMessage
-            },
-            data: {
-              type: "machine_request",
-              machineId: String(machine._id),
-              customerId: String(updatedCustomer._id),
-              notificationId: String(notification._id)
-            }
-          });
-        }
       }
     }
 
-    // 9️⃣ Final response
-    res.status(200).json({
+    res.json({
       success: true,
       message: "Customer updated successfully",
       data: updatedCustomer
     });
 
-  } catch (error) {
-    console.error("Update customer error:", error);
-    res.status(500).json({
-      success: false,
-      message: "Server error while updating customer"
-    });
+  } catch (err) {
+    console.error("updateCustomer error:", err);
+    res.status(500).json({ error: err.message });
   }
 };
+
 // ✅ Soft Delete Customer
 exports.deleteCustomer = async (req, res) => {
   try {
@@ -777,67 +743,94 @@ exports.getMyMachines = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-exports.respondMachineAssignment = async (req, res) => {
+exports.respondCustomerAssignment = async (req, res) => {
   try {
-    const { machineId, customerId, action , notificationId } = req.body;
-    const userId = req.user.id;
+    const { customerId, action, notificationId } = req.body;
+    const processorId = req.user.id;
 
-    const machine = await Machine.findById(machineId);
-    const customer = await Customer.findById(customerId);
+    const customer = await Customer.findById(customerId)
+      .populate("machines.machine");
 
-    if (!machine || !customer) {
-      return res.status(404).json({ message: "Invalid machine or customer" });
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    if (String(customer.users[0]) !== String(processorId)) {
+      return res.status(403).json({ message: "Unauthorized action" });
+    }
+
+    if (customer.assignmentStatus !== "Pending") {
+      return res.status(400).json({ message: "Request already processed" });
     }
 
     const orgUser = await User.findById(customer.organization);
 
-    let status, message;
-
     if (action === "accept") {
-      status = "Assigned";
-      message = `Machine "${machine.machineName}" accepted by customer.`;
-    } else if (action === "reject") {
-      status = "Available";
-      message = `Machine "${machine.machineName}" rejected by customer.`;
-
-      // Remove machine from customer
-      customer.machines = customer.machines.filter(
-        (m) => m.machine.toString() !== machineId
-      );
+      // ✅ ASSIGN CUSTOMER
+      customer.assignmentStatus = "Assigned";
       await customer.save();
+
+      // ✅ ASSIGN ALL MACHINES
+      for (const m of customer.machines) {
+        await Machine.findByIdAndUpdate(m.machine._id, {
+          status: "Assigned"
+        });
+      }
+
+      // 🔔 Notify organization
+      const msg = `Customer "${customer.customerName}" accepted by processor`;
+
+      if (orgUser?.fcmToken) {
+        await admin.messaging().send({
+          token: orgUser.fcmToken,
+          notification: {
+            title: "Customer Accepted",
+            body: msg
+          },
+          data: {
+            type: "customer_accepted",
+            customerId: String(customer._id)
+          }
+        });
+      }
+
+    } else if (action === "reject") {
+      // ❌ REJECT CUSTOMER
+      customer.assignmentStatus = "Rejected";
+      customer.users = []; // unlink processor
+      await customer.save();
+
+      const msg = `Customer "${customer.customerName}" rejected by processor`;
+
+      if (orgUser?.fcmToken) {
+        await admin.messaging().send({
+          token: orgUser.fcmToken,
+          notification: {
+            title: "Customer Rejected",
+            body: msg
+          },
+          data: {
+            type: "customer_rejected",
+            customerId: String(customer._id)
+          }
+        });
+      }
     } else {
       return res.status(400).json({ message: "Invalid action" });
     }
 
-    await Machine.findByIdAndUpdate(machineId, { status });
-
-    // 📌 DB Notification (Customer → Organization)
-    const notification = await Notification.findById(notificationId);
-    if (notification) {
-      notification.isActive = false;
-      await notification.save();
-    }
-
-    // 🔔 Firebase Push to Organization
-    if (orgUser.fcmToken) {
-      await admin.messaging().sendEachForMulticast({
-        tokens: [orgUser.fcmToken],
-        notification: {
-          title: "Machine Assignment Update",
-          body: message,
-        },
-        data: {
-          type: "machine_response",
-          machineId,
-          action,
-        }
+    // 🔕 deactivate request notification
+    if (notificationId) {
+      await Notification.findByIdAndUpdate(notificationId, {
+        isActive: false
       });
     }
 
-    res.json({ message: `Machine ${action}ed successfully` });
+    res.json({ message: `Customer ${action}ed successfully` });
 
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
   }
 };
+

@@ -6,6 +6,11 @@ const customerSchema = new mongoose.Schema({
   email: { type: String },
   contactPerson: { type: String },
   designation: { type: String },
+  assignmentStatus: {
+  type: String,
+  enum: ["Pending", "Assigned", "Rejected"],
+  default: "Pending"
+},
   countryOrigin: { type: String, default: 'US' },
   organization:{ type: mongoose.Schema.Types.ObjectId, ref: "User" },
   users: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
