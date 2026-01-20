@@ -799,7 +799,8 @@ exports.respondCustomerAssignment = async (req, res) => {
       await customer.save();
 
       const msg = `Customer "${customer.customerName}" rejected by processor`;
-
+      console.log(orgUser,"orgUser");
+      
       if (orgUser?.fcmToken) {
         await admin.messaging().send({
           token: orgUser.fcmToken,
