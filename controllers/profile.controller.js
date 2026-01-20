@@ -83,22 +83,37 @@ const getMissingProfileFields = (profile, user) => {
   if (!profile.designation) missing.push("Designation");
   if (!profile.unitName) missing.push("Unit Name");
 
-  // Corporate Address
-  if (!profile.corporateAddress?.addressLine1) missing.push("Corporate Address Line 1");
-  if (!profile.corporateAddress?.city) missing.push("Corporate City");
-  if (!profile.corporateAddress?.state) missing.push("Corporate State");
-  if (!profile.corporateAddress?.country) missing.push("Corporate Country");
-  if (!profile.corporateAddress?.pincode) missing.push("Corporate Pincode");
+  // 🏢 Corporate Address (GROUPED)
+  const corporate = profile.corporateAddress || {};
+  const corporateFields = [
+    corporate.addressLine1,
+    corporate.city,
+    corporate.state,
+    corporate.country,
+    corporate.pincode,
+  ];
 
-  // Factory Address
-  if (!profile.factoryAddress?.addressLine1) missing.push("Factory Address Line 1");
-  if (!profile.factoryAddress?.city) missing.push("Factory City");
-  if (!profile.factoryAddress?.state) missing.push("Factory State");
-  if (!profile.factoryAddress?.country) missing.push("Factory Country");
-  if (!profile.factoryAddress?.pincode) missing.push("Factory Pincode");
+  if (corporateFields.some(field => !field)) {
+    missing.push("Corporate Address");
+  }
+
+  // 🏭 Factory Address (GROUPED)
+  const factory = profile.factoryAddress || {};
+  const factoryFields = [
+    factory.addressLine1,
+    factory.city,
+    factory.state,
+    factory.country,
+    factory.pincode,
+  ];
+
+  if (factoryFields.some(field => !field)) {
+    missing.push("Factory Address");
+  }
 
   return missing;
 };
+
 
 // READ profile (current user)
 exports.getProfile = async (req, res) => {
@@ -124,7 +139,7 @@ exports.getProfile = async (req, res) => {
     // 🧾 Message if fields missing
     let message = "Profile is complete";
     if (missingFields.length > 0) {
-      message = `Please complete the following fields: ${missingFields.join(", ")}`;
+      message = `Profile information pending: ${missingFields.join(", ")}`;
     }
 
     res.json({
