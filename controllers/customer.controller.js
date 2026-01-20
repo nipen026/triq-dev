@@ -466,11 +466,14 @@ exports.updateCustomer = async (req, res) => {
 
     // 🔔 Notify processor ONLY if customer newly assigned
     const processorUser = updatedCustomer.users?.[0];
+    console.log(updatedCustomer, "updatedCustomer");
 
     if (
       processorUser &&
       String(existingCustomer.users?.[0]) !== String(processorUser._id)
     ) {
+      console.log(processorUser,"processorUser");
+      
       const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
 
       const notification = await Notification.create({
