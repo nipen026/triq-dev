@@ -794,7 +794,8 @@ exports.respondCustomerAssignment = async (req, res) => {
     } else if (action === "reject") {
       // ❌ REJECT CUSTOMER
       customer.assignmentStatus = "Rejected";
-      customer.users = []; // unlink processor
+      customer.users = null; // unlink processor
+      customer.organization = null; // unlink organization
       await customer.save();
 
       const msg = `Customer "${customer.customerName}" rejected by processor`;
