@@ -310,130 +310,245 @@ exports.getCustomerById = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+// const getNewMachines = (oldMachines = [], newMachines = []) => {
+//   const oldIds = oldMachines.map(m => m.machine.toString());
+//   return newMachines.filter(m => !oldIds.includes(m.machine));
+// };
 
+
+// exports.updateCustomer = async (req, res) => {
+//   try {
+//     const customerData = pickCustomerFields(req.body);
+//     const newOrgId = req.user.id; // from token
+
+//     const existingCustomer = await Customer.findOne({
+//       _id: req.params.id,
+//       isActive: true
+//     });
+
+//     if (!existingCustomer) {
+//       return res.status(404).json({ message: "Customer not found or inactive" });
+//     }
+
+//     // 🧠 Case: Organization changed
+//     if (String(existingCustomer.organization) !== String(newOrgId)) {
+//       const userIdToUse = existingCustomer.users || customerData.users;
+
+//       const newCustomer = new Customer({
+//         ...customerData,
+//         organization: newOrgId,
+//         users: userIdToUse
+//       });
+
+//       // ✅ Fetch user properly
+//       const UserData = await User.findById(userIdToUse);
+//       const orgData = await User.findById(newOrgId);
+//       const notificationMessage = `New Organization "${orgData.fullName}" has been assigned.`;
+//       const ValidUser = await User.findById(req.user.id, "fullName email");
+//       // ✅ Create notification in DB
+//       const notification = new Notification({
+//         title: "New Customer Created in update time",
+//         body: notificationMessage,
+//         type: "message",
+//         receiver: UserData?._id || null,
+//         sender: req.user ? req.user.id : null,
+//         read: false,
+//         createdAt: new Date(),
+//         data: {
+//           manufacture_name: ValidUser.fullName || '',
+//           type: "customer_assigned",
+//           processorId: String(UserData._id),
+//           screenName: "CustomerEditDetailsView",
+//           route: '/customerEditDetailsView'
+//         }
+//       });
+//       console.log(notification, "notification");
+
+//       await notification.save();
+
+//       // ✅ Save the new customer
+//       await newCustomer.save();
+//       console.log(UserData, "UserData");
+
+//       // ✅ Send FCM notification if token available
+//       if (UserData?.fcmToken) {
+//         try {
+//           const soundData = await Sound.findOne({ type: "alert", user: UserData._id });
+//           const dynamicSoundName = soundData.soundName;
+//           const androidNotification = {
+//             channelId: "triq_custom_sound_channel",
+//             sound: dynamicSoundName,
+//           };
+
+//           const response = await admin.messaging().sendEachForMulticast({
+//             tokens: [UserData.fcmToken],
+//             data: {
+//               title: "Customer Assigned",
+//               body: notificationMessage,
+//               type: "customer_assigned",
+//               processorId: String(UserData._id),
+//               screenName: "CustomerEditDetailsView",
+//               route: '/customerEditDetailsView',
+//               soundName: dynamicSoundName
+//             },
+//             android: {
+//               priority: "high",
+//             },
+
+//             // 4. iOS options
+//             apns: {
+//               headers: { "apns-priority": "10" },
+//               payload: {
+//                 aps: {
+//                   // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+//                   sound: `${dynamicSoundName}.aiff`,
+
+//                   // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+//                   "content-available": 1,
+//                   "mutable-content": 1,
+//                 },
+//               },
+//             }
+//           });
+
+//           console.log("FCM sent:", response.successCount, "success,", response.failureCount, "failures");
+//         } catch (fcmErr) {
+//           console.error("FCM send error:", fcmErr);
+//         }
+//       }
+
+//       return res.json({
+//         message: "Organization changed, new customer created under new organization",
+//         data: newCustomer
+//       });
+//     }
+
+//     // 🧩 Otherwise normal update
+//     const updatedCustomer = await Customer.findOneAndUpdate(
+//       { _id: req.params.id, isActive: true },
+//       customerData,
+//       { new: true }
+//     ).populate("machines.machine");
+
+//     res.json({ message: "Customer updated successfully", data: updatedCustomer });
+//   } catch (err) {
+//     console.error("updateCustomer error:", err);
+//     res.status(500).json({ error: err.message });
+//   }
+// };
+
+const getNewMachines = (oldMachines = [], newMachines = []) => {
+  const oldIds = oldMachines.map(m => m.machine.toString());
+  return newMachines.filter(m => !oldIds.includes(m.machine.toString()));
+};
 
 exports.updateCustomer = async (req, res) => {
   try {
-    const customerData = pickCustomerFields(req.body);
-    const newOrgId = req.user.id; // from token
+    const customerId = req.params.id;
+    const customerData = req.body;
 
+    // 1️⃣ Fetch existing customer
     const existingCustomer = await Customer.findOne({
-      _id: req.params.id,
+      _id: customerId,
       isActive: true
-    });
+    })
+      .populate("machines.machine")
+      .populate("users");
 
     if (!existingCustomer) {
-      return res.status(404).json({ message: "Customer not found or inactive" });
+      return res.status(404).json({ message: "Customer not found" });
     }
 
-    // 🧠 Case: Organization changed
-    if (String(existingCustomer.organization) !== String(newOrgId)) {
-      const userIdToUse = existingCustomer.users || customerData.users;
+    // 2️⃣ Detect newly added machines
+    const oldMachines = existingCustomer.machines || [];
+    const newMachines = customerData.machines || [];
+    const newlyAddedMachines = getNewMachines(oldMachines, newMachines);
 
-      const newCustomer = new Customer({
-        ...customerData,
-        organization: newOrgId,
-        users: userIdToUse
-      });
-
-      // ✅ Fetch user properly
-      const UserData = await User.findById(userIdToUse);
-      const orgData = await User.findById(newOrgId);
-      const notificationMessage = `New Organization "${orgData.fullName}" has been assigned.`;
-      const ValidUser = await User.findById(req.user.id, "fullName email");
-      // ✅ Create notification in DB
-      const notification = new Notification({
-        title: "New Customer Created in update time",
-        body: notificationMessage,
-        type: "message",
-        receiver: UserData?._id || null,
-        sender: req.user ? req.user.id : null,
-        read: false,
-        createdAt: new Date(),
-        data: {
-          manufacture_name: ValidUser.fullName || '',
-          type: "customer_assigned",
-          processorId: String(UserData._id),
-          screenName: "CustomerEditDetailsView",
-          route: '/customerEditDetailsView'
-        }
-      });
-      console.log(notification, "notification");
-
-      await notification.save();
-
-      // ✅ Save the new customer
-      await newCustomer.save();
-      console.log(UserData, "UserData");
-
-      // ✅ Send FCM notification if token available
-      if (UserData?.fcmToken) {
-        try {
-          const soundData = await Sound.findOne({ type: "alert", user: UserData._id });
-          const dynamicSoundName = soundData.soundName;
-          const androidNotification = {
-            channelId: "triq_custom_sound_channel",
-            sound: dynamicSoundName,
-          };
-
-          const response = await admin.messaging().sendEachForMulticast({
-            tokens: [UserData.fcmToken],
-            data: {
-              title: "Customer Assigned",
-              body: notificationMessage,
-              type: "customer_assigned",
-              processorId: String(UserData._id),
-              screenName: "CustomerEditDetailsView",
-              route: '/customerEditDetailsView',
-              soundName: dynamicSoundName
-            },
-            android: {
-              priority: "high",
-            },
-
-            // 4. iOS options
-            apns: {
-              headers: { "apns-priority": "10" },
-              payload: {
-                aps: {
-                  // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
-                  sound: `${dynamicSoundName}.aiff`,
-
-                  // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
-                  "content-available": 1,
-                  "mutable-content": 1,
-                },
-              },
-            }
-          });
-
-          console.log("FCM sent:", response.successCount, "success,", response.failureCount, "failures");
-        } catch (fcmErr) {
-          console.error("FCM send error:", fcmErr);
-        }
-      }
-
-      return res.json({
-        message: "Organization changed, new customer created under new organization",
-        data: newCustomer
-      });
-    }
-
-    // 🧩 Otherwise normal update
+    // 3️⃣ Update customer
     const updatedCustomer = await Customer.findOneAndUpdate(
-      { _id: req.params.id, isActive: true },
+      { _id: customerId, isActive: true },
       customerData,
       { new: true }
-    ).populate("machines.machine");
+    )
+      .populate("machines.machine")
+      .populate("users");
 
-    res.json({ message: "Customer updated successfully", data: updatedCustomer });
-  } catch (err) {
-    console.error("updateCustomer error:", err);
-    res.status(500).json({ error: err.message });
+    // 4️⃣ Processor (assumption: first user is processor)
+    const processorUser = updatedCustomer.users?.[0];
+
+    // 5️⃣ Handle machine_request notification
+    if (newlyAddedMachines.length > 0 && processorUser) {
+      for (const m of newlyAddedMachines) {
+        const machine = await Machine.findById(m.machine);
+        if (!machine) continue;
+
+        // 🔁 Prevent duplicate notification
+        const alreadySent = await Notification.findOne({
+          receiver: processorUser._id,
+          type: "machine_request",
+          "data.machineId": String(machine._id),
+          isActive: true
+        });
+
+        if (alreadySent) continue;
+
+        // 6️⃣ Update machine status
+        await Machine.findByIdAndUpdate(machine._id, {
+          status: "PendingAcceptance"
+        });
+
+        const notificationMessage = `Machine ${machine.machineName} assigned to customer ${updatedCustomer.customerName}`;
+
+        // 7️⃣ Save notification in DB
+        const notification = await Notification.create({
+          title: "Machine Assigned",
+          body: notificationMessage,
+          receiver: processorUser._id,
+          sender: req.user.id, // organization
+          type: "machine_request",
+          read: false,
+          isActive: true,
+          data: {
+            machineId: String(machine._id),
+            customerId: String(updatedCustomer._id),
+            actionRequired: true
+          }
+        });
+
+        // 8️⃣ Send FCM push notification
+        if (processorUser.fcmToken) {
+          await admin.messaging().send({
+            token: processorUser.fcmToken,
+            notification: {
+              title: "New Machine Assignment",
+              body: notificationMessage
+            },
+            data: {
+              type: "machine_request",
+              machineId: String(machine._id),
+              customerId: String(updatedCustomer._id),
+              notificationId: String(notification._id)
+            }
+          });
+        }
+      }
+    }
+
+    // 9️⃣ Final response
+    res.status(200).json({
+      success: true,
+      message: "Customer updated successfully",
+      data: updatedCustomer
+    });
+
+  } catch (error) {
+    console.error("Update customer error:", error);
+    res.status(500).json({
+      success: false,
+      message: "Server error while updating customer"
+    });
   }
 };
-
-
 // ✅ Soft Delete Customer
 exports.deleteCustomer = async (req, res) => {
   try {
