@@ -755,9 +755,6 @@ exports.respondCustomerAssignment = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    if (String(customer.users) !== String(processorId)) {
-      return res.status(403).json({ message: "Unauthorized action" });
-    }
 
     if (customer.assignmentStatus !== "Pending") {
       return res.status(400).json({ message: "Request already processed" });
