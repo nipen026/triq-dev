@@ -68,37 +68,79 @@ exports.createProfile = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+const getMissingProfileFields = (profile, user) => {
+  const missing = [];
+
+  // User fields
+  if (!user.fullName) missing.push("Full Name");
+  if (!user.email) missing.push("Email");
+  if (!user.phone) missing.push("Phone");
+  if (!user.countryCode) missing.push("Country Code");
+
+  // Profile fields
+  if (!profile.profileImage) missing.push("Profile Image");
+  if (!profile.chatLanguage) missing.push("Chat Language");
+  if (!profile.designation) missing.push("Designation");
+  if (!profile.unitName) missing.push("Unit Name");
+
+  // Corporate Address
+  if (!profile.corporateAddress?.addressLine1) missing.push("Corporate Address Line 1");
+  if (!profile.corporateAddress?.city) missing.push("Corporate City");
+  if (!profile.corporateAddress?.state) missing.push("Corporate State");
+  if (!profile.corporateAddress?.country) missing.push("Corporate Country");
+  if (!profile.corporateAddress?.pincode) missing.push("Corporate Pincode");
+
+  // Factory Address
+  if (!profile.factoryAddress?.addressLine1) missing.push("Factory Address Line 1");
+  if (!profile.factoryAddress?.city) missing.push("Factory City");
+  if (!profile.factoryAddress?.state) missing.push("Factory State");
+  if (!profile.factoryAddress?.country) missing.push("Factory Country");
+  if (!profile.factoryAddress?.pincode) missing.push("Factory Pincode");
+
+  return missing;
+};
 
 // READ profile (current user)
 exports.getProfile = async (req, res) => {
   try {
     const profile = await Profile.findOne({ user: req.user.id }).populate("user");
-    console.log(req.user.id, "profile");
-    if (!profile) return res.status(404).json({ message: "Profile not found" });
-    const customer = await Customer.findOne({ users: req.user.id });
-    console.log(customer, "customer");
-    if (!customer) {
-      const orgRole = await Role.findOne({ name: "organization" });
-      console.log(orgRole, "orgRole");
-
-      const users = await User.findOne({ _id: req.user.id })
-        .populate("roles", "name"); // optional populate
-      console.log(users, "users");
-      const completionPercentage = calculateProfileCompletion(profile, users);
-      const qrCode = await QRCode.toDataURL(users.id);
-      res.json({ profile, qrCode, completionPercentage });
-    } else {
-      const users = await User.findOne({ _id: req.user.id })
-        .populate("roles", "name"); // optional populate
-      const completionPercentage = calculateProfileCompletion(profile, users);
-      const qrCode = await QRCode.toDataURL(customer.id);
-      res.json({ profile, qrCode, completionPercentage });
+    if (!profile) {
+      return res.status(404).json({ message: "Profile not found" });
     }
+
+    const user = await User.findById(req.user.id).populate("roles", "name");
+    const customer = await Customer.findOne({ users: req.user.id });
+
+    const completionPercentage = calculateProfileCompletion(profile, user);
+
+    // 🔍 Find missing fields
+    const missingFields = getMissingProfileFields(profile, user);
+
+    // QR code logic
+    const qrCode = customer
+      ? await QRCode.toDataURL(customer.id)
+      : await QRCode.toDataURL(user.id);
+
+    // 🧾 Message if fields missing
+    let message = "Profile is complete";
+    if (missingFields.length > 0) {
+      message = `Please complete the following fields: ${missingFields.join(", ")}`;
+    }
+
+    res.json({
+      success: true,
+      profile,
+      qrCode,
+      completionPercentage,
+      missingFields,
+      message
+    });
 
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 exports.getProfileDetail = async (req, res) => {
   try {
