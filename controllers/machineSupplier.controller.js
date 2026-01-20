@@ -78,7 +78,7 @@ exports.getMachineOverview = async (req, res) => {
       });
 
     if (!customers || customers.length === 0) {
-      return res.status(404).json({ message: "Customer not found for this processor" });
+      return res.status(200).json({ message: "Customer not found for this processor" });
     }
 
     // ✅ Flatten all machines from all customers
