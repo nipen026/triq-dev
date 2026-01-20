@@ -468,10 +468,7 @@ exports.updateCustomer = async (req, res) => {
     const processorUser = updatedCustomer.users;
     console.log(updatedCustomer, "updatedCustomer");
 
-    // if (
-    //   processorUser &&
-    //   String(existingCustomer.users?.[0]) !== String(processorUser._id)
-    // ) {
+    if (processorUser) {
       console.log(processorUser,"processorUser");
       
       const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
@@ -504,7 +501,7 @@ exports.updateCustomer = async (req, res) => {
           }
         });
       }
-    // }
+    }
 
     res.json({
       success: true,
@@ -758,7 +755,7 @@ exports.respondCustomerAssignment = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    if (String(customer.users[0]) !== String(processorId)) {
+    if (String(customer.users) !== String(processorId)) {
       return res.status(403).json({ message: "Unauthorized action" });
     }
 
