@@ -468,10 +468,10 @@ exports.updateCustomer = async (req, res) => {
     const processorUser = updatedCustomer.users?.[0];
     console.log(updatedCustomer, "updatedCustomer");
 
-    if (
-      processorUser &&
-      String(existingCustomer.users?.[0]) !== String(processorUser._id)
-    ) {
+    // if (
+    //   processorUser &&
+    //   String(existingCustomer.users?.[0]) !== String(processorUser._id)
+    // ) {
       console.log(processorUser,"processorUser");
       
       const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
@@ -488,7 +488,7 @@ exports.updateCustomer = async (req, res) => {
           customerId: String(updatedCustomer._id),
           route: "/customer-details"
         }
-      });
+      }).then(notif => console.log(notif));
 
       if (processorUser.fcmToken) {
         await admin.messaging().send({
@@ -504,7 +504,7 @@ exports.updateCustomer = async (req, res) => {
           }
         });
       }
-    }
+    // }
 
     res.json({
       success: true,
