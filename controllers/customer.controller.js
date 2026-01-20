@@ -590,6 +590,7 @@ exports.searchCustomers = async (req, res) => {
       match.$or = [
         { email: { $regex: search, $options: "i" } },
         { phoneNumber: { $regex: search, $options: "i" } },
+        { fullName: { $regex: search, $options: "i" } },
       ];
     }
 
