@@ -507,40 +507,46 @@ exports.getTicketsByStatus = async (req, res) => {
 
     const data = await Promise.all(
       tickets.map(async (t) => {
-        // 🔍 find customerMachineDetails (to extract warrantyStatus)
-        const customer = await Customer.findOne({
-          users: t.processor._id,
-          "machines.machine": t.machine._id,
-        });
 
         let warrantyStatus = null;
-        if (customer) {
-          const machineDetails = customer.machines.find(
-            (m) => m.machine.toString() === t.machine._id.toString()
-          );
-          if (machineDetails) {
-            warrantyStatus = machineDetails.warrantyStatus;
+
+        if (t.processor && t.machine) {
+          const customer = await Customer.findOne({
+            users: t.processor._id,
+            "machines.machine": t.machine._id,
+          });
+
+          if (customer) {
+            const machineDetails = customer.machines.find(
+              (m) => m.machine.toString() === t.machine._id.toString()
+            );
+            if (machineDetails) {
+              warrantyStatus = machineDetails.warrantyStatus;
+            }
           }
         }
 
-        // 🔍 include chatRoom + warrantyStatus
         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
-          .populate("organisation", "fullName email ")
+          .populate("organisation", "fullName email")
           .populate("processor", "fullName email");
+
         let flag = null;
         if (t.organisation?.countryCode || t.processor?.countryCode) {
           const phone =
-            t.organisation?.countryCode || t.processor?.countryCode; // pick whichever available
-          flag = getFlagWithCountryCode(phone); // e.g. +91 → "in"
+            t.organisation?.countryCode || t.processor?.countryCode;
+          flag = getFlagWithCountryCode(phone);
         }
+
         return {
           ...t.toObject(),
-          warrantyStatus, // ✅ added here
+          warrantyStatus,
           chatRoom,
-          flag
+          flag,
         };
       })
     );
+
+    console.log(data, "data");
 
     res.json({
       total,
