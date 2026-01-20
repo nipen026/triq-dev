@@ -465,7 +465,7 @@ exports.updateCustomer = async (req, res) => {
       .populate("users");
 
     // 🔔 Notify processor ONLY if customer newly assigned
-    const processorUser = updatedCustomer.users?.[0];
+    const processorUser = updatedCustomer.users;
     console.log(updatedCustomer, "updatedCustomer");
 
     // if (
@@ -479,13 +479,13 @@ exports.updateCustomer = async (req, res) => {
       const notification = await Notification.create({
         title: "Customer Request",
         body: notificationMessage,
-        receiver: processorUser._id,
+        receiver: processorUser?._id,
         sender: req.user.id,
         type: "customer_request",
         read: false,
         isActive: true,
         data: {
-          customerId: String(updatedCustomer._id),
+          customerId: String(updatedCustomer?._id),
           route: "/customer-details"
         }
       }).then(notif => console.log(notif));
@@ -499,8 +499,8 @@ exports.updateCustomer = async (req, res) => {
           },
           data: {
             type: "customer_request",
-            customerId: String(updatedCustomer._id),
-            notificationId: String(notification._id)
+            customerId: String(updatedCustomer?._id),
+            notificationId: String(notification?._id)
           }
         });
       }
