@@ -824,11 +824,11 @@ exports.respondCustomerAssignment = async (req, res) => {
       });
     }
 
-    res.json({ message: `Customer ${action}ed successfully` });
+    res.status(200).json({ success:true , message: `Customer ${action}ed successfully` });
 
   } catch (err) {
     console.error(err);
-    res.status(500).json({ error: err.message });
+    res.status(500).json({ success: false, error: err.message });
   }
 };
 
