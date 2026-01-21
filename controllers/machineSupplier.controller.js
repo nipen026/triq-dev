@@ -25,14 +25,15 @@ exports.getMachineSupplierList = async (req, res) => {
     const customers = await Customer.find({
       users: userId,
       isActive: true,
-      organization: { $ne: null }, // <-- filter out null organizations
+      // organization: { $ne: null }, // <-- filter out null organizations
     })
       .populate({
         path: "organization",
         select: "fullName email phone countryCode",
       })
       .populate("machines.machine");
-
+      console.log(customers,"customers");
+      
 
 
     // if (!customers || customers.length === 0) {
@@ -45,7 +46,7 @@ exports.getMachineSupplierList = async (req, res) => {
     // }));
     const result = customers.map(cust => {
       const customerObj = cust.toObject(); // Convert Mongoose doc → plain JS
-      customerObj.flag = getFlagWithCountryCode(customerObj.organization.countryCode);
+      customerObj.flag = getFlagWithCountryCode(customerObj?.organization?.countryCode || '+91');
       return { customer: customerObj };
     });
 
