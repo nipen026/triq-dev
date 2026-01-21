@@ -76,12 +76,13 @@ const getMissingProfileFields = (profile, user) => {
   if (!user.email) missing.push("Email");
   if (!user.phone) missing.push("Phone");
   if (!user.countryCode) missing.push("Country Code");
+  if (!user.isEmailVerified) missing.push("Email Verification");
 
   // Profile fields
   if (!profile.profileImage) missing.push("Profile Image");
   if (!profile.chatLanguage) missing.push("Chat Language");
   if (!profile.designation) missing.push("Designation");
-  if (!profile.unitName) missing.push("Unit Name");
+  // if (!profile.unitName) missing.push("Unit Name");
 
   // 🏢 Corporate Address (GROUPED)
   const corporate = profile.corporateAddress || {};

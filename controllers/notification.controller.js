@@ -107,15 +107,42 @@ exports.sendOrganizationRequest = async (req, res) => {
 
 exports.getNotifications = async (req, res) => {
   try {
-    const user = req.user;
+    const userId = req.user.id;
 
-    const notifs = await Notification.find({ receiver: user.id, isActive: true })
-      .sort({ createdAt: -1 });
-    res.json(notifs);
+    const result = await Notification.aggregate([
+      {
+        $match: {
+          receiver: userId,
+          isActive: true,
+        },
+      },
+      {
+        $facet: {
+          notifications: [
+            { $sort: { createdAt: -1 } },
+          ],
+          totalCount: [
+            { $count: "count" },
+          ],
+          unreadCount: [
+            { $match: { isRead: false } },
+            { $count: "count" },
+          ],
+        },
+      },
+    ]);
+
+    res.status(200).json({
+      success: true,
+      notifications: result[0].notifications,
+      totalCount: result[0].totalCount[0]?.count || 0,
+      unreadCount: result[0].unreadCount[0]?.count || 0,
+    });
   } catch (err) {
-    res.status(500).json({ message: err.message });
+    res.status(500).json({ success: false, message: err.message });
   }
 };
+
 
 exports.markNotificationAsRead = async (req, res) => {
   try {
