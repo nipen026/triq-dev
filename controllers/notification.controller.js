@@ -4,6 +4,7 @@ const User = require("../models/user.model");
 const Ticket = require("../models/ticket.model");
 const Sound = require('../models/sound.model');
 const admin = require("firebase-admin"); // optional (for FCM push)
+const { default: mongoose } = require("mongoose");
 
 exports.sendOrganizationRequest = async (req, res) => {
   try {
@@ -107,7 +108,7 @@ exports.sendOrganizationRequest = async (req, res) => {
 
 exports.getNotifications = async (req, res) => {
   try {
-    const userId = req.user.id;
+    const userId = new mongoose.Types.ObjectId(req.user.id);
 
     const result = await Notification.aggregate([
       {
@@ -120,6 +121,7 @@ exports.getNotifications = async (req, res) => {
         $facet: {
           notifications: [
             { $sort: { createdAt: -1 } },
+            { $limit: 50 }   // optional safety limit
           ],
           totalCount: [
             { $count: "count" },
@@ -132,16 +134,28 @@ exports.getNotifications = async (req, res) => {
       },
     ]);
 
+    const data = result[0] || {
+      notifications: [],
+      totalCount: [],
+      unreadCount: []
+    };
+
     res.status(200).json({
       success: true,
-      notifications: result[0].notifications,
-      totalCount: result[0].totalCount[0]?.count || 0,
-      unreadCount: result[0].unreadCount[0]?.count || 0,
+      notifications: data.notifications,
+      totalCount: data.totalCount[0]?.count || 0,
+      unreadCount: data.unreadCount[0]?.count || 0,
     });
+
   } catch (err) {
-    res.status(500).json({ success: false, message: err.message });
+    console.error("Notification Error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message
+    });
   }
 };
+
 
 
 exports.markNotificationAsRead = async (req, res) => {
