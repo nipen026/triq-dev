@@ -53,8 +53,10 @@ exports.createCustomer = async (req, res) => {
     const existingCustomer = await Customer.findOne({
       email: customerData.email,
       organization: customerData.organization,
-      isActive: true
+      isActive: true,
+      assignmentStatus: { $ne: "Rejected" }
     });
+
 
     if (existingCustomer) {
       await session.abortTransaction();
@@ -469,8 +471,8 @@ exports.updateCustomer = async (req, res) => {
     console.log(updatedCustomer, "updatedCustomer");
 
     if (processorUser) {
-      console.log(processorUser,"processorUser");
-      
+      console.log(processorUser, "processorUser");
+
       const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
 
       const notification = await Notification.create({
@@ -793,15 +795,23 @@ exports.respondCustomerAssignment = async (req, res) => {
       }
 
     } else if (action === "reject") {
-      // ❌ REJECT CUSTOMER
+
+      // ❌ Reject assignment
       customer.assignmentStatus = "Rejected";
-      customer.users = null; // unlink processor
-      customer.organization = null; // unlink organization
-      // await customer.save();
+      customer.users = '';           // unlink processor
+      // keep organization as-is
+
+      // ✅ Reset machines back to Available
+      for (const m of customer.machines) {
+        await Machine.findByIdAndUpdate(m.machine._id || m.machine, {
+          status: "Available"
+        });
+      }
+
+      await customer.save();   // ⭐ IMPORTANT (missing earlier)
 
       const msg = `Customer "${customer.customerName}" rejected by processor`;
-      console.log(orgUser,"orgUser");
-      
+
       if (orgUser?.fcmToken) {
         await admin.messaging().send({
           token: orgUser.fcmToken,
@@ -826,7 +836,7 @@ exports.respondCustomerAssignment = async (req, res) => {
       });
     }
 
-    res.status(200).json({ success:true , message: `Customer ${action}ed successfully` });
+    res.status(200).json({ success: true, message: `Customer ${action}ed successfully` });
 
   } catch (err) {
     console.error(err);

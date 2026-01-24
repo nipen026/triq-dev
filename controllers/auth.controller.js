@@ -848,6 +848,24 @@ exports.DeleteUser = async (req, res) => {
     const user = await User.findById(userId);
     if (!user) return res.status(404).json({ msg: "User not found" });
 
+    // 🔎 Find customers linked to this user
+    const customers = await Customer.find({ users: userId });
+
+    // 🔄 Reset machines + customer assignment
+    for (const customer of customers) {
+      // Reset machines
+      for (const m of customer.machines || []) {
+        await Machine.findByIdAndUpdate(m.machine, {
+          status: "Available"
+        });
+      }
+
+      // Reset customer
+      customer.users = '';
+      customer.assignmentStatus = "Rejected"; // or "Unassigned"
+      await customer.save();
+    }
+
     // 🧹 Cleanup relations
     await Promise.all([
       Profile.deleteOne({ user: userId }),
@@ -855,10 +873,6 @@ exports.DeleteUser = async (req, res) => {
       VerifyCode.deleteMany({
         $or: [{ email: user.email }, { phone: user.phone }]
       }),
-      Customer.updateMany(
-        { users: { $type: "array", $in: [userId] } },
-        { $pull: { users: userId } }
-      ),
       Employee.deleteOne({ linkedUser: userId }),
       ServicePricing.deleteOne({ organisation: userId }),
       Ticket.deleteMany({
@@ -866,20 +880,30 @@ exports.DeleteUser = async (req, res) => {
       }),
       ChatRoom.deleteMany({
         $or: [{ organisation: userId }, { processor: userId }]
-      })
+      }),
+      Notification.deleteMany({
+        $or: [{ receiver: userId }, { sender: userId }]
+      }),
+      Customer.updateMany(
+        { users: userId },
+        { $pull: { users: userId } }
+      )
     ]);
 
+    // ❌ Finally delete user
     await User.findByIdAndDelete(userId);
 
     res.status(200).json({
       success: true,
-      msg: "User permanently deleted"
+      msg: "User permanently deleted with cleanup"
     });
+
   } catch (err) {
     console.error("Hard delete error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 exports.checkPassword = async (req, res) => {
   try {
     const { password } = req.body;
