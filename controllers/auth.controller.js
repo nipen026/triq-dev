@@ -15,7 +15,8 @@ const sendSMS = require("../utils/smsOtp");
 const sendMail = require("../utils/mailer");
 const Employee = require("../models/employee.model");
 const Ticket = require('../models/ticket.model');
-const ChatRoom = require('../models/chatRoom.model')
+const ChatRoom = require('../models/chatRoom.model');
+const Notification = require('../models/notification.model');
 const { default: axios } = require("axios");
 // Register new user
 const CUSTOMER_ID = process.env.CUSTOMERID
