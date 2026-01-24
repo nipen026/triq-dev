@@ -507,19 +507,19 @@ exports.getTicketsByStatus = async (req, res) => {
 
     const data = await Promise.all(
       tickets.map(async (t) => {
-
         let warrantyStatus = null;
-
         if (t.processor && t.machine) {
           const customer = await Customer.findOne({
-            users: t.processor._id,
-            "machines.machine": t.machine._id,
+            // users: t.processor._id.toString(),
+            "machines.machine": t.machine._id.toString(),
           });
 
           if (customer) {
             const machineDetails = customer.machines.find(
               (m) => m.machine.toString() === t.machine._id.toString()
             );
+            console.log(machineDetails, "machineDetails");
+
             if (machineDetails) {
               warrantyStatus = machineDetails.warrantyStatus;
             }
