@@ -110,6 +110,16 @@ exports.getNotifications = async (req, res) => {
   try {
     const userId = new mongoose.Types.ObjectId(req.user.id);
 
+    // ✅ AUTO RESET unread count
+    await Notification.updateMany(
+      {
+        receiver: userId,
+        isActive: true,
+        isRead: false,
+      },
+      { $set: { isRead: true } }
+    );
+
     const result = await Notification.aggregate([
       {
         $match: {
@@ -121,7 +131,7 @@ exports.getNotifications = async (req, res) => {
         $facet: {
           notifications: [
             { $sort: { createdAt: -1 } },
-            { $limit: 50 }   // optional safety limit
+            { $limit: 50 }
           ],
           totalCount: [
             { $count: "count" },
@@ -144,7 +154,7 @@ exports.getNotifications = async (req, res) => {
       success: true,
       notifications: data.notifications,
       totalCount: data.totalCount[0]?.count || 0,
-      unreadCount: data.unreadCount[0]?.count || 0,
+      unreadCount: data.unreadCount[0]?.count || 0, // will now be 0
     });
 
   } catch (err) {
@@ -155,6 +165,7 @@ exports.getNotifications = async (req, res) => {
     });
   }
 };
+
 
 
 
