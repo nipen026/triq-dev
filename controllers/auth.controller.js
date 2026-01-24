@@ -199,32 +199,65 @@ exports.sendOtp = async (req, res) => {
       return res.status(400).json({ msg: "Email or phone required" });
     }
 
-    const code = "123456";
+    // ✅ STEP 1: Check if email or phone already exists
+    const existingUser = await User.findOne({
+      $or: [
+        email ? { email } : null,
+        phone ? { phone } : null
+      ].filter(Boolean)
+    });
 
-    // Remove any previous OTP for same user/type
-    await VerifyCode.deleteMany({ $or: [{ email }, { phone }], type });
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        msg: `${email ? "Email" : "Phone number"} already registered. OTP not sent.`
+      });
+    }
 
-    // Save new OTP
-    // 
+    const code = "123456"; // you can randomize later
 
-    // Send OTP (email or SMS)
+    // ✅ STEP 2: Remove previous OTPs
+    await VerifyCode.deleteMany({ 
+      $or: [{ email }, { phone }], 
+      type 
+    });
+
+    // ✅ STEP 3: Send OTP
     if (type === "email" && email) {
       await sendEmailOTP(email, code);
-    } if (type === "phone" && phone) {
-      sendSMS(phone, countryCode).then(async (res) => {
-        console.log(res, "response from sms otp");
-        await VerifyCode.create({ email, phone, type, code, verificationId: res.data.verificationId, countryCode });
+
+      await VerifyCode.create({
+        email,
+        type,
+        code
+      });
+    }
+
+    if (type === "phone" && phone) {
+      const smsRes = await sendSMS(phone, countryCode);
+
+      await VerifyCode.create({
+        phone,
+        type,
+        code,
+        verificationId: smsRes?.data?.verificationId,
+        countryCode
       });
     }
 
     console.log(`OTP sent to ${email || phone}: ${code}`);
 
-    res.status(200).json({ success: true, msg: "OTP sent successfully" });
+    return res.status(200).json({
+      success: true,
+      msg: "OTP sent successfully"
+    });
+
   } catch (err) {
     console.error("sendOtp error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 
 function splitPhone(fullNumber) {
   const clean = fullNumber.replace("+", "").trim();
