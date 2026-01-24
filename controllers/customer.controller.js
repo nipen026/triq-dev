@@ -750,6 +750,7 @@ exports.respondCustomerAssignment = async (req, res) => {
   try {
     const { customerId, action, notificationId } = req.body;
     const processorId = req.user.id;
+console.log(req.body, "req.body in respondCustomerAssignment");
 
     const customer = await Customer.findById(customerId)
       .populate("machines.machine");
