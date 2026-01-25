@@ -32,7 +32,7 @@ exports.createCustomer = async (req, res) => {
 
   try {
     const customerData = pickCustomerFields(req.body);
-
+    customerData.organization = req.user.id; // from token
     // Attach organization from token user (if present)
     if (req.user && req.user.id) {
       const validUser = await User.findById(req.user.id, "fullName email");
@@ -439,6 +439,7 @@ exports.updateCustomer = async (req, res) => {
   try {
     const customerId = req.params.id;
     const customerData = pickCustomerFields(req.body);
+    customerData.organization = req.user.id; // from token
 
     const existingCustomer = await Customer.findOne({
       _id: customerId,
@@ -769,7 +770,6 @@ console.log(req.body, "req.body in respondCustomerAssignment");
     if (action === "accept") {
       // ✅ ASSIGN CUSTOMER
       customer.assignmentStatus = "Assigned";
-      customer.organization = orgId;  // confirm organization
       await customer.save();
 
       // ✅ ASSIGN ALL MACHINES
