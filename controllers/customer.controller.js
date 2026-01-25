@@ -749,7 +749,7 @@ exports.getMyMachines = async (req, res) => {
 exports.respondCustomerAssignment = async (req, res) => {
   try {
     const { customerId, action, notificationId } = req.body;
-    const processorId = req.user.id;
+    const orgId = req.user.id;
 console.log(req.body, "req.body in respondCustomerAssignment");
 
     const customer = await Customer.findById(customerId)
@@ -769,6 +769,7 @@ console.log(req.body, "req.body in respondCustomerAssignment");
     if (action === "accept") {
       // ✅ ASSIGN CUSTOMER
       customer.assignmentStatus = "Assigned";
+      customer.organization = orgId;  // confirm organization
       await customer.save();
 
       // ✅ ASSIGN ALL MACHINES
