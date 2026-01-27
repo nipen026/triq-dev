@@ -800,7 +800,8 @@ console.log(req.body, "req.body in respondCustomerAssignment");
 
       // ❌ Reject assignment
       customer.assignmentStatus = "Rejected";
-      customer.users = '';           // unlink processor
+      customer.users = '';
+      customer.organization = '';// unlink processor
       // keep organization as-is
 
       // ✅ Reset machines back to Available
@@ -810,7 +811,7 @@ console.log(req.body, "req.body in respondCustomerAssignment");
         });
       }
 
-      await customer.save();   // ⭐ IMPORTANT (missing earlier)
+      await customer.save().then(() => { console.log("customer rejected and saved"); }).catch(err => console.error("Error saving rejected customer:", err));
 
       const msg = `Customer "${customer.customerName}" rejected by processor`;
       
