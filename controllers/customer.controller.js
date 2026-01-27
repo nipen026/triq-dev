@@ -473,7 +473,7 @@ exports.updateCustomer = async (req, res) => {
 
     if (processorUser) {
       console.log(processorUser, "processorUser");
-
+      
       const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
 
       const notification = await Notification.create({
@@ -813,7 +813,7 @@ console.log(req.body, "req.body in respondCustomerAssignment");
       await customer.save();   // ⭐ IMPORTANT (missing earlier)
 
       const msg = `Customer "${customer.customerName}" rejected by processor`;
-
+      
       if (orgUser?.fcmToken) {
         await admin.messaging().send({
           token: orgUser.fcmToken,
