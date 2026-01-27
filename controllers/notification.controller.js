@@ -175,6 +175,7 @@ exports.markNotificationAsRead = async (req, res) => {
     const notif = await Notification.findOneAndUpdate(
       { _id: id, receiver: req.user.id },
       { isRead: true },
+      { isActive: false },
       { new: true }
     );
     if (!notif) return res.status(404).json({ msg: "Notification not found" });
