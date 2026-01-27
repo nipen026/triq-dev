@@ -770,6 +770,8 @@ console.log(req.body, "req.body in respondCustomerAssignment");
     if (action === "accept") {
       // ✅ ASSIGN CUSTOMER
       customer.assignmentStatus = "Assigned";
+      customer.users = req.user.id; // assign to logged-in user
+      customer.organization = orgId; // confirm organization
       await customer.save();
 
       // ✅ ASSIGN ALL MACHINES
@@ -800,8 +802,7 @@ console.log(req.body, "req.body in respondCustomerAssignment");
 
       // ❌ Reject assignment
       customer.assignmentStatus = "Rejected";
-      customer.users = '';
-      customer.organization = '';// unlink processor
+     customer.organization = undefined; // ✅ allowed
       // keep organization as-is
 
       // ✅ Reset machines back to Available
