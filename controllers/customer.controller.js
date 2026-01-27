@@ -523,7 +523,7 @@ exports.deleteCustomer = async (req, res) => {
   try {
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
-      { isActive: false },
+      { organization: undefined },
       { new: true }
     );
 
