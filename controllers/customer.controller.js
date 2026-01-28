@@ -473,7 +473,7 @@ exports.updateCustomer = async (req, res) => {
 
     if (processorUser) {
       console.log(processorUser, "processorUser");
-      
+
       const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
 
       const notification = await Notification.create({
@@ -751,7 +751,7 @@ exports.respondCustomerAssignment = async (req, res) => {
   try {
     const { customerId, action, notificationId } = req.body;
     const orgId = req.user.id;
-console.log(req.body, "req.body in respondCustomerAssignment");
+    console.log(req.body, "req.body in respondCustomerAssignment");
 
     const customer = await Customer.findById(customerId)
       .populate("machines.machine");
@@ -761,8 +761,11 @@ console.log(req.body, "req.body in respondCustomerAssignment");
     }
 
 
-    if (customer.assignmentStatus !== "Pending") {
-      return res.status(400).json({ message: "Request already processed" });
+    if (
+      customer.assignmentStatus === "Assigned" &&
+      String(customer.users) === req.user.id
+    ) {
+      return res.status(400).json({ message: "Customer already accepted by you" });
     }
 
     const orgUser = await User.findById(customer.organization);
@@ -801,7 +804,7 @@ console.log(req.body, "req.body in respondCustomerAssignment");
 
       // ❌ Reject assignment
       customer.assignmentStatus = "Rejected";
-     customer.organization = undefined; // ✅ allowed
+      customer.organization = undefined; // ✅ allowed
       // keep organization as-is
 
       // ✅ Reset machines back to Available
@@ -814,7 +817,7 @@ console.log(req.body, "req.body in respondCustomerAssignment");
       await customer.save().then(() => { console.log("customer rejected and saved"); }).catch(err => console.error("Error saving rejected customer:", err));
 
       const msg = `Customer "${customer.customerName}" rejected by processor`;
-      
+
       if (orgUser?.fcmToken) {
         await admin.messaging().send({
           token: orgUser.fcmToken,
