@@ -183,6 +183,11 @@ exports.updateProfile = async (req, res) => {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
       userData.processorType = req.body.processorType;
+      if(userData.isEmailVerified === false){
+        userData.email = req.body.email;
+      }else{
+        res.json({message: "Email cannot be changed as it is already verified"});
+      }
       await userData.save();
       console.log(userData, "userData");
     }
