@@ -16,6 +16,7 @@ const sendMail = require("../utils/mailer");
 const Employee = require("../models/employee.model");
 const Ticket = require('../models/ticket.model');
 const ChatRoom = require('../models/chatRoom.model');
+const Machine = require('../models/machine.model');
 const Notification = require('../models/notification.model');
 const { default: axios } = require("axios");
 // Register new user
@@ -874,7 +875,7 @@ exports.DeleteUser = async (req, res) => {
       VerifyCode.deleteMany({
         $or: [{ email: user.email }, { phone: user.phone }]
       }),
-      Employee.deleteOne({ linkedUser: userId }),
+      // Employee.deleteOne({ linkedUser: userId }),
       ServicePricing.deleteOne({ organisation: userId }),
       Ticket.deleteMany({
         $or: [{ organisation: userId }, { processor: userId }]
