@@ -770,7 +770,7 @@ console.log(req.body, "req.body in respondCustomerAssignment");
     if (action === "accept") {
       // ✅ ASSIGN CUSTOMER
       customer.assignmentStatus = "Assigned";
-      customer.organization = orgId; // confirm organization
+      // customer.organization = orgId; // confirm organization
       await customer.save();
 
       // ✅ ASSIGN ALL MACHINES
