@@ -863,7 +863,7 @@ exports.DeleteUser = async (req, res) => {
       }
 
       // Reset customer
-      customer.users = '';
+      customer.users = undefined;
       customer.assignmentStatus = "Rejected"; // or "Unassigned"
       await customer.save();
     }
