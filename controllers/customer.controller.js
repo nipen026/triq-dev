@@ -144,7 +144,7 @@ exports.createCustomer = async (req, res) => {
     }
 
     // ✅ Link user to customer
-    customer.users = [user._id];
+    customer.users = user._id;
     await customer.save({ session });
     // 🔔 Notify processor for machine assignment
     const notificationMessage =
@@ -770,7 +770,6 @@ console.log(req.body, "req.body in respondCustomerAssignment");
     if (action === "accept") {
       // ✅ ASSIGN CUSTOMER
       customer.assignmentStatus = "Assigned";
-      customer.users = req.user.id; // assign to logged-in user
       customer.organization = orgId; // confirm organization
       await customer.save();
 
