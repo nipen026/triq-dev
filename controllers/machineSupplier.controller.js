@@ -6,10 +6,8 @@ const { getFlag, getFlagWithCountryCode } = require("../utils/flagHelper");
 exports.getMachineSupplierList = async (req, res) => {
   try {
     const userId = req.user.id;
-    console.log("userId", userId);
 
     const user = await User.findById(userId).populate("roles");
-
     if (!user) {
       return res.status(404).json({ message: "User not found" });
     }
@@ -21,41 +19,48 @@ exports.getMachineSupplierList = async (req, res) => {
       return res.status(403).json({ message: "Only processor role can access this" });
     }
 
-    // ✅ Find customers with organization not null
     const customers = await Customer.find({
       users: userId,
       isActive: true,
-      // organization: { $ne: null }, // <-- filter out null organizations
     })
       .populate({
         path: "organization",
         select: "fullName email phone countryCode",
       })
       .populate("machines.machine");
-      console.log(customers,"customers");
-      
 
+    // ✅ Remove customers without machines
+    const result = customers
+      .map(cust => {
+        const customerObj = cust.toObject();
 
-    // if (!customers || customers.length === 0) {
-    //   return res.status(200).json({ message: "No customers with organization found for this processor" });
-    // }
-    // const result = customers.map(cust => ({
-    //   customer: cust,
-    //   // organization: cust.organization,
-    //   // machines: cust.machines.map(m => m.machine),
-    // }));
-    const result = customers.map(cust => {
-      const customerObj = cust.toObject(); // Convert Mongoose doc → plain JS
-      customerObj.flag = getFlagWithCountryCode(customerObj?.organization?.countryCode || '+91');
-      return { customer: customerObj };
+        // ✅ Keep only valid machines
+        customerObj.machines = (customerObj.machines || []).filter(
+          m => m.machine !== null && m.machine !== undefined
+        );
+
+        // ❌ If no machines left, skip this customer
+        if (customerObj.machines.length === 0) return null;
+
+        customerObj.flag = getFlagWithCountryCode(
+          customerObj?.organization?.countryCode || "+91"
+        );
+
+        return { customer: customerObj };
+      })
+      .filter(Boolean); // ✅ Remove null entries
+
+    return res.status(200).json({
+      success: true,
+      data: result,
     });
 
-    res.status(200).json({ success: true, data: result });
   } catch (err) {
     console.error("Error in getMachineSupplierList:", err);
-    res.status(500).json({ error: err.message });
+    return res.status(500).json({ error: err.message });
   }
 };
+
 
 
 exports.getMachineOverview = async (req, res) => {
