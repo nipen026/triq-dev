@@ -784,7 +784,7 @@ exports.respondCustomerAssignment = async (req, res) => {
       }
 
       // 🔔 Notify organization
-      const msg = `Customer "${customer.customerName}" accepted by processor`;
+      const msg = `Customer "${orgUser.fullName}" accepted by processor`;
 
       if (orgUser?.fcmToken) {
         await admin.messaging().send({
