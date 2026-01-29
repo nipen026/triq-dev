@@ -33,9 +33,9 @@ exports.createCustomer = async (req, res) => {
   try {
     const customerData = pickCustomerFields(req.body);
     customerData.organization = req.user.id; // from token
+    const validUser = await User.findById(req.user.id, "fullName email");
     // Attach organization from token user (if present)
     if (req.user && req.user.id) {
-      const validUser = await User.findById(req.user.id, "fullName email");
       if (validUser) {
         customerData.organization = validUser._id;
       }
@@ -148,7 +148,7 @@ exports.createCustomer = async (req, res) => {
     await customer.save({ session });
     // 🔔 Notify processor for machine assignment
     const notificationMessage =
-      `Customer "${customer.customerName}" has been assigned. Please accept to proceed.`;
+      `${validUser.fullName} sent you a request.`;
 
     const notification = await Notification.create({
       title: "Customer Assignment Request",
@@ -445,7 +445,7 @@ exports.updateCustomer = async (req, res) => {
       _id: customerId,
       isActive: true
     }).populate("users");
-
+    const userData = await User.findById(req.user.id);
     if (!existingCustomer) {
       return res.status(404).json({ message: "Customer not found" });
     }
@@ -474,7 +474,7 @@ exports.updateCustomer = async (req, res) => {
     if (processorUser) {
       console.log(processorUser, "processorUser");
 
-      const notificationMessage = `Customer "${updatedCustomer.customerName}" assigned to you`;
+      const notificationMessage = `${userData.fullName} sent you a request.`;
 
       const notification = await Notification.create({
         title: "Customer Request",
