@@ -304,4 +304,27 @@ exports.updateNotificationTicket = async (req, res) => {
     console.error("Error updating ticket:", err);
     return res.status(500).json({ success: false, msg: err.message });
   }
+  
+};
+exports.getUnreadNotificationCount = async (req, res) => {
+  try {
+    const userId = new mongoose.Types.ObjectId(req.user.id);
+
+    const unreadCount = await Notification.countDocuments({
+      receiver: userId,
+      isActive: true,
+      isRead: false,
+    });
+
+    res.status(200).json({
+      success: true,
+      unreadCount,
+    });
+  } catch (err) {
+    console.error("Unread Count Error:", err);
+    res.status(500).json({
+      success: false,
+      message: err.message,
+    });
+  }
 };

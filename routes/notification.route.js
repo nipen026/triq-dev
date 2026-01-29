@@ -11,5 +11,6 @@ router.get('/getnotification',auth, notificationController.getNotifications);
 router.get('/markNotificationAsRead/:id',auth, notificationController.markNotificationAsRead)
 router.get('/deleteNotification/:id',auth, notificationController.deleteNotification)
 router.post("/updateticketnotification",auth,notificationController.updateNotificationTicket)
+router.get("/unreadnotificationcount", auth, notificationController.getUnreadNotificationCount)
 
 module.exports = router;
