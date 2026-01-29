@@ -319,8 +319,16 @@ exports.updateTicket = async (req, res) => {
     if (status && ticket.status !== status) {
       updatedFields.push(`Status changed to "${status}"`);
       ticket.status = status;
+
       if (status === "Resolved") {
         ticket.isFirstTimeServiceDone = true;
+
+        // 🔹 set resolvedAt FIRST
+        ticket.resolvedAt = new Date();
+
+        // 🔹 calculate duration from createdAt → resolvedAt
+        const diffMs = ticket.resolvedAt.getTime() - ticket.createdAt.getTime();
+        ticket.resolutionDurationMinutes = Math.floor(diffMs / (1000 * 60));
       }
     }
     if (typeof isActive === "boolean" && ticket.isActive !== isActive) {
