@@ -20,7 +20,7 @@ const ticketSchema = new mongoose.Schema({
   type: String,
   status: {
     type: String,
-    enum: ["Active", "In Progress", "Resolved", "Rejected", "On Hold","Waiting for Accept"],
+    enum: ["Active", "In Progress", "Resolved", "Rejected", "On Hold", "Waiting for Accept"],
     default: "Waiting for Accept"
   },
 
@@ -41,9 +41,17 @@ const ticketSchema = new mongoose.Schema({
   engineerRemark: String,
   reportTitle: String,
   reportDescription: String,
-  rating: { type: String},
-  feedback: { type: String},
+  rating: { type: String },
+  feedback: { type: String },
   isFirstTimeServiceDone: { type: Boolean, default: false },
+  resolvedAt: {
+    type: Date,
+    default: null,
+  },
+  resolutionDurationMinutes: {
+    type: Number,
+    default: null,
+  },
 }, { timestamps: true });
 
 module.exports = mongoose.model("Ticket", ticketSchema);
