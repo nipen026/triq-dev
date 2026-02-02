@@ -178,7 +178,6 @@ exports.updateProfile = async (req, res) => {
     const updateData = {
       ...req.body,
     };
-    console.log(updateData, "body");
     if (req.body.fullName) {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
@@ -194,7 +193,9 @@ exports.updateProfile = async (req, res) => {
     if (req.file) {
       updateData.profileImage = `/uploads/profile/${req.file.filename}`;
     }
-
+    if (req.body.isSameAddress === 'true' || req.body.isSameAddress === true) {
+      updateData.isSameAddress = true;
+    }
     const updated = await Profile.findOneAndUpdate(
       { user: req.user.id },
       updateData,

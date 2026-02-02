@@ -19,6 +19,11 @@ const ChatRoom = require('../models/chatRoom.model');
 const Machine = require('../models/machine.model');
 const Notification = require('../models/notification.model');
 const { default: axios } = require("axios");
+const { DEFAULT_DEPARTMENTS } = require("../json/defaultDepartments");
+const { DESIGNATION_LEVELS } = require("../json/defaultDesignations");
+
+const Department = require("../models/department.model");
+const Designation = require("../models/designation.model");
 // Register new user
 const CUSTOMER_ID = process.env.CUSTOMERID
 const BASE_URL = "https://cpaas.messagecentral.com";
@@ -110,7 +115,34 @@ exports.register = async (req, res) => {
       }
       user.processorType = processorType;
     }
+    // if (role === "organization") {
+    const exists = await Department.findOne({ user: user._id });
+    if (!exists) {
+      await Department.insertMany(
+        DEFAULT_DEPARTMENTS.map(name => ({
+          name,
+          user: user._id,
+        }))
+      );
+    }
+    // 🔥 Auto-create predefined designations for organization
+    // if (role === "organization") {
+      const designationExists = await Designation.findOne({ user: user._id });
 
+      if (!designationExists) {
+        const designationsPayload = Object.entries(DESIGNATION_LEVELS).map(
+          ([name, level]) => ({
+            name,                 // keep lowercase (or Title Case if you want)
+            level,
+            user: user._id,
+          })
+        );
+
+        await Designation.insertMany(designationsPayload);
+      }
+    // }
+
+    // }
     // Save user
     await user.save();
 
@@ -219,9 +251,9 @@ exports.sendOtp = async (req, res) => {
     const code = "123456"; // you can randomize later
 
     // ✅ STEP 2: Remove previous OTPs
-    await VerifyCode.deleteMany({ 
-      $or: [{ email }, { phone }], 
-      type 
+    await VerifyCode.deleteMany({
+      $or: [{ email }, { phone }],
+      type
     });
 
     // ✅ STEP 3: Send OTP

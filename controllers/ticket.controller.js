@@ -363,6 +363,21 @@ exports.updateTicket = async (req, res) => {
     if (updatedFields.length === 0) {
       return res.status(400).json({ message: "No changes detected in the ticket" });
     }
+    // 🔕 Deactivate old active ticket request notifications
+    await Notification.updateMany(
+      {
+        receiver: ticket.processor,        // who received request
+        "data.ticketId": ticket._id.toString(),
+        type: "ticketRequest",
+        isActive: true
+      },
+      {
+        $set: {
+          isActive: false,
+          read: true
+        }
+      }
+    );
 
     // 📨 Prepare dynamic notification message
     const changes = updatedFields.join(", ");
