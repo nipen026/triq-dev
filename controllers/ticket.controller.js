@@ -134,107 +134,107 @@ exports.createTicket = async (req, res) => {
         processor: user.id, // processor creating the ticket
       });
     }
-    const otherUser = await User.findById(organisationId).select('fullName fcmToken');
+    // const otherUser = await User.findById(organisationId).select('fullName fcmToken');
 
-    console.log(otherUser, "otherUser?.fcmToken");
+    // console.log(otherUser, "otherUser?.fcmToken");
 
-    if (otherUser?.fcmToken) {
-      // const notifPayload = {
-      //   notification: {
-      //     title: `New Ticket #${ticket.ticketNumber}`,
-      //     body: `Problem: ${ticket.problem}`
-      //   },
-      //   data: {
-      //     type: 'ticket_created',
-      //     ticketNumber: ticket.ticketNumber,
-      //     ticketId: ticket._id.toString(),
-      //     screenName: 'ticket'
-      //   }
-      // };
-      const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been assigned.`;
-      const notification = new Notification({
-        title: "Ticket Created Successfully",
-        body: notificationMessage,
-        type: 'ticketRequest',
-        receiver: organisationId, // who triggered the notification
-        sender: user.id,
-        read: false,
-        data: {
-          type: 'ticket_created',
-          ticketNumber: ticket.ticketNumber,
-          screenName: 'TicketDetailsView',
-          ticketId: ticket._id.toString(),
-          Route: '/ticketDetails'
-        },
-        createdAt: new Date()
-      });
-      await notification.save();
+    // if (otherUser?.fcmToken) {
+    //   // const notifPayload = {
+    //   //   notification: {
+    //   //     title: `New Ticket #${ticket.ticketNumber}`,
+    //   //     body: `Problem: ${ticket.problem}`
+    //   //   },
+    //   //   data: {
+    //   //     type: 'ticket_created',
+    //   //     ticketNumber: ticket.ticketNumber,
+    //   //     ticketId: ticket._id.toString(),
+    //   //     screenName: 'ticket'
+    //   //   }
+    //   // };
+    //   const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been assigned.`;
+    //   const notification = new Notification({
+    //     title: "Ticket Created Successfully",
+    //     body: notificationMessage,
+    //     type: 'ticketRequest',
+    //     receiver: organisationId, // who triggered the notification
+    //     sender: user.id,
+    //     read: false,
+    //     data: {
+    //       type: 'ticket_created',
+    //       ticketNumber: ticket.ticketNumber,
+    //       screenName: 'TicketDetailsView',
+    //       ticketId: ticket._id.toString(),
+    //       Route: '/ticketDetails'
+    //     },
+    //     createdAt: new Date()
+    //   });
+    //   await notification.save();
 
-      // await admin.messaging().sendEachForMulticast({
-      //   tokens: [otherUser.fcmToken],
-      //   notification: notifPayload.notification,
-      //   data: notifPayload.data,
-      // });
-      // await admin.messaging().sendEachForMulticast({
-      //   tokens: [otherUser.fcmToken],
-      //   notification: {
-      //     title: `New Ticket #${ticket.ticketNumber}`,
-      //     body: `Problem: ${ticket.problem}`,
-      //   },
-      //   data: {
-      //     type: 'ticket_created',
-      //     ticketNumber: String(ticket.ticketNumber),
-      //     ticketId: String(ticket._id),
-      //     screenName: 'ticket',
-      //   },
-      // }).then((response) =>
-      //   console.log("📨 Notification sent:", response.successCount, "success")
-      // );
-      const soundData = await Sound.findOne({ type: "ticket_notification", user: otherUser._id });
-      const dynamicSoundName = soundData.soundName;
-      const androidNotification = {
-        channelId: "triq_custom_sound_channel",
-        sound: dynamicSoundName,
-      };
-      const response = await admin.messaging().sendEachForMulticast({
-        tokens: [otherUser.fcmToken],
+    //   // await admin.messaging().sendEachForMulticast({
+    //   //   tokens: [otherUser.fcmToken],
+    //   //   notification: notifPayload.notification,
+    //   //   data: notifPayload.data,
+    //   // });
+    //   // await admin.messaging().sendEachForMulticast({
+    //   //   tokens: [otherUser.fcmToken],
+    //   //   notification: {
+    //   //     title: `New Ticket #${ticket.ticketNumber}`,
+    //   //     body: `Problem: ${ticket.problem}`,
+    //   //   },
+    //   //   data: {
+    //   //     type: 'ticket_created',
+    //   //     ticketNumber: String(ticket.ticketNumber),
+    //   //     ticketId: String(ticket._id),
+    //   //     screenName: 'ticket',
+    //   //   },
+    //   // }).then((response) =>
+    //   //   console.log("📨 Notification sent:", response.successCount, "success")
+    //   // );
+    //   const soundData = await Sound.findOne({ type: "ticket_notification", user: otherUser._id });
+    //   const dynamicSoundName = soundData.soundName;
+    //   const androidNotification = {
+    //     channelId: "triq_custom_sound_channel",
+    //     sound: dynamicSoundName,
+    //   };
+    //   const response = await admin.messaging().sendEachForMulticast({
+    //     tokens: [otherUser.fcmToken],
 
-        data: {
-          title: `New Ticket #${ticket.ticketNumber}`,
-          body: `Problem: ${ticket.problem}`,
-          type: 'ticket_created',
-          ticketNumber: String(ticket.ticketNumber),
-          ticketId: String(ticket._id),
-          Route: '/ticketDetails',
-          screenName: 'TicketDetailsView',
-          soundName: dynamicSoundName,
+    //     data: {
+    //       title: `New Ticket #${ticket.ticketNumber}`,
+    //       body: `Problem: ${ticket.problem}`,
+    //       type: 'ticket_created',
+    //       ticketNumber: String(ticket.ticketNumber),
+    //       ticketId: String(ticket._id),
+    //       Route: '/ticketDetails',
+    //       screenName: 'TicketDetailsView',
+    //       soundName: dynamicSoundName,
 
-        },
-        android: {
-          priority: "high",
-        },
+    //     },
+    //     android: {
+    //       priority: "high",
+    //     },
 
-        // 4. iOS options
-        apns: {
-          headers: { "apns-priority": "10" },
-          payload: {
-            aps: {
-              // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
-              sound: `${dynamicSoundName}.aiff`,
+    //     // 4. iOS options
+    //     apns: {
+    //       headers: { "apns-priority": "10" },
+    //       payload: {
+    //         aps: {
+    //           // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
+    //           sound: `${dynamicSoundName}.aiff`,
 
-              // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
-              "content-available": 1,
-              "mutable-content": 1,
-            },
-          },
-        }
-      });
+    //           // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
+    //           "content-available": 1,
+    //           "mutable-content": 1,
+    //         },
+    //       },
+    //     }
+    //   });
 
-      response.responses.forEach((r, i) => {
-        if (!r.success) console.log("❌ FCM Error:", r.error?.message);
-      });
+    //   response.responses.forEach((r, i) => {
+    //     if (!r.success) console.log("❌ FCM Error:", r.error?.message);
+    //   });
 
-    }
+    // }
     res.status(201).json({
       message: "Ticket created successfully",
       ticket,
@@ -243,6 +243,118 @@ exports.createTicket = async (req, res) => {
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
+  }
+};
+exports.sendTicketNotification = async (req, res) => {
+  try {
+    const { ticketId } = req.body;
+
+    if (!ticketId) {
+      return res.status(400).json({ message: "ticketId is required" });
+    }
+
+    const ticket = await Ticket.findById(ticketId)
+      .populate({
+        path: "processor",
+        model: "User",
+        select: "fullName email phone countryCode fcmToken"
+      })
+      .populate({
+        path: "organisation",
+        model: "User",
+        select: "fullName email phone countryCode fcmToken"
+      })
+      .populate("machine");
+
+    if (!ticket) {
+      return res.status(404).json({ message: "Ticket not found" });
+    }
+
+    if (!ticket.organisation) {
+      return res.status(400).json({
+        message: "Ticket organisation not found or not populated"
+      });
+    }
+
+    // 1️⃣ Receiver (organisation)
+    const receiver = await User.findById(ticket.organisation._id).select("fcmToken");
+
+    if (!receiver?.fcmToken) {
+      return res.status(200).json({
+        message: "Notification skipped (receiver has no FCM token)"
+      });
+    }
+
+    // 2️⃣ Save notification
+    const notification = new Notification({
+      title: "Ticket Created Successfully",
+      body: `New Ticket "${ticket.ticketNumber}" has been assigned.`,
+      type: "ticketRequest",
+      receiver: receiver._id,
+      sender: ticket.processor?._id, // ✅ FIXED
+      read: false,
+      isActive: true,
+      data: {
+        type: "ticket_created",
+        ticketId: ticket._id.toString(),
+        ticketNumber: ticket.ticketNumber,
+        screenName: "TicketDetailsView",
+        Route: "/ticketDetails"
+      },
+      createdAt: new Date()
+    });
+
+    await notification.save();
+
+    // 3️⃣ Sound
+    const soundData = await Sound.findOne({
+      user: receiver._id,
+      type: "ticket_notification"
+    });
+
+    const soundName = soundData?.soundName || "default";
+
+    // 4️⃣ Send FCM
+    const response = await admin.messaging().sendEachForMulticast({
+      tokens: [receiver.fcmToken],
+      data: {
+        title: `New Ticket #${ticket.ticketNumber}`,
+        body: ticket.problem,
+        type: "ticket_created",
+        ticketId: ticket._id.toString(),
+        ticketNumber: ticket.ticketNumber.toString(),
+        screenName: "TicketDetailsView",
+        Route: "/ticketDetails",
+        soundName
+      },
+      android: { priority: "high" },
+      apns: {
+        headers: { "apns-priority": "10" },
+        payload: {
+          aps: {
+            sound: `${soundName}.aiff`,
+            "content-available": 1,
+            "mutable-content": 1
+          }
+        }
+      }
+    });
+
+    response.responses.forEach((r) => {
+      if (!r.success) console.log("❌ FCM Error:", r.error?.message);
+    });
+
+    return res.status(200).json({
+      message: "Ticket notification sent successfully",
+      notificationId: notification._id
+    });
+
+  } catch (err) {
+    console.error("sendTicketNotification error:", err);
+    return res.status(500).json({
+      message: "Failed to send ticket notification",
+      error: err.message
+    });
   }
 };
 
@@ -270,6 +382,7 @@ exports.getTickets = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 
 // ======================== GET TICKET BY ID ========================
 exports.getTicketById = async (req, res) => {

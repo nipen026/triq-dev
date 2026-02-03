@@ -19,6 +19,7 @@ router.get("/getTicketSummary/:id", auth, ticketController.getSummary);
 router.post("/report/:id", auth, ticketController.reportTicket);
 router.get("/getReviewTickets", auth, ticketController.getResolvedTickets);
 router.post("/rateFeedback/:id", auth, ticketController.updateTicketRating);
+router.post("/sendCreatedTicketNotification", ticketController.sendTicketNotification);
 
 
 module.exports = router;
