@@ -25,7 +25,11 @@ const pickCustomerFields = (body) => {
     countryOrigin: body.countryOrigin
   };
 };
-
+const hasOrganizationRole = async (userId) => {
+  const user = await User.findById(userId).populate("roles", "name");
+  if (!user) return false;
+  return user.roles.some(r => r.name === "organization");
+};
 exports.createCustomer = async (req, res) => {
   const session = await Customer.startSession();
   session.startTransaction();
@@ -150,35 +154,41 @@ exports.createCustomer = async (req, res) => {
     const notificationMessage =
       `${validUser.fullName} sent you a request.`;
 
-    const notification = await Notification.create({
-      title: "Customer Assignment Request",
-      body: notificationMessage,
-      receiver: user._id,        // processor
-      sender: req.user.id,       // organization
-      type: "customer_request",
-      read: false,
-      isActive: true,
-      data: {
-        customerId: String(customer._id),
-        actionRequired: true,
-        screenName: "CustomerRequest"
-      }
-    });
 
     // 🔔 FCM
-    if (user.fcmToken) {
-      await admin.messaging().send({
-        token: user.fcmToken,
-        notification: {
-          title: "Customer Assignment Request",
-          body: notificationMessage
-        },
+    const isOrgUser = await hasOrganizationRole(user._id);
+
+    if (!isOrgUser) {
+      const notificationMessage = `${validUser.fullName} sent you a request.`;
+
+      const notification = await Notification.create({
+        title: "Customer Assignment Request",
+        body: notificationMessage,
+        receiver: user._id,
+        sender: req.user.id,
+        type: "customer_request",
+        read: false,
+        isActive: true,
         data: {
-          type: "customer_request",
           customerId: String(customer._id),
-          notificationId: String(notification._id)
+          actionRequired: true,
+          screenName: "CustomerRequest"
         }
       });
+
+      // 🔔 FCM
+      if (user.fcmToken) {
+        await admin.messaging().send({
+          token: user.fcmToken,
+          data: {
+            title: "Customer Assignment Request",
+            body: notificationMessage,
+            type: "customer_request",
+            customerId: String(customer._id),
+            notificationId: String(notification._id)
+          }
+        });
+      }
     }
 
     // const notificationMessage = `New customer "${customer.customerName}" has been created.`;
@@ -470,41 +480,42 @@ exports.updateCustomer = async (req, res) => {
     // 🔔 Notify processor ONLY if customer newly assigned
     const processorUser = updatedCustomer.users;
     console.log(updatedCustomer, "updatedCustomer");
-
     if (processorUser) {
-      console.log(processorUser, "processorUser");
+      const isOrgUser = await hasOrganizationRole(processorUser._id);
 
-      const notificationMessage = `${userData.fullName} sent you a request.`;
+      if (!isOrgUser) {
+        const notificationMessage = `${userData.fullName} sent you a request.`;
 
-      const notification = await Notification.create({
-        title: "Customer Request",
-        body: notificationMessage,
-        receiver: processorUser?._id,
-        sender: req.user.id,
-        type: "customer_request",
-        read: false,
-        isActive: true,
-        data: {
-          customerId: String(updatedCustomer?._id),
-          route: "/customer-details"
-        }
-      }).then(notif => console.log(notif));
-
-      if (processorUser.fcmToken) {
-        await admin.messaging().send({
-          token: processorUser.fcmToken,
-          notification: {
-            title: "Customer Request",
-            body: notificationMessage
-          },
+        const notification = await Notification.create({
+          title: "Customer Request",
+          body: notificationMessage,
+          receiver: processorUser._id,
+          sender: req.user.id,
+          type: "customer_request",
+          read: false,
+          isActive: true,
           data: {
-            type: "customer_request",
-            customerId: String(updatedCustomer?._id),
-            notificationId: String(notification?._id)
+            customerId: String(updatedCustomer._id),
+            route: "/customer-details"
           }
         });
+
+        if (processorUser.fcmToken) {
+          await admin.messaging().send({
+            token: processorUser.fcmToken,
+            data: {
+              title: "Customer Request",
+              body: notificationMessage,
+              type: "customer_request",
+              customerId: String(updatedCustomer._id),
+              notificationId: String(notification._id)
+            }
+          });
+        }
       }
     }
+
+
 
     res.json({
       success: true,
@@ -789,11 +800,9 @@ exports.respondCustomerAssignment = async (req, res) => {
       if (orgUser?.fcmToken) {
         await admin.messaging().send({
           token: orgUser.fcmToken,
-          notification: {
-            title: "Customer Accepted",
-            body: msg
-          },
           data: {
+            title: "Customer Accepted",
+            body: msg,
             type: "customer_accepted",
             customerId: String(customer._id)
           }
@@ -821,11 +830,9 @@ exports.respondCustomerAssignment = async (req, res) => {
       if (orgUser?.fcmToken) {
         await admin.messaging().send({
           token: orgUser.fcmToken,
-          notification: {
-            title: "Customer Rejected",
-            body: msg
-          },
           data: {
+            title: "Customer Rejected",
+            body: msg,
             type: "customer_rejected",
             customerId: String(customer._id)
           }
