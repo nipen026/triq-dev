@@ -722,7 +722,7 @@ exports.removeMachineFromCustomer = async (req, res) => {
 
     // ✅ If no machines left → deactivate customer
     if (customer.machines.length === 0) {
-      customer.isActive = false;
+      customer.organization = undefined; // unassign organization
     }
 
     await customer.save();
