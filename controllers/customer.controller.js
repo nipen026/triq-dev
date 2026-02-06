@@ -162,7 +162,7 @@ exports.createCustomer = async (req, res) => {
       const notificationMessage = `${validUser.fullName} sent you a request.`;
 
       const notification = await Notification.create({
-        title: "Customer Assignment Request",
+        title: "Customer Request",
         body: notificationMessage,
         receiver: user._id,
         sender: req.user.id,
@@ -184,6 +184,36 @@ exports.createCustomer = async (req, res) => {
             title: "Customer Assignment Request",
             body: notificationMessage,
             type: "customer_request",
+            customerId: String(customer._id),
+            notificationId: String(notification._id)
+          }
+        });
+      }
+    } else {
+      const notification = new Notification({
+        title: "New Customer assigned",
+        body: notificationMessage,
+        type: 'message',
+        receiver: customer.id, // who triggered the notification
+        sender: req.user.id,
+        read: false,
+        createdAt: new Date(),
+        data: {
+          // manufacture_name: ValidUser.fullName || '',
+          type: "customer_assigned",
+          processorId: String(customer._id),
+          screenName: "CustomerEditDetailsView",
+          route: '/customerEditDetailsView'
+        }
+      });
+      await notification.save();
+      if (user.fcmToken) {
+        await admin.messaging().send({
+          token: user.fcmToken,
+          data: {
+            title: "Customer Assigned",
+            body: notificationMessage,
+            type: "customer_assigned",
             customerId: String(customer._id),
             notificationId: String(notification._id)
           }
@@ -303,6 +333,12 @@ exports.getCustomerById = async (req, res) => {
     if (!customer) {
       return res.status(404).json({ message: "Customer not found or inactive" });
     }
+    // 2️⃣ Fetch Profile for linked user
+    let profile = null;
+    if (customer.users?._id) {
+      profile = await Profile.findOne({ user: customer.users._id })
+        .select("designation organizationName unitName profileImage");
+    }
     // let qrCodeCustomer = await Customer.findOne({ id: id, isActive: true }).populate("users", "fullName email");
     // if (!qrCodeCustomer) {
     //   qrCodeCustomer = await Customer.findOne({ users: id, isActive: true })
@@ -312,6 +348,12 @@ exports.getCustomerById = async (req, res) => {
     obj.flag = getFlag(customer.countryOrigin);
     obj.userImage = 'https://images.unsplash.com/vector-1741673838666-b92722040f4f?q=80&w=1480&auto=format&fit=crop&ixlib=rb-4.1.0&ixid=M3wxMjA3fDB8MHxwaG90by1wYWdlfHx8fGVufDB8fHx8fA%3D%3D' // attach flag svg
     obj.qrCode = await QRCode.toDataURL(id);
+    obj.userProfile = {
+      designation: profile?.designation || "",
+      yourName: profile?.organizationName || "",
+      unitName: profile?.unitName || ""
+    };
+
     res.json(obj);
   } catch (err) {
     res.status(500).json({ error: err.message });
@@ -481,7 +523,7 @@ exports.updateCustomer = async (req, res) => {
     const processorUser = updatedCustomer.users;
     console.log(updatedCustomer, "updatedCustomer");
     if (processorUser) {
-      const isOrgUser = await hasOrganizationRole(processorUser._id);
+      const isOrgUser = await hasOrganizationRole(req.user.id);
 
       if (!isOrgUser) {
         const notificationMessage = `${userData.fullName} sent you a request.`;
@@ -512,11 +554,39 @@ exports.updateCustomer = async (req, res) => {
             }
           });
         }
+      } else {
+        const notificationMessage = `Customer "${updatedCustomer.customerName}" has been updated.`;
+        const notification = new Notification({
+          title: "Customer Updated",
+          body: notificationMessage,
+          type: "message",
+          receiver: updatedCustomer.id, // who triggered the notification
+          sender: req.user.id,
+          read: false,
+          createdAt: new Date(),
+          data: {
+            type: "customer_assigned",
+            processorId: String(updatedCustomer._id),
+            screenName: "CustomerEditDetailsView",
+            route: '/customerEditDetailsView'
+          }
+        });
+        await notification.save();
+        if (processorUser.fcmToken) {
+          await admin.messaging().send({
+            token: processorUser.fcmToken,
+            data: {
+              title: "Customer Updated",
+              body: notificationMessage,
+              type: "customer_updated",
+              customerId: String(updatedCustomer._id),
+              notificationId: String(notification._id)
+            }
+          });
+
+        }
       }
     }
-
-
-
     res.json({
       success: true,
       message: "Customer updated successfully",
