@@ -604,7 +604,7 @@ exports.deleteCustomer = async (req, res) => {
   try {
     const customer = await Customer.findByIdAndUpdate(
       req.params.id,
-      { organization: undefined },
+      { isActive: false },
       { new: true }
     );
 
@@ -698,7 +698,7 @@ exports.searchCustomers = async (req, res) => {
 // ✅ Remove a machine from customer
 exports.removeMachineFromCustomer = async (req, res) => {
   try {
-    const { customerId, machineId } = req.params;
+   const { customerId, machineId } = req.params;
 
     // ✅ Find customer
     const customer = await Customer.findById(customerId);
@@ -706,22 +706,31 @@ exports.removeMachineFromCustomer = async (req, res) => {
       return res.status(404).json({ message: "Customer not found" });
     }
 
-    // ✅ Check if machine is assigned to this customer
+    // ✅ Check if machine is assigned
     const machineIndex = customer.machines.findIndex(
       (m) => m.machine.toString() === machineId
     );
+
     if (machineIndex === -1) {
-      return res.status(400).json({ message: "Machine not assigned to this customer" });
+      return res
+        .status(400)
+        .json({ message: "Machine not assigned to this customer" });
     }
 
-    // ✅ Remove machine from customer
+    // ✅ Remove machine
     customer.machines.splice(machineIndex, 1);
+
+    // ✅ If no machines left → deactivate customer
+    if (customer.machines.length === 0) {
+      customer.isActive = false;
+    }
+
     await customer.save();
 
-    // ✅ Update machine status back to "Available"
+    // ✅ Update machine status back to Available
     await Machine.findByIdAndUpdate(machineId, { status: "Available" });
 
-    // ✅ Populate response
+    // ✅ Populate updated customer
     const updatedCustomer = await Customer.findById(customerId)
       .populate("machines.machine")
       .populate("users", "fullName email");
