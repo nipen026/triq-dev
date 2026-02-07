@@ -526,7 +526,40 @@ exports.updateCustomer = async (req, res) => {
       const isOrgUser = await hasOrganizationRole(req.user.id);
 
       if (isOrgUser) {
-        const notificationMessage = `${userData.fullName} sent you a request.`;
+        const notificationMessage = `Customer "${updatedCustomer.customerName}" has been updated.`;
+        const notification = new Notification({
+          title: "Customer Updated",
+          body: notificationMessage,
+          type: "customer_assigned",
+          receiver: updatedCustomer.users._id, // who triggered the notification
+          sender: req.user.id,
+          read: false,
+          createdAt: new Date(),
+          data: {
+            type: "customer_assigned",
+            // processorId: String(updatedCustomer._id),
+            screenName: "CustomerEditDetailsView",
+            route: '/customerEditDetailsView'
+          }
+        });
+        await notification.save();
+        // const userDataOrg = await User.findById(updatedCustomer.organization);
+        if (updatedCustomer.users.fcmToken) {
+          await admin.messaging().send({
+            token: updatedCustomer.users.fcmToken,
+            data: {
+              title: "Customer Updated",
+              body: notificationMessage,
+              type: "customer_updated",
+              customerId: String(updatedCustomer._id),
+              notificationId: String(notification._id)
+            }
+          });
+
+        }
+      }
+      if (!isOrgUser) {
+         const notificationMessage = `${userData.fullName} sent you a request.`;
 
         const notification = await Notification.create({
           title: "Customer Request",
@@ -554,39 +587,7 @@ exports.updateCustomer = async (req, res) => {
             }
           });
         }
-      }
-      if (!isOrgUser) {
-        const notificationMessage = `Customer "${updatedCustomer.customerName}" has been updated.`;
-        const notification = new Notification({
-          title: "Customer Updated",
-          body: notificationMessage,
-          type: "customer_assigned",
-          receiver: updatedCustomer.organization, // who triggered the notification
-          sender: req.user.id,
-          read: false,
-          createdAt: new Date(),
-          data: {
-            type: "customer_assigned",
-            // processorId: String(updatedCustomer._id),
-            screenName: "CustomerEditDetailsView",
-            route: '/customerEditDetailsView'
-          }
-        });
-        await notification.save();
-        const userDataOrg = await User.findById(updatedCustomer.organization);
-        if (userDataOrg.fcmToken) {
-          await admin.messaging().send({
-            token: userDataOrg.fcmToken,
-            data: {
-              title: "Customer Updated",
-              body: notificationMessage,
-              type: "customer_updated",
-              customerId: String(updatedCustomer._id),
-              notificationId: String(notification._id)
-            }
-          });
-
-        }
+       
       }
     }
     res.json({
