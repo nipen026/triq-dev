@@ -554,27 +554,29 @@ exports.updateCustomer = async (req, res) => {
             }
           });
         }
-      } else {
+      }
+      if (!isOrgUser) {
         const notificationMessage = `Customer "${updatedCustomer.customerName}" has been updated.`;
         const notification = new Notification({
           title: "Customer Updated",
           body: notificationMessage,
-          type: "message",
-          receiver: updatedCustomer.id, // who triggered the notification
+          type: "customer_assigned",
+          receiver: updatedCustomer.organization, // who triggered the notification
           sender: req.user.id,
           read: false,
           createdAt: new Date(),
           data: {
             type: "customer_assigned",
-            processorId: String(updatedCustomer._id),
+            // processorId: String(updatedCustomer._id),
             screenName: "CustomerEditDetailsView",
             route: '/customerEditDetailsView'
           }
         });
         await notification.save();
-        if (processorUser.fcmToken) {
+        const userDataOrg = await User.findById(updatedCustomer.organization);
+        if (userDataOrg.fcmToken) {
           await admin.messaging().send({
-            token: processorUser.fcmToken,
+            token: userDataOrg.fcmToken,
             data: {
               title: "Customer Updated",
               body: notificationMessage,
@@ -698,7 +700,7 @@ exports.searchCustomers = async (req, res) => {
 // ✅ Remove a machine from customer
 exports.removeMachineFromCustomer = async (req, res) => {
   try {
-   const { customerId, machineId } = req.params;
+    const { customerId, machineId } = req.params;
 
     // ✅ Find customer
     const customer = await Customer.findById(customerId);
