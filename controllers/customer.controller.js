@@ -525,7 +525,7 @@ exports.updateCustomer = async (req, res) => {
     if (processorUser) {
       const isOrgUser = await hasOrganizationRole(req.user.id);
 
-      if (!isOrgUser) {
+      if (isOrgUser) {
         const notificationMessage = `${userData.fullName} sent you a request.`;
 
         const notification = await Notification.create({
