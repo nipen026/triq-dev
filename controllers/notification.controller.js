@@ -172,12 +172,11 @@ exports.getNotifications = async (req, res) => {
 exports.markNotificationAsRead = async (req, res) => {
   try {
     const { id } = req.params;
-    const notif = await Notification.findOneAndUpdate(
-      { _id: id },
-      { isRead: true },
-      { isActive: false },
-      { new: true }
-    );
+    const notif = await Notification.findOne({ _id: id });
+    notif.isRead = true;
+    notif.isActive = false;
+    await notif.save();
+    
     if (!notif) return res.status(404).json({ msg: "Notification not found" });
 
     res.status(200).json({ success: true, msg: "Notification marked as read", notif });
