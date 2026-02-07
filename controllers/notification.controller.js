@@ -173,7 +173,7 @@ exports.markNotificationAsRead = async (req, res) => {
   try {
     const { id } = req.params;
     const notif = await Notification.findOneAndUpdate(
-      { _id: id, receiver: req.user.id },
+      { _id: id },
       { isRead: true },
       { isActive: false },
       { new: true }
