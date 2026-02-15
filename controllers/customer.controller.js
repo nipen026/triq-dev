@@ -25,6 +25,53 @@ const pickCustomerFields = (body) => {
     countryOrigin: body.countryOrigin
   };
 };
+async function sendCustomerNotification({
+  receiverId,
+  senderId,
+  customerId,
+  title,
+  body,
+  isRequest,
+  event,
+  senderRole
+}) {
+  const type = isRequest ? "customer_request" : "customer_update";
+
+  const notification = await Notification.create({
+    title,
+    body,
+    receiver: receiverId,
+    sender: senderId,
+    type,
+    read: false,
+    isActive: true,
+    data: {
+      customerId: String(customerId),
+      actionRequired: isRequest,
+      senderRole,
+      event
+    }
+  });
+
+  const user = await User.findById(receiverId);
+
+  if (user?.fcmToken) {
+    await admin.messaging().send({
+      token: user.fcmToken,
+      data: {
+        title,
+        body,
+        type,
+        notificationId: String(notification._id),
+        customerId: String(customerId),
+        actionRequired: String(isRequest),
+        senderRole,
+        event
+      }
+    });
+  }
+}
+
 const hasOrganizationRole = async (userId) => {
   const user = await User.findById(userId).populate("roles", "name");
   if (!user) return false;
@@ -158,68 +205,80 @@ exports.createCustomer = async (req, res) => {
     // 🔔 FCM
     const isOrgUser = await hasOrganizationRole(user._id);
 
-    if (!isOrgUser) {
-      const notificationMessage = `${validUser.fullName} sent you a request.`;
+    const receiverId = user._id;
 
-      const notification = await Notification.create({
-        title: "Customer Request",
-        body: notificationMessage,
-        receiver: user._id,
-        sender: req.user.id,
-        type: "customer_request",
-        read: false,
-        isActive: true,
-        data: {
-          customerId: String(customer._id),
-          actionRequired: true,
-          screenName: "CustomerRequest"
-        }
-      });
+    await sendCustomerNotification({
+      receiverId,
+      senderId: req.user.id,
+      customerId: customer._id,
+      title: "Customer Request",
+      body: `${validUser.fullName} sent you a request`,
+      isRequest: true,                     // ⭐ request
+      event: "request",
+      senderRole: isOrgUser ? "organization" : "processor"
+    });
+    // if (!isOrgUser) {
+    //   const notificationMessage = `${validUser.fullName} sent you a request.`;
 
-      // 🔔 FCM
-      if (user.fcmToken) {
-        await admin.messaging().send({
-          token: user.fcmToken,
-          data: {
-            title: "Customer Assignment Request",
-            body: notificationMessage,
-            type: "customer_request",
-            customerId: String(customer._id),
-            notificationId: String(notification._id)
-          }
-        });
-      }
-    } else {
-      const notification = new Notification({
-        title: "New Customer assigned",
-        body: notificationMessage,
-        type: 'message',
-        receiver: customer.id, // who triggered the notification
-        sender: req.user.id,
-        read: false,
-        createdAt: new Date(),
-        data: {
-          // manufacture_name: ValidUser.fullName || '',
-          type: "customer_assigned",
-          processorId: String(customer._id),
-          screenName: "CustomerEditDetailsView",
-          route: '/customerEditDetailsView'
-        }
-      });
-      await notification.save();
-      if (user.fcmToken) {
-        await admin.messaging().send({
-          token: user.fcmToken,
-          data: {
-            title: "Customer Assigned",
-            body: notificationMessage,
-            type: "customer_assigned",
-            customerId: String(customer._id),
-            notificationId: String(notification._id)
-          }
-        });
-      }
-    }
+    //   const notification = await Notification.create({
+    //     title: "Customer Request",
+    //     body: notificationMessage,
+    //     receiver: user._id,
+    //     sender: req.user.id,
+    //     type: "customer_request",
+    //     read: false,
+    //     isActive: true,
+    //     data: {
+    //       customerId: String(customer._id),
+    //       actionRequired: true,
+    //       screenName: "CustomerRequest"
+    //     }
+    //   });
+
+    //   // 🔔 FCM
+    //   if (user.fcmToken) {
+    //     await admin.messaging().send({
+    //       token: user.fcmToken,
+    //       data: {
+    //         title: "Customer Assignment Request",
+    //         body: notificationMessage,
+    //         type: "customer_request",
+    //         customerId: String(customer._id),
+    //         notificationId: String(notification._id)
+    //       }
+    //     });
+    //   }
+    // } else {
+    //   const notification = new Notification({
+    //     title: "New Customer assigned",
+    //     body: notificationMessage,
+    //     type: 'message',
+    //     receiver: customer.id, // who triggered the notification
+    //     sender: req.user.id,
+    //     read: false,
+    //     createdAt: new Date(),
+    //     data: {
+    //       // manufacture_name: ValidUser.fullName || '',
+    //       type: "customer_assigned",
+    //       processorId: String(customer._id),
+    //       screenName: "CustomerEditDetailsView",
+    //       route: '/customerEditDetailsView'
+    //     }
+    //   });
+    //   await notification.save();
+    //   if (user.fcmToken) {
+    //     await admin.messaging().send({
+    //       token: user.fcmToken,
+    //       data: {
+    //         title: "Customer Assigned",
+    //         body: notificationMessage,
+    //         type: "customer_assigned",
+    //         customerId: String(customer._id),
+    //         notificationId: String(notification._id)
+    //       }
+    //     });
+    //   }
+    // }
 
     // const notificationMessage = `New customer "${customer.customerName}" has been created.`;
 
@@ -359,132 +418,7 @@ exports.getCustomerById = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// const getNewMachines = (oldMachines = [], newMachines = []) => {
-//   const oldIds = oldMachines.map(m => m.machine.toString());
-//   return newMachines.filter(m => !oldIds.includes(m.machine));
-// };
 
-
-// exports.updateCustomer = async (req, res) => {
-//   try {
-//     const customerData = pickCustomerFields(req.body);
-//     const newOrgId = req.user.id; // from token
-
-//     const existingCustomer = await Customer.findOne({
-//       _id: req.params.id,
-//       isActive: true
-//     });
-
-//     if (!existingCustomer) {
-//       return res.status(404).json({ message: "Customer not found or inactive" });
-//     }
-
-//     // 🧠 Case: Organization changed
-//     if (String(existingCustomer.organization) !== String(newOrgId)) {
-//       const userIdToUse = existingCustomer.users || customerData.users;
-
-//       const newCustomer = new Customer({
-//         ...customerData,
-//         organization: newOrgId,
-//         users: userIdToUse
-//       });
-
-//       // ✅ Fetch user properly
-//       const UserData = await User.findById(userIdToUse);
-//       const orgData = await User.findById(newOrgId);
-//       const notificationMessage = `New Organization "${orgData.fullName}" has been assigned.`;
-//       const ValidUser = await User.findById(req.user.id, "fullName email");
-//       // ✅ Create notification in DB
-//       const notification = new Notification({
-//         title: "New Customer Created in update time",
-//         body: notificationMessage,
-//         type: "message",
-//         receiver: UserData?._id || null,
-//         sender: req.user ? req.user.id : null,
-//         read: false,
-//         createdAt: new Date(),
-//         data: {
-//           manufacture_name: ValidUser.fullName || '',
-//           type: "customer_assigned",
-//           processorId: String(UserData._id),
-//           screenName: "CustomerEditDetailsView",
-//           route: '/customerEditDetailsView'
-//         }
-//       });
-//       console.log(notification, "notification");
-
-//       await notification.save();
-
-//       // ✅ Save the new customer
-//       await newCustomer.save();
-//       console.log(UserData, "UserData");
-
-//       // ✅ Send FCM notification if token available
-//       if (UserData?.fcmToken) {
-//         try {
-//           const soundData = await Sound.findOne({ type: "alert", user: UserData._id });
-//           const dynamicSoundName = soundData.soundName;
-//           const androidNotification = {
-//             channelId: "triq_custom_sound_channel",
-//             sound: dynamicSoundName,
-//           };
-
-//           const response = await admin.messaging().sendEachForMulticast({
-//             tokens: [UserData.fcmToken],
-//             data: {
-//               title: "Customer Assigned",
-//               body: notificationMessage,
-//               type: "customer_assigned",
-//               processorId: String(UserData._id),
-//               screenName: "CustomerEditDetailsView",
-//               route: '/customerEditDetailsView',
-//               soundName: dynamicSoundName
-//             },
-//             android: {
-//               priority: "high",
-//             },
-
-//             // 4. iOS options
-//             apns: {
-//               headers: { "apns-priority": "10" },
-//               payload: {
-//                 aps: {
-//                   // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
-//                   sound: `${dynamicSoundName}.aiff`,
-
-//                   // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
-//                   "content-available": 1,
-//                   "mutable-content": 1,
-//                 },
-//               },
-//             }
-//           });
-
-//           console.log("FCM sent:", response.successCount, "success,", response.failureCount, "failures");
-//         } catch (fcmErr) {
-//           console.error("FCM send error:", fcmErr);
-//         }
-//       }
-
-//       return res.json({
-//         message: "Organization changed, new customer created under new organization",
-//         data: newCustomer
-//       });
-//     }
-
-//     // 🧩 Otherwise normal update
-//     const updatedCustomer = await Customer.findOneAndUpdate(
-//       { _id: req.params.id, isActive: true },
-//       customerData,
-//       { new: true }
-//     ).populate("machines.machine");
-
-//     res.json({ message: "Customer updated successfully", data: updatedCustomer });
-//   } catch (err) {
-//     console.error("updateCustomer error:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// };
 
 
 exports.updateCustomer = async (req, res) => {
@@ -522,74 +456,90 @@ exports.updateCustomer = async (req, res) => {
     // 🔔 Notify processor ONLY if customer newly assigned
     const processorUser = updatedCustomer.users;
     console.log(updatedCustomer, "updatedCustomer");
-    if (processorUser) {
-      const isOrgUser = await hasOrganizationRole(req.user.id);
+    const isOrgUser = await hasOrganizationRole(req.user.id);
 
-      if (isOrgUser) {
-        const notificationMessage = `Customer "${updatedCustomer.customerName}" has been updated.`;
-        const notification = new Notification({
-          title: "Customer Updated",
-          body: notificationMessage,
-          type: "customer_assigned",
-          receiver: updatedCustomer.users._id, // who triggered the notification
-          sender: req.user.id,
-          read: false,
-          createdAt: new Date(),
-          data: {
-            type: "customer_assigned",
-            // processorId: String(updatedCustomer._id),
-            screenName: "CustomerEditDetailsView",
-            route: '/customerEditDetailsView'
-          }
-        });
-        await notification.save();
-        // const userDataOrg = await User.findById(updatedCustomer.organization);
-        if (updatedCustomer.users.fcmToken) {
-          await admin.messaging().send({
-            token: updatedCustomer.users.fcmToken,
-            data: {
-              title: "Customer Updated",
-              body: notificationMessage,
-              type: "customer_updated",
-              customerId: String(updatedCustomer._id),
-              notificationId: String(notification._id)
-            }
-          });
+    const receiverId = isOrgUser
+      ? updatedCustomer.users._id
+      : updatedCustomer.organization;
 
-        }
-      }
-      if (!isOrgUser) {
-         const notificationMessage = `${userData.fullName} sent you a request.`;
+    await sendCustomerNotification({
+      receiverId,
+      senderId: req.user.id,
+      customerId: updatedCustomer._id,
+      title: "Customer Updated",
+      body: `Customer "${updatedCustomer.customerName}" updated`,
+      isRequest: false,                 // ⭐ update
+      event: "updated",
+      senderRole: isOrgUser ? "organization" : "processor"
+    });
+    // if (processorUser) {
+    //   const isOrgUser = await hasOrganizationRole(req.user.id);
 
-        const notification = await Notification.create({
-          title: "Customer Request",
-          body: notificationMessage,
-          receiver: processorUser._id,
-          sender: req.user.id,
-          type: "customer_request",
-          read: false,
-          isActive: true,
-          data: {
-            customerId: String(updatedCustomer._id),
-            route: "/customer-details"
-          }
-        });
+    //   if (isOrgUser) {
+    //     const notificationMessage = `Customer "${updatedCustomer.customerName}" has been updated.`;
+    //     const notification = new Notification({
+    //       title: "Customer Updated",
+    //       body: notificationMessage,
+    //       type: "customer_assigned",
+    //       receiver: updatedCustomer.users._id, // who triggered the notification
+    //       sender: req.user.id,
+    //       read: false,
+    //       createdAt: new Date(),
+    //       data: {
+    //         type: "customer_assigned",
+    //         // processorId: String(updatedCustomer._id),
+    //         screenName: "CustomerEditDetailsView",
+    //         route: '/customerEditDetailsView'
+    //       }
+    //     });
+    //     await notification.save();
+    //     // const userDataOrg = await User.findById(updatedCustomer.organization);
+    //     if (updatedCustomer.users.fcmToken) {
+    //       await admin.messaging().send({
+    //         token: updatedCustomer.users.fcmToken,
+    //         data: {
+    //           title: "Customer Updated",
+    //           body: notificationMessage,
+    //           type: "customer_updated",
+    //           customerId: String(updatedCustomer._id),
+    //           notificationId: String(notification._id)
+    //         }
+    //       });
 
-        if (processorUser.fcmToken) {
-          await admin.messaging().send({
-            token: processorUser.fcmToken,
-            data: {
-              title: "Customer Request",
-              body: notificationMessage,
-              type: "customer_request",
-              customerId: String(updatedCustomer._id),
-              notificationId: String(notification._id)
-            }
-          });
-        }
-       
-      }
-    }
+    //     }
+    //   }
+    //   if (!isOrgUser) {
+    //     const notificationMessage = `${userData.fullName} sent you a request.`;
+
+    //     const notification = await Notification.create({
+    //       title: "Customer Request",
+    //       body: notificationMessage,
+    //       receiver: processorUser._id,
+    //       sender: req.user.id,
+    //       type: "customer_request",
+    //       read: false,
+    //       isActive: true,
+    //       data: {
+    //         customerId: String(updatedCustomer._id),
+    //         route: "/customer-details"
+    //       }
+    //     });
+
+    //     if (processorUser.fcmToken) {
+    //       await admin.messaging().send({
+    //         token: processorUser.fcmToken,
+    //         data: {
+    //           title: "Customer Request",
+    //           body: notificationMessage,
+    //           type: "customer_request",
+    //           customerId: String(updatedCustomer._id),
+    //           notificationId: String(notification._id)
+    //         }
+    //       });
+    //     }
+
+    //   }
+    // }
     res.json({
       success: true,
       message: "Customer updated successfully",
@@ -618,48 +568,7 @@ exports.deleteCustomer = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// ✅ Search Customers by email or phone (only within the logged-in user's organization)
-// exports.searchCustomers = async (req, res) => {
-//   try {
-//     const { search } = req.query; // one query param
-//     const loggedInUserId = req.user?.id;
 
-//     // ✅ Get logged-in user's organization
-//     const user = await User.findById(loggedInUserId).populate("roles", "name");
-
-//     if (!user || !user.roles.map(r => r.name).includes("organization")) {
-//       return res.status(403).json({ message: "User does not belong to an organization" });
-//     }
-
-//     // Build query
-//     const query = {
-//       // organization: user.organization,  // only same org
-//       isActive: true,
-//     };
-
-//     if (search) {
-//       query.$or = [
-//         { email: { $regex: search, $options: "i" } },
-//         { phoneNumber: { $regex: search, $options: "i" } },
-//       ];
-//     }
-
-//     let customers = await Customer.find(query)
-//       .populate("machines.machine")
-//       .populate("users", "fullName email");
-
-//     // Add flags
-//     customers = customers.map(c => {
-//       const obj = c.toObject();
-//       obj.flag = getFlag(c.countryOrigin);
-//       return obj;
-//     });
-
-//     res.json({ count: customers.length, data: customers });
-//   } catch (err) {
-//     res.status(500).json({ error: err.message });
-//   }
-// };
 exports.searchCustomers = async (req, res) => {
   try {
     const { search } = req.query;
@@ -743,39 +652,7 @@ exports.removeMachineFromCustomer = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
-// exports.getMyMachines = async (req, res) => {
-//   try {
-//     const userId = req.user.id; // from token
 
-//     // 1️⃣ Find customer linked with this user
-//     const user = await User.findById(userId).populate("roles");
-//     if (!user) {
-//       return res.status(404).json({ message: "User not found" });
-//     }
-
-//     const roleNames = user.roles.map(r => r.name);
-//     if (!roleNames.includes("processor")) {
-//       return res.status(403).json({ message: "Only processor role can access machine overview" });
-//     }
-
-//     // ✅ Use find to get all customers linked to this user
-//     const customers = await Customer.find({ users: userId, isActive: true })
-//       .populate({
-//         path: "machines.machine",
-//         select: "machineName modelNumber machine_type status isActive remarks",
-//       });
-
-//     return res.json({
-//       count: customers.length,
-//       message: "Machines assigned to logged-in customer",
-//       data: customers
-//     });
-
-//   } catch (err) {
-//     console.error("getMyMachines Error:", err);
-//     res.status(500).json({ error: err.message });
-//   }
-// };
 
 exports.getMyMachines = async (req, res) => {
   try {
