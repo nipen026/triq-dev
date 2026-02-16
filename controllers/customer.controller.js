@@ -426,7 +426,7 @@ exports.updateCustomer = async (req, res) => {
     const customerId = req.params.id;
     const customerData = pickCustomerFields(req.body);
     customerData.organization = req.user.id; // from token
-
+    customerData.assignmentStatus = "Assigned"; // reset to active on update
     const existingCustomer = await Customer.findOne({
       _id: customerId,
       isActive: true
