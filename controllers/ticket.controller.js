@@ -429,6 +429,8 @@ exports.updateTicket = async (req, res) => {
       const notificationData = await Notification.findOneAndUpdate(
         { "data.ticketId": id, type: "ticketRequest" }
       );
+      console.log(notificationData,"notificationData");
+      
       if (notificationData) {
         notificationData.isActive = false;
         await notificationData.save().then(() => console.log("🔕 Old ticket request notification deactivated"));
