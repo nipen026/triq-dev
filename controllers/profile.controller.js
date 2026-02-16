@@ -183,7 +183,7 @@ exports.updateProfile = async (req, res) => {
       userData.fullName = req.body.fullName;
       const customer = await Customer.findOne({ users: req.user.id });
       if (customer) {
-        customer.contactPerson = req.body.fullName;
+        customer.customerName = req.body.fullName;
         await customer.save();
       }
       userData.processorType = req.body.processorType;
