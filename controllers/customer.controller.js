@@ -572,40 +572,92 @@ exports.deleteCustomer = async (req, res) => {
 exports.searchCustomers = async (req, res) => {
   try {
     const { search } = req.query;
-    const loggedInUserId = req.user?.id;
 
-    // ✅ Check org role
-    // const user = await User.findById(loggedInUserId).populate("roles", "name");
-    // if (!user ) {
-    //   return res.status(403).json({ message: "User does not belong to an organization" });
-    // }
+    const regex = search
+      ? { $regex: search, $options: "i" }
+      : null;
 
-    // Build match query
-    const match = { isActive: true };
-    if (search) {
-      match.$or = [
-        { email: { $regex: search, $options: "i" } },
-        { phoneNumber: { $regex: search, $options: "i" } },
-        { fullName: { $regex: search, $options: "i" } },
+    /* ======================================================
+       1️⃣ SEARCH CUSTOMERS
+    ====================================================== */
+
+    const customerQuery = { isActive: true };
+
+    if (regex) {
+      customerQuery.$or = [
+        { email: regex },
+        { phoneNumber: regex },
+        { customerName: regex },
+        { contactPerson: regex }
       ];
     }
 
-    const customers = await Customer.aggregate([
-      { $match: match },
-      {
-        $group: {
-          _id: "$email",               // group by email
-          doc: { $first: "$$ROOT" },   // take the first document
-        },
-      },
-      { $replaceRoot: { newRoot: "$doc" } }, // flatten back
-    ]);
+    const customers = await Customer.find(customerQuery)
+      .populate("users", "fullName email phone")
+      .lean();
 
-    res.json({ count: customers.length, data: customers });
+    /* ======================================================
+       2️⃣ GET LINKED USER IDs
+    ====================================================== */
+
+    const linkedUserIds = customers
+      .filter(c => c.users)
+      .map(c => c.users._id.toString());
+
+    /* ======================================================
+       3️⃣ SEARCH USERS NOT LINKED TO CUSTOMER
+    ====================================================== */
+
+    const userQuery = {
+      _id: { $nin: linkedUserIds }
+    };
+
+    if (regex) {
+      userQuery.$or = [
+        { email: regex },
+        { phone: regex },
+        { fullName: regex }
+      ];
+    }
+
+    const users = await User.find(userQuery)
+      .select("fullName email phone")
+      .lean();
+
+    /* ======================================================
+       4️⃣ FORMAT SAME RESPONSE SHAPE
+    ====================================================== */
+
+    const formattedUsers = users.map(u => ({
+      _id: u._id,
+      fullName: u.fullName,
+      email: u.email,
+      phone: u.phone,
+      type: "user",        // ⭐ important flag
+      isCustomer: false
+    }));
+
+    const formattedCustomers = customers.map(c => ({
+      ...c,
+      type: "customer",    // ⭐ important flag
+      isCustomer: true
+    }));
+
+    const finalData = [
+      ...formattedCustomers,
+      ...formattedUsers
+    ];
+
+    res.json({
+      count: finalData.length,
+      data: finalData
+    });
+
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
 };
+
 
 // ✅ Remove a machine from customer
 exports.removeMachineFromCustomer = async (req, res) => {
