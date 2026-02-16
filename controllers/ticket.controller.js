@@ -289,7 +289,7 @@ exports.sendTicketNotification = async (req, res) => {
     const notification = new Notification({
       title: "Ticket Created Successfully",
       body: `New Ticket "${ticket.ticketNumber}" has been assigned.`,
-      type: "ticketRequest",
+      type: "ticketAssignment",
       receiver: receiver._id,
       sender: ticket.processor?._id, // ✅ FIXED
       read: false,
