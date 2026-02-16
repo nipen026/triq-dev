@@ -188,7 +188,6 @@ exports.updateProfile = async (req, res) => {
        console.log(customer, "customer");
        
       if (customer) {
-        customer.customerName = req.body.fullName;
         customer.contactPerson = req.body.fullName;
         await customer.save();
       }
