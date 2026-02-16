@@ -189,7 +189,11 @@ exports.updateProfile = async (req, res) => {
        
       if (customer) {
         customer.contactPerson = req.body.fullName;
-        await customer.save();
+        await customer.save().then((updatedCustomer) => {
+          console.log(updatedCustomer, "updatedCustomer");
+        }).catch((err) => {
+          console.error(err, "Error updating customer");
+        });
       }
       if(userData.isEmailVerified === false){
         userData.email = req.body.email;
