@@ -426,11 +426,13 @@ exports.updateTicket = async (req, res) => {
       return res.status(403).json({ message: "Only organization can update this ticket" });
     }
     if (status === 'In Progress') {
-      Notification.findOneAndUpdate(
-        { "data.ticketId": id, type: "ticketRequest" },
-        { $set: { isActive: false } },
-        { new: true }
+      const notificationData = await Notification.findOneAndUpdate(
+        { "data.ticketId": id, type: "ticketRequest" }
       );
+      if (notificationData) {
+        notificationData.isActive = false;
+        await notificationData.save().then(() => console.log("🔕 Old ticket request notification deactivated"));
+      }
     }
     // 🔍 Track field updates
     const updatedFields = [];
