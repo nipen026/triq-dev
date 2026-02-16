@@ -181,6 +181,11 @@ exports.updateProfile = async (req, res) => {
     if (req.body.fullName) {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
+      const customer = await Customer.findOne({ users: req.user.id });
+      if (customer) {
+        customer.contactPerson = req.body.fullName;
+        await customer.save();
+      }
       userData.processorType = req.body.processorType;
       if(userData.isEmailVerified === false){
         userData.email = req.body.email;
@@ -196,11 +201,13 @@ exports.updateProfile = async (req, res) => {
     if (req.body.isSameAddress === 'true' || req.body.isSameAddress === true) {
       updateData.isSameAddress = true;
     }
+
     const updated = await Profile.findOneAndUpdate(
       { user: req.user.id },
       updateData,
       { new: true, upsert: true }
     );
+
     const user = await User.findById(req.user.id);
     const completionPercentage = calculateProfileCompletion(updated, user);
 
