@@ -178,27 +178,22 @@ exports.updateProfile = async (req, res) => {
     const updateData = {
       ...req.body,
     };
-    
+
     if (req.body.fullName) {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
-     
+
       userData.processorType = req.body.processorType;
-       const customer = await Customer.findOne({ users: req.user.id });
-       console.log(customer, "customer");
-       
-      if (customer) {
-        customer.contactPerson = req.body.fullName;
-        await customer.save().then((updatedCustomer) => {
-          console.log(updatedCustomer, "updatedCustomer");
-        }).catch((err) => {
-          console.error(err, "Error updating customer");
-        });
+      const customers = await Customer.find({ users: req.user.id });
+
+      for (const customer of customers) {
+        customer.customerName = req.body.fullName;
+        await customer.save();
       }
-      if(userData.isEmailVerified === false){
+      if (userData.isEmailVerified === false) {
         userData.email = req.body.email;
-      }else{
-        res.json({message: "Email cannot be changed as it is already verified"});
+      } else {
+        res.json({ message: "Email cannot be changed as it is already verified" });
       }
       await userData.save();
       console.log(userData, "userData");
