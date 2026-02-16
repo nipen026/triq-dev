@@ -576,7 +576,7 @@ exports.searchCustomers = async (req, res) => {
 
     // ✅ Check org role
     const user = await User.findById(loggedInUserId).populate("roles", "name");
-    if (!user || !user.roles.map(r => r.name).includes("organization")) {
+    if (!user ) {
       return res.status(403).json({ message: "User does not belong to an organization" });
     }
 
