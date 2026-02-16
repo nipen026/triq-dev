@@ -425,7 +425,13 @@ exports.updateTicket = async (req, res) => {
     if (ticket.organisation.toString() !== user.id.toString()) {
       return res.status(403).json({ message: "Only organization can update this ticket" });
     }
-
+    if (status === 'In Progress') {
+      Notification.findOneAndUpdate(
+        { "data.ticketId": ticket._id.toString(), type: "ticketRequest" },
+        { $set: { isActive: false } },
+        { new: true }
+      );
+    }
     // 🔍 Track field updates
     const updatedFields = [];
 
