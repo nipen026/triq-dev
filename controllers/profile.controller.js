@@ -178,15 +178,20 @@ exports.updateProfile = async (req, res) => {
     const updateData = {
       ...req.body,
     };
+    
     if (req.body.fullName) {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
-      const customer = await Customer.findOne({ users: req.user.id });
+     
+      userData.processorType = req.body.processorType;
+       const customer = await Customer.findOne({ users: req.user.id });
+       console.log(customer, "customer");
+       
       if (customer) {
         customer.customerName = req.body.fullName;
+        customer.contactPerson = req.body.fullName;
         await customer.save();
       }
-      userData.processorType = req.body.processorType;
       if(userData.isEmailVerified === false){
         userData.email = req.body.email;
       }else{
