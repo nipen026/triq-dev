@@ -188,6 +188,7 @@ exports.updateProfile = async (req, res) => {
 
       for (const customer of customers) {
         customer.customerName = req.body.fullName;
+        customer.contactPerson = req.body.fullName;
         await customer.save();
       }
       if (userData.isEmailVerified === false) {
