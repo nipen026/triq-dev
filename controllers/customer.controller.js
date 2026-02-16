@@ -575,10 +575,10 @@ exports.searchCustomers = async (req, res) => {
     const loggedInUserId = req.user?.id;
 
     // ✅ Check org role
-    const user = await User.findById(loggedInUserId).populate("roles", "name");
-    if (!user ) {
-      return res.status(403).json({ message: "User does not belong to an organization" });
-    }
+    // const user = await User.findById(loggedInUserId).populate("roles", "name");
+    // if (!user ) {
+    //   return res.status(403).json({ message: "User does not belong to an organization" });
+    // }
 
     // Build match query
     const match = { isActive: true };
