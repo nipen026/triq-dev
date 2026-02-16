@@ -427,7 +427,7 @@ exports.updateTicket = async (req, res) => {
     }
     if (status === 'In Progress') {
       Notification.findOneAndUpdate(
-        { "data.ticketId": ticket._id.toString(), type: "ticketRequest" },
+        { "data.ticketId": id, type: "ticketRequest" },
         { $set: { isActive: false } },
         { new: true }
       );
