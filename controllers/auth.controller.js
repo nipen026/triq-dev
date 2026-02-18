@@ -965,9 +965,7 @@ exports.sendOtpForLogin = async (req, res) => {
 
     // ✅ STEP 1: Check if email or phone already exists
     const existingUser = await User.findOne({
-      $or: [
-        email ? { email } : null
-      ].filter(Boolean)
+      email: email
     });
 
     if (existingUser) {
