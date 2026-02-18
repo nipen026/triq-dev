@@ -979,10 +979,10 @@ exports.sendOtpForLogin = async (req, res) => {
     });
 
     // ✅ STEP 3: Send OTP
-  
 
+    const countryCode = existingUser.countryCode.split("+")[1] || "91"; // default to India if not available
     if (existingUser.phone) {
-      const smsRes = await sendSMS(existingUser.phone, existingUser.countryCode);
+      const smsRes = await sendSMS(existingUser.phone, countryCode);
 
       await VerifyCode.create({
         phone: existingUser.phone,
