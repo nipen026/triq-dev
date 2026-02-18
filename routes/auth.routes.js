@@ -19,5 +19,7 @@ router.post("/send-verify-email", auth.sendVerifyEmail);
 router.get("/auto-verify", auth.autoVerify);
 router.delete('/delete-user/:id',auth.DeleteUser);
 router.post('/check-password',verifyToken,auth.checkPassword);
+router.post('/loginWithOtp',auth.loginWithOtp);
+router.post('/sendOtpForLogin', auth.sendOtpForLogin);
 
 module.exports = router;

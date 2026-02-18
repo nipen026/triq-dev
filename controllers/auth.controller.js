@@ -388,10 +388,6 @@ exports.verifyOtp = async (req, res) => {
   }
 };
 
-
-
-
-
 exports.verifyPhone = async (req, res) => {
   const { phone, firebaseToken } = req.body;
 
@@ -537,9 +533,6 @@ exports.login = async (req, res) => {
     res.status(500).json({ error: "Server error" });
   }
 };
-
-
-
 
 exports.getOrganizationUsers = async (req, res) => {
   try {
@@ -960,5 +953,134 @@ exports.checkPassword = async (req, res) => {
   } catch (err) {
     console.error("resetPassword error:", err);
     return res.status(500).json({ error: err.message });
+  }
+};
+exports.sendOtpForLogin = async (req, res) => {
+  try {
+    const { email, type } = req.body;
+
+    if (!type || (!email )) {
+      return res.status(400).json({ msg: "Email required" });
+    }
+
+    // ✅ STEP 1: Check if email or phone already exists
+    const existingUser = await User.findOne({
+      $or: [
+        email ? { email } : null
+      ].filter(Boolean)
+    });
+
+    if (existingUser) {
+      return res.status(400).json({
+        success: false,
+        msg: `${email ? "Email" : "Phone number"} already registered. OTP not sent.`
+      });
+    }
+
+    const code = "123456"; // you can randomize later
+
+    // ✅ STEP 2: Remove previous OTPs
+    await VerifyCode.deleteMany({
+      $or: [{ email } ],
+      type
+    });
+
+    // ✅ STEP 3: Send OTP
+  
+
+    if ( existingUser.phone) {
+      const smsRes = await sendSMS(existingUser.phone, existingUser.countryCode);
+
+      await VerifyCode.create({
+        phone: existingUser.phone,
+        email: email,
+        type,
+        code,
+        verificationId: smsRes?.data?.verificationId,
+        countryCode
+      });
+    }
+
+    console.log(`OTP sent to ${existingUser.phone}: ${code}`);
+
+    return res.status(200).json({
+      success: true,
+      msg: "OTP sent successfully"
+    });
+
+  } catch (err) {
+    console.error("sendOtp error:", err);
+    res.status(500).json({ error: "Server error" });
+  }
+};
+exports.loginWithOtp = async (req, res) => {
+  try {
+    const { email, otp, role, fcmToken } = req.body;
+
+    if (!email || !otp) {
+      return res.status(400).json({ msg: "Email and OTP required" });
+    }
+
+    // 1️⃣ Verify OTP first
+    const verifyData = await VerifyCode.findOne({
+      email,
+      type: "email",
+      code: otp
+    }).sort({ createdAt: -1 });
+
+    if (!verifyData) {
+      return res.status(400).json({ msg: "Invalid or expired OTP" });
+    }
+
+    // delete OTP after use
+    await VerifyCode.deleteMany({ email, type: "email" });
+
+    // 2️⃣ Find user
+    const user = await User.findOne({ email }).populate("roles");
+
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
+
+    // 3️⃣ Extract roles
+    const userRoles = user.roles.map(r => r.name);
+
+    // 4️⃣ Role validation
+    if (role && !userRoles.includes(role)) {
+      return res.status(403).json({
+        msg: "You are not authorized for this role"
+      });
+    }
+
+    const activeRole = role || userRoles[0];
+
+    // 5️⃣ Save FCM token if provided
+    if (fcmToken) {
+      user.fcmToken = fcmToken;
+      await user.save();
+    }
+
+    // 6️⃣ Generate JWT
+    const token = jwt.sign(
+      {
+        id: user._id,
+        role: activeRole,
+        roles: userRoles
+      },
+      process.env.JWT_SECRET,
+      { expiresIn: "7d" }
+    );
+
+    // 7️⃣ Success response
+    res.status(200).json({
+      success: true,
+      token,
+      user,
+      activeRole
+    });
+
+  } catch (err) {
+    console.error("loginWithOtp error:", err);
+    res.status(500).json({ error: "Server error" });
   }
 };
