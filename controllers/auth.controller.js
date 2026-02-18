@@ -979,7 +979,9 @@ exports.sendOtpForLogin = async (req, res) => {
     });
 
     // ✅ STEP 3: Send OTP
-    if (existingUser) {
+  
+
+    if (existingUser.phone) {
       const smsRes = await sendSMS(existingUser.phone, existingUser.countryCode);
 
       await VerifyCode.create({
@@ -991,8 +993,6 @@ exports.sendOtpForLogin = async (req, res) => {
         countryCode
       });
     }
-
-   
 
     console.log(`OTP sent to ${existingUser.phone}: ${code}`);
 
