@@ -968,12 +968,7 @@ exports.sendOtpForLogin = async (req, res) => {
       email: email
     });
 
-    if (existingUser) {
-      return res.status(400).json({
-        success: false,
-        msg: `${email ? "Email" : "Phone number"} already registered. OTP not sent.`
-      });
-    }
+    
 
     const code = "123456"; // you can randomize later
 
@@ -984,9 +979,7 @@ exports.sendOtpForLogin = async (req, res) => {
     });
 
     // ✅ STEP 3: Send OTP
-  
-
-    if ( existingUser.phone) {
+    if (existingUser) {
       const smsRes = await sendSMS(existingUser.phone, existingUser.countryCode);
 
       await VerifyCode.create({
@@ -998,6 +991,8 @@ exports.sendOtpForLogin = async (req, res) => {
         countryCode
       });
     }
+
+   
 
     console.log(`OTP sent to ${existingUser.phone}: ${code}`);
 
