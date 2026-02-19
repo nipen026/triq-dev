@@ -221,3 +221,20 @@ exports.getAllDesignation = async (req, res) => {
     return res.status(500).json({ status: 0, message: "Server error" });
   }
 };
+
+exports.getDesignationByDepartment = async (req, res) => {
+  try {
+    const user = req.user;
+    const { departmentId } = req.params;
+
+    if (!departmentId) {
+      return res.status(400).json({ status: 0, message: "Missing required field: departmentId" });
+    }
+
+    const designation = await Designation.find({ user: user.id, department: departmentId }).select("name id").sort({ createdAt: -1 });
+    return res.status(200).json({ status: 1, data: designation });
+  } catch (error) {
+    console.error("❌ Error fetching designation by department:", error);
+    return res.status(500).json({ status: 0, message: "Server error" });
+  }
+};

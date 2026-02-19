@@ -20,7 +20,7 @@ const Machine = require('../models/machine.model');
 const Notification = require('../models/notification.model');
 const { default: axios } = require("axios");
 const { DEFAULT_DEPARTMENTS } = require("../json/defaultDepartments");
-const { DESIGNATION_LEVELS } = require("../json/defaultDesignations");
+const { DESIGNATIONS_BY_DEPARTMENT } = require("../json/defaultDesignations");
 
 const Department = require("../models/department.model");
 const Designation = require("../models/designation.model");
@@ -127,19 +127,37 @@ exports.register = async (req, res) => {
     }
     // 🔥 Auto-create predefined designations for organization
     // if (role === "organization") {
-      const designationExists = await Designation.findOne({ user: user._id });
+    const createdDepartments = await Department.insertMany(
+      DEFAULT_DEPARTMENTS.map(name => ({
+        name,
+        user: user._id
+      }))
+    );
 
-      if (!designationExists) {
-        const designationsPayload = Object.entries(DESIGNATION_LEVELS).map(
-          ([name, level]) => ({
-            name,                 // keep lowercase (or Title Case if you want)
-            level,
-            user: user._id,
-          })
-        );
+    // 2️⃣ Create Designations Department Wise
+    let allDesignations = [];
 
-        await Designation.insertMany(designationsPayload);
-      }
+    for (const dept of createdDepartments) {
+      const deptDesignations = DESIGNATIONS_BY_DEPARTMENT[dept.name];
+
+      if (!deptDesignations) continue;
+
+      const payload = Object.entries(deptDesignations).map(
+        ([designationName, level]) => ({
+          name: designationName,
+          level,
+          department: dept._id,
+          user: user._id
+        })
+      );
+
+      allDesignations.push(...payload);
+    }
+
+    // 3️⃣ Insert All Designations
+    if (allDesignations.length > 0) {
+      await Designation.insertMany(allDesignations);
+    }
     // }
 
     // }
@@ -413,58 +431,6 @@ exports.verifyPhone = async (req, res) => {
     res.status(401).json({ msg: "Invalid or expired token", error: error.message });
   }
 };
-
-// exports.login = async (req, res) => {
-//   try {
-//     const { email, phone, password, fcmToken, role } = req.body;
-//     console.log(req.body, "frontend side thi login ma")
-//     // 1️⃣ Find user with roles
-//     let user;
-//     if (email) {
-//       user = await User.findOne({ email }).populate("roles");
-//     }
-//     if (phone) {
-//       user = await User.findOne({ phone }).populate("roles");
-//     }
-//     if (!user || !(await bcrypt.compare(password, user.password))) {
-//       return res.status(401).json({ msg: "Invalid credentials" });
-//     }
-
-//     // 2️⃣ Email verification check
-//     if (!user.isEmailVerified && !user.isPhoneVerified) {
-//       return res.status(403).json({ msg: "Please verify your account" });
-//     }
-
-//     // 3️⃣ Check if role matches (optional: allow multiple roles per user)
-//     const userRoles = user.roles.map(r => r.name);
-//     if (role && !userRoles.includes(role)) {
-//       return res.status(403).json({ msg: `Invalid Role` });
-//     }
-
-//     // 4️⃣ Update FCM token if provided
-//     if (fcmToken) {
-//       user.fcmToken = fcmToken; // or push into array if multiple allowed
-//       await user.save();
-//     }
-
-//     // 5️⃣ Create JWT token
-//     const token = jwt.sign(
-//       { id: user._id, roles: userRoles },
-//       process.env.JWT_SECRET,
-//       { expiresIn: "7d" }
-//     );
-//     console.log(user, "login time user data");
-
-//     res.status(200).json({
-//       success: true,
-//       token,
-//       user
-//     });
-//   } catch (err) {
-//     console.error("Login error:", err);
-//     res.status(500).json({ error: "Server error, please try again." });
-//   }
-// };
 
 exports.login = async (req, res) => {
   try {
@@ -957,44 +923,55 @@ exports.checkPassword = async (req, res) => {
 };
 exports.sendOtpForLogin = async (req, res) => {
   try {
-    const { email, type } = req.body;
+    const { email, phone, type, countryCode } = req.body;
 
-    if (!type || (!email )) {
-      return res.status(400).json({ msg: "Email required" });
+    if (!type || (!email && !phone)) {
+      return res.status(400).json({ msg: "Email or phone required" });
     }
 
-    // ✅ STEP 1: Check if email or phone already exists
-    const existingUser = await User.findOne({
-      email: email
+    // 1️⃣ Find existing user
+    const user = await User.findOne({
+      $or: [
+        email ? { email } : null,
+        phone ? { phone } : null
+      ].filter(Boolean)
     });
 
-    
+    if (!user) {
+      return res.status(404).json({ msg: "User not found" });
+    }
 
-    const code = "123456"; // you can randomize later
+    const code = Math.floor(100000 + Math.random() * 900000).toString();
 
-    // ✅ STEP 2: Remove previous OTPs
+    // 2️⃣ Remove old OTP
     await VerifyCode.deleteMany({
-      $or: [{ email } ],
+      $or: [{ email }, { phone }],
       type
     });
 
-    // ✅ STEP 3: Send OTP
-
-    const countryCode = existingUser.countryCode.split("+")[1] || "91"; // default to India if not available
-    if (existingUser.phone) {
-      const smsRes = await sendSMS(existingUser.phone, countryCode);
+    // ================= EMAIL OTP =================
+    if (type === "email" && email) {
+      await sendEmailOTP(email, code);
 
       await VerifyCode.create({
-        phone: existingUser.phone,
-        email: email,
-        type,
+        email,
+        type: "email",
+        code
+      });
+    }
+
+    // ================= PHONE OTP =================
+    if (type === "phone" && phone) {
+      const smsRes = await sendSMS(phone, countryCode);
+
+      await VerifyCode.create({
+        phone,
+        type: "phone",
         code,
         verificationId: smsRes?.data?.verificationId,
         countryCode
       });
     }
-
-    console.log(`OTP sent to ${existingUser.phone}: ${code}`);
 
     return res.status(200).json({
       success: true,
@@ -1002,43 +979,84 @@ exports.sendOtpForLogin = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("sendOtp error:", err);
+    console.error("sendOtpForLogin error:", err);
     res.status(500).json({ error: "Server error" });
   }
 };
+
 exports.loginWithOtp = async (req, res) => {
   try {
-    const { email, otp, role, fcmToken } = req.body;
+    const { email, phone, otp, role, fcmToken } = req.body;
 
-    if (!email || !otp) {
-      return res.status(400).json({ msg: "Email and OTP required" });
+    if ((!email && !phone) || !otp) {
+      return res.status(400).json({ msg: "Email or phone and OTP required" });
     }
 
-    // 1️⃣ Verify OTP first
+    const type = email ? "email" : "phone";
+
+    // 1️⃣ Find OTP record
     const verifyData = await VerifyCode.findOne({
-      email,
-      type: "email",
-      code: otp
+      $or: [
+        email ? { email } : null,
+        phone ? { phone } : null
+      ].filter(Boolean),
+      type
     }).sort({ createdAt: -1 });
 
     if (!verifyData) {
-      return res.status(400).json({ msg: "Invalid or expired OTP" });
+      return res.status(400).json({ msg: "OTP expired or not found" });
     }
 
-    // delete OTP after use
-    await VerifyCode.deleteMany({ email, type: "email" });
+    // ================= EMAIL VERIFY =================
+    if (type === "email") {
+      if (verifyData.code !== otp) {
+        return res.status(400).json({ msg: "Invalid OTP" });
+      }
+    }
 
-    // 2️⃣ Find user
-    const user = await User.findOne({ email }).populate("roles");
+    // ================= PHONE VERIFY (3rd party) =================
+    if (type === "phone") {
+      const AUTH_TOKEN = process.env.AUTHTOKEN;
+
+      const url = `${BASE_URL}/verification/v3/validateOtp` +
+        `?countryCode=${verifyData.countryCode}` +
+        `&mobileNumber=${phone}` +
+        `&verificationId=${verifyData.verificationId}` +
+        `&customerId=${CUSTOMER_ID}` +
+        `&code=${otp}`;
+
+      const otpRes = await axios.get(url, {
+        headers: { authToken: AUTH_TOKEN }
+      });
+
+      if (
+        otpRes.data.responseCode !== 200 ||
+        otpRes.data.data.verificationStatus !== "VERIFICATION_COMPLETED"
+      ) {
+        return res.status(400).json({ msg: "Invalid or expired OTP" });
+      }
+    }
+
+    // 2️⃣ Delete OTP after success
+    await VerifyCode.deleteMany({
+      $or: [{ email }, { phone }],
+      type
+    });
+
+    // 3️⃣ Find user
+    const user = await User.findOne({
+      $or: [
+        email ? { email } : null,
+        phone ? { phone } : null
+      ].filter(Boolean)
+    }).populate("roles");
 
     if (!user) {
       return res.status(404).json({ msg: "User not found" });
     }
 
-    // 3️⃣ Extract roles
     const userRoles = user.roles.map(r => r.name);
 
-    // 4️⃣ Role validation
     if (role && !userRoles.includes(role)) {
       return res.status(403).json({
         msg: "You are not authorized for this role"
@@ -1047,13 +1065,11 @@ exports.loginWithOtp = async (req, res) => {
 
     const activeRole = role || userRoles[0];
 
-    // 5️⃣ Save FCM token if provided
     if (fcmToken) {
       user.fcmToken = fcmToken;
       await user.save();
     }
 
-    // 6️⃣ Generate JWT
     const token = jwt.sign(
       {
         id: user._id,
@@ -1064,8 +1080,7 @@ exports.loginWithOtp = async (req, res) => {
       { expiresIn: "7d" }
     );
 
-    // 7️⃣ Success response
-    res.status(200).json({
+    return res.status(200).json({
       success: true,
       token,
       user,
@@ -1073,7 +1088,7 @@ exports.loginWithOtp = async (req, res) => {
     });
 
   } catch (err) {
-    console.error("loginWithOtp error:", err);
-    res.status(500).json({ error: "Server error" });
+    console.error("loginWithOtp error:", err.response?.data || err);
+    return res.status(500).json({ error: "Server error" });
   }
 };
