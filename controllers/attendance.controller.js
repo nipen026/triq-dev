@@ -57,7 +57,13 @@ exports.attendanceAction = async (req, res) => {
       const last = record.breaks[record.breaks.length - 1];
       if (!last || last.breakOut)
         return res.status(400).json({ status: 0, message: "No active break" });
-
+      if (!last.breakOut) {
+        showBreakIn = false;
+      }
+      // break ended → allow Break-In again
+      else {
+        showBreakIn = true;
+      }
       last.breakOut = time;
 
       // calculate break minutes
@@ -76,6 +82,7 @@ exports.attendanceAction = async (req, res) => {
       record.checkOut = time;
       record.locationOut = location;
       record.noteOut = note;
+
 
       // Calculate today's total working minutes
       const totalMinutes = calculateMinutes(record.checkIn, record.checkOut);
@@ -102,14 +109,14 @@ exports.getDashboardData = async (req, res) => {
     let showCheckIn = true;
     let showBreakIn = false;
     const todayRecord = await Attendance.findOne({ user: userId, date: today });
-    if(todayRecord && todayRecord.checkIn){
+    if (todayRecord && todayRecord.checkIn) {
       showCheckIn = false;
       showBreakIn = true;
     }
-    if(todayRecord && todayRecord.breaks.length > 0){
+    if (todayRecord && todayRecord.breaks.length > 0) {
       showBreakIn = false;
     }
-    if(todayRecord && todayRecord.checkOut){
+    if (todayRecord && todayRecord.checkOut) {
       showCheckIn = true;
     }
     const month = new Date().toISOString().slice(0, 7);
@@ -123,7 +130,7 @@ exports.getDashboardData = async (req, res) => {
     const absent = monthRecords.filter(r => r.status === "Absent").length;
     const leave = monthRecords.filter(r => r.status === "Leave").length;
     let formatted = null;
-    if(todayRecord){
+    if (todayRecord) {
       formatted = todayRecord?.toObject();
       formatted.showCheckIn = showCheckIn;
     }
@@ -133,34 +140,34 @@ exports.getDashboardData = async (req, res) => {
         today: formatted,
         todaySummary: todayRecord
           ? {
-              checkIn: todayRecord.checkIn,
-              checkOut: todayRecord.checkOut,
-              breaks: todayRecord.breaks,
-              totalWork: todayRecord.totalWorkMinutes,
-              totalBreak: todayRecord.totalBreakMinutes,
-              showCheckIn:showCheckIn,
-              showBreakIn:showBreakIn,
-            }
+            checkIn: todayRecord.checkIn,
+            checkOut: todayRecord.checkOut,
+            breaks: todayRecord.breaks,
+            totalWork: todayRecord.totalWorkMinutes,
+            totalBreak: todayRecord.totalBreakMinutes,
+            showCheckIn: showCheckIn,
+            showBreakIn: showBreakIn,
+          }
           : null,
 
-        monthly: { present, absent, leave,late:0 },
+        monthly: { present, absent, leave, late: 0 },
         ticketSummary: { waiting: 0, progress: 0, hold: 0 },
-        task:{myTasks:0,assignedTask:0},
-        permission:{
-          serviceDepartment:{view:true,edit:true},
-          accessLevel:{view:true,edit:true},
-          machineOperation:{view:true,edit:true},
-          ticketManagement:{view:true,edit:true},
-          approvalAuthority:{view:true,edit:true},
-          reportAccess:{view:true,edit:true},
-          myTeams:{view:true,edit:true},
-          piInvoice:{view:true,edit:true},
-          expenseReport:{view:true,edit:true},
-          fieldWork:{view:true,edit:true},
-          followUps:{view:true,edit:true},
-          myCustomer:{view:true,edit:true},
-          feedbackAndRating:{view:true,edit:true},
-          installationTracker:{view:true,edit:true},
+        task: { myTasks: 0, assignedTask: 0 },
+        permission: {
+          serviceDepartment: { view: true, edit: true },
+          accessLevel: { view: true, edit: true },
+          machineOperation: { view: true, edit: true },
+          ticketManagement: { view: true, edit: true },
+          approvalAuthority: { view: true, edit: true },
+          reportAccess: { view: true, edit: true },
+          myTeams: { view: true, edit: true },
+          piInvoice: { view: true, edit: true },
+          expenseReport: { view: true, edit: true },
+          fieldWork: { view: true, edit: true },
+          followUps: { view: true, edit: true },
+          myCustomer: { view: true, edit: true },
+          feedbackAndRating: { view: true, edit: true },
+          installationTracker: { view: true, edit: true },
         }
       }
     });
