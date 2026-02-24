@@ -1,5 +1,8 @@
 const mongoose = require("mongoose");
-
+const reactionSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  emoji: String
+}, { _id: false });
 const messageSchema = new mongoose.Schema({
   room: { type: mongoose.Schema.Types.ObjectId, ref: "ChatRoom", required: true },
   sender: { type: mongoose.Schema.Types.ObjectId, ref: "User", required: true },
@@ -23,7 +26,4 @@ const messageSchema = new mongoose.Schema({
 
 module.exports = mongoose.model("Message", messageSchema);
 
-const reactionSchema = new mongoose.Schema({
-  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
-  emoji: String
-}, { _id: false });
+
