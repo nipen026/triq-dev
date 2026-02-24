@@ -167,7 +167,8 @@ exports.register = async (req, res) => {
     // 🔥 Employee check AFTER user exists
     if (role === "employee") {
       let employee = await Employee.findOne({ linkedUser: user._id });
-
+      console.log(employee,"employee");
+      
       if (!employee) {
         employee = await Employee.create({
           name: fullName,
