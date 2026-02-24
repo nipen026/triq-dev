@@ -67,6 +67,8 @@ exports.getEmployeeProfile = async (req, res) => {
             profile
         );
         formatted.profileCompletion = completionPercentage;
+        console.log(formatted,"formatted");
+        
         return res.json({
             status: 1,
             message: "Employee Profile Fetched Successfully",
