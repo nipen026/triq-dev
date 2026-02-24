@@ -46,7 +46,7 @@ exports.getEmployeeProfile = async (req, res) => {
         const employee = await Employee.findOne({ linkedUser: userId })
             .populate("department")
             .populate("designation").populate('user');
-
+        console.log(employee,"employee");
         const profile = await Profile.findOne({ user: userId });
 
         if (!employee && !profile) {
