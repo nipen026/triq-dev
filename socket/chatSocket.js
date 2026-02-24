@@ -61,10 +61,10 @@ module.exports = (io) => {
     });
 
     // 🔥 Handle sending message with translation
-    socket.on("sendMessage", async ({ roomId, content, attachments }) => {
+    socket.on("sendMessage", async ({ roomId, content, attachments, replyTo }) => {
       try {
-        console.log(attachments,"attachments");
-        
+        console.log(attachments, "attachments");
+
         if (!socket.userId || !roomId) return;
         const room = await ChatRoom.findById(roomId).populate("organisation processor ticket");
         if (!room) return;
@@ -103,7 +103,8 @@ module.exports = (io) => {
           attachments,
           readBy: [socket.userId],
           translatedContent: translatedText,
-        });
+          replyTo: replyTo || null // ⭐ NEW
+        }).populate("replyTo");
         console.log(room, "room");
 
 
@@ -338,6 +339,32 @@ module.exports = (io) => {
         }
       } catch (err) {
         console.error("sendMessage error:", err);
+      }
+    });
+    socket.on("reactMessage", async ({ messageId, emoji }) => {
+      try {
+        const userId = socket.userId;
+
+        const message = await Message.findById(messageId);
+        if (!message) return;
+
+        // remove old reaction if exists
+        message.reactions = message.reactions.filter(
+          r => r.user.toString() !== userId
+        );
+
+        // add new reaction
+        message.reactions.push({ user: userId, emoji });
+
+        await message.save();
+
+        io.to(message.room.toString()).emit("messageReactionUpdated", {
+          messageId,
+          reactions: message.reactions
+        });
+
+      } catch (err) {
+        console.error(err);
       }
     });
 

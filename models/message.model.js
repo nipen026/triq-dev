@@ -11,8 +11,19 @@ const messageSchema = new mongoose.Schema({
       type: { type: String } // 'image' | 'video' | 'document'
     }
   ],
+  reactions: [reactionSchema],
+  replyTo: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: "Message",
+    default: null
+  },
   readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 
 }, { timestamps: true });
 
 module.exports = mongoose.model("Message", messageSchema);
+
+const reactionSchema = new mongoose.Schema({
+  user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+  emoji: String
+}, { _id: false });

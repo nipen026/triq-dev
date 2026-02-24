@@ -120,7 +120,7 @@ exports.updateEmployeeProfile = async (req, res) => {
             personalAddress: body.personalAddress,
             emergencyContact: body.emergencyContact,
             postalAddress: body.postalAddress,
-            user: userId,
+            linkedUser: userId,
         };
 
         // ⭐ only update photo if uploaded
@@ -128,11 +128,11 @@ exports.updateEmployeeProfile = async (req, res) => {
             employeeData.profilePhoto = photoPath;
         }
 
-        const employee = await Employee.findOneAndUpdate(
-            { user: userId },
-            { $set: employeeData },
-            { new: true, upsert: true }
-        );
+       const employee = await Employee.findOneAndUpdate(
+  { linkedUser: userId },   // ⭐ FIXED
+  { $set: employeeData },
+  { new: true, upsert: true }
+);
 
         // -------------------------
         // 2️⃣ Profile Model
