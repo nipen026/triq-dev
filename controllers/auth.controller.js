@@ -174,6 +174,7 @@ exports.register = async (req, res) => {
           name: fullName,
           email,
           phone,
+          employeeId: `EMP-${Date.now()}`,
           linkedUser: user._id,
           isActive: true
         });
