@@ -20,6 +20,9 @@ const messageSchema = new mongoose.Schema({
     ref: "Message",
     default: null
   },
+  edited: { type: Boolean, default: false },   // ⭐
+  isDeleted: { type: Boolean, default: false }, // ⭐
+  deletedAt: Date,
   readBy: [{ type: mongoose.Schema.Types.ObjectId, ref: "User" }]
 
 }, { timestamps: true });

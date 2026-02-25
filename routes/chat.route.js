@@ -8,7 +8,9 @@ const {
   getMessages,
   sendMessage,
   createChatRoomForTicket,
-  getAllChats
+  getAllChats,
+  updateMessage,
+  deleteMessage
 } = require("../controllers/chat.controller");
 
 router.post("/rooms", createChatRoomForTicket);
@@ -22,6 +24,9 @@ router.get("/getAllChats", auth, getAllChats);
 
 // 🟢 Send message (with optional attachments)
 router.post("/messages", sendMessage);
+
+router.post("/messages/:messageId", auth, updateMessage);
+router.post("/deleteMessages/:messageId", auth, deleteMessage);
 
 // 🟢 Upload a chat attachment first
 const path = require("path");

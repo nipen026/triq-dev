@@ -304,4 +304,71 @@ exports.sendMessage = async (req, res) => {
     console.error(err);
     res.status(500).json({ message: err.message });
   }
+
+  exports.updateMessage = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { messageId } = req.params;
+      const { content } = req.body;
+
+      const message = await Message.findById(messageId);
+
+      if (!message)
+        return res.status(404).json({ message: "Message not found" });
+
+      // ✅ only sender can edit
+      if (message.sender.toString() !== userId)
+        return res.status(403).json({ message: "Not allowed" });
+
+      message.content = content;
+      message.edited = true;
+
+      await message.save();
+
+      const io = getIO();
+
+      // 🔥 realtime update
+      io.to(message.room.toString()).emit("messageUpdated", message);
+
+      res.json(message);
+
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  };
+  exports.deleteMessage = async (req, res) => {
+    try {
+      const userId = req.user.id;
+      const { messageId } = req.params;
+
+      const message = await Message.findById(messageId);
+
+      if (!message)
+        return res.status(404).json({ message: "Message not found" });
+
+      // ✅ only sender can delete
+      if (message.sender.toString() !== userId)
+        return res.status(403).json({ message: "Not allowed" });
+
+      message.isDeleted = true;
+      message.deletedAt = new Date();
+      message.content = "This message was deleted";
+      message.attachments = [];
+
+      await message.save();
+
+      const io = getIO();
+
+      // 🔥 realtime update
+      io.to(message.room.toString()).emit("messageDeleted", {
+        _id: message._id,
+        room: message.room
+      });
+
+      res.json({ success: true });
+
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  };
 };
