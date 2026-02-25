@@ -116,7 +116,7 @@ exports.getDashboardData = async (req, res) => {
     if (todayRecord && todayRecord.breaks.length > 0) {
       showBreakIn = false;
     }
-    if (todayRecord && todayRecord.checkOut) {
+    if (todayRecord.checkOut) {
       showCheckIn = true;
     }
     const month = new Date().toISOString().slice(0, 7);
