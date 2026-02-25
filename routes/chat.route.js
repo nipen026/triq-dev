@@ -2,6 +2,7 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth.middleware");
 const uploadChat = require("../middleware/uploadChat.middleware"); // use the one above
+const path = require("path");
 
 const {
   getRoomByTicket,
@@ -29,7 +30,6 @@ router.post("/messages/:messageId", auth, updateMessage);
 router.post("/deleteMessages/:messageId", auth, deleteMessage);
 
 // 🟢 Upload a chat attachment first
-const path = require("path");
 
 // in middleware: 
 // const uploadChat = require("../middleware/uploadChat.middleware");

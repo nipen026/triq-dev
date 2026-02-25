@@ -305,6 +305,8 @@ exports.sendMessage = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 
+
+};
   exports.updateMessage = async (req, res) => {
     try {
       const userId = req.user.id;
@@ -371,4 +373,3 @@ exports.sendMessage = async (req, res) => {
       res.status(500).json({ message: err.message });
     }
   };
-};
