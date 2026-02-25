@@ -29,6 +29,7 @@ const reportingRoutes = require("./routes/reporting.routes");
 const fieldWorkRoutes = require("./routes/fieldwork.routes");
 const LiveKitRoutes = require("./routes/livekit.routes");
 const StripeRoutes = require("./routes/stripe.routes");
+const appLinkRoutes = require("./routes/appLinks.routes");
 const path = require("path");
 
 const app = express();
@@ -65,6 +66,7 @@ app.use("/api/reporting",reportingRoutes);
 app.use("/api/fieldwork",fieldWorkRoutes);
 app.use("/api/livekit", LiveKitRoutes);
 app.use("/api/stripe", StripeRoutes);
+app.use("/api/links",appLinkRoutes );
 
 
 // Static
