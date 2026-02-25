@@ -19,6 +19,7 @@ const ProfileSchema = new mongoose.Schema(
     organizationName: String,
     isSameAddress: { type: Boolean, default: false },
     chatLanguage:{type:String,default:'en'},
+    AutoChatLanguage:{type:Boolean,default:true},
     corporateAddress: AddressSchema,
     factoryAddress: AddressSchema,
     profileImage: {

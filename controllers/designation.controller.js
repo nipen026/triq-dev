@@ -209,9 +209,8 @@ exports.addDesignation = async (req, res) => {
 exports.getAllDesignation = async (req, res) => {
   try {
     const user = req.user;
-    if (user.roles == 'employee') {
-      const employeData = await Employee.findOne({ linkedUser: user.id });
-      const designation = await Designation.find({ user: employeData.user }).select("name id").sort({ createdAt: -1 });
+    if (user.roles.includes('employee')) {
+      const designation = await Designation.find({ user: user.id }).select("name id").sort({ createdAt: -1 });
       return res.status(200).json({ status: 1, data: designation });
     }
     const designation = await Designation.find({ user: user.id }).select("name id").sort({ createdAt: -1 });

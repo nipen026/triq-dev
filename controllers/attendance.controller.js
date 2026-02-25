@@ -1,5 +1,5 @@
 const Attendance = require("../models/attendance.model");
-
+const Employee = require("../models/employee.model");
 
 
 function calculateMinutes(start, end) {
@@ -134,10 +134,12 @@ exports.getDashboardData = async (req, res) => {
       formatted = todayRecord?.toObject();
       formatted.showCheckIn = showCheckIn;
     }
+    const employeeData = await Employee.findOne({ linkedUser: userId });
     res.json({
       status: 1,
       data: {
         today: formatted,
+        profilePhoto: employeeData.profilePhoto,
         todaySummary: todayRecord
           ? {
             checkIn: todayRecord.checkIn,
