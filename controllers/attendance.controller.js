@@ -106,18 +106,29 @@ exports.getDashboardData = async (req, res) => {
   try {
     const userId = req.user.id;
     const today = new Date().toISOString().split("T")[0];
-    let showCheckIn = true;
+    let showCheckIn = false;
+    let showCheckOut = false;
     let showBreakIn = false;
-    const todayRecord = await Attendance.findOne({ user: userId, date: today });
-    if (todayRecord && todayRecord.checkIn) {
-      showCheckIn = false;
-      showBreakIn = true;
-    }
-    if (todayRecord && todayRecord.breaks.length > 0) {
-      showBreakIn = false;
-    }
-    if (todayRecord.checkOut) {
+    let showBreakOut = false;
+
+    if (!todayRecord || !todayRecord.checkIn) {
+      // Not checked-in yet
       showCheckIn = true;
+    }
+    else if (todayRecord.checkIn && !todayRecord.checkOut) {
+
+      const lastBreak =
+        todayRecord.breaks?.[todayRecord.breaks.length - 1];
+
+      const breakOpen = lastBreak && !lastBreak.breakOut;
+
+      showCheckOut = true;
+
+      if (breakOpen) {
+        showBreakOut = true;
+      } else {
+        showBreakIn = true;
+      }
     }
     const month = new Date().toISOString().slice(0, 7);
 
@@ -147,8 +158,10 @@ exports.getDashboardData = async (req, res) => {
             breaks: todayRecord.breaks,
             totalWork: todayRecord.totalWorkMinutes,
             totalBreak: todayRecord.totalBreakMinutes,
-            showCheckIn: showCheckIn,
-            showBreakIn: showBreakIn,
+            showCheckIn,
+            showCheckOut,
+            showBreakIn,
+            showBreakOut
           }
           : null,
 
