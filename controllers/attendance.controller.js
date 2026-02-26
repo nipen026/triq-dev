@@ -110,6 +110,8 @@ exports.getDashboardData = async (req, res) => {
     let showCheckOut = false;
     let showBreakIn = false;
     let showBreakOut = false;
+    const todayRecord = await Attendance.findOne({ user: userId, date: today });
+
 
     if (!todayRecord || !todayRecord.checkIn) {
       // Not checked-in yet
@@ -158,10 +160,8 @@ exports.getDashboardData = async (req, res) => {
             breaks: todayRecord.breaks,
             totalWork: todayRecord.totalWorkMinutes,
             totalBreak: todayRecord.totalBreakMinutes,
-            showCheckIn,
-            showCheckOut,
-            showBreakIn,
-            showBreakOut
+            showCheckIn: showCheckIn,
+            showBreakIn: showBreakIn,
           }
           : null,
 
