@@ -116,17 +116,7 @@ exports.register = async (req, res) => {
       user.processorType = processorType;
     }
     // if (role === "organization") {
-    const exists = await Department.findOne({ user: user._id });
-    if (!exists) {
-      await Department.insertMany(
-        DEFAULT_DEPARTMENTS.map(name => ({
-          name,
-          user: user._id,
-        }))
-      );
-    }
-    // 🔥 Auto-create predefined designations for organization
-    // if (role === "organization") {
+    // Create departments once
     const createdDepartments = await Department.insertMany(
       DEFAULT_DEPARTMENTS.map(name => ({
         name,
@@ -134,19 +124,18 @@ exports.register = async (req, res) => {
       }))
     );
 
-    // 2️⃣ Create Designations Department Wise
+    // Create designations department-wise
     let allDesignations = [];
 
     for (const dept of createdDepartments) {
       const deptDesignations = DESIGNATIONS_BY_DEPARTMENT[dept.name];
-
       if (!deptDesignations) continue;
 
       const payload = Object.entries(deptDesignations).map(
         ([designationName, level]) => ({
           name: designationName,
           level,
-          department: dept._id,
+          department: dept._id, // ✅ correct reference
           user: user._id
         })
       );
@@ -154,7 +143,6 @@ exports.register = async (req, res) => {
       allDesignations.push(...payload);
     }
 
-    // 3️⃣ Insert All Designations
     if (allDesignations.length > 0) {
       await Designation.insertMany(allDesignations);
     }
@@ -167,8 +155,8 @@ exports.register = async (req, res) => {
     // 🔥 Employee check AFTER user exists
     if (role === "employee") {
       let employee = await Employee.findOne({ linkedUser: user._id });
-      console.log(employee,"employee");
-      
+      console.log(employee, "employee");
+
       if (!employee) {
         employee = await Employee.create({
           name: fullName,
