@@ -178,7 +178,9 @@ exports.updateProfile = async (req, res) => {
     const updateData = {
       ...req.body,
     };
-
+    if (req.body.AutoChatLanguage) {
+      updateData.AutoChatLanguage = req.body.AutoChatLanguage;
+    }
     if (req.body.fullName) {
       const userData = await User.findOne({ _id: req.user.id });
       userData.fullName = req.body.fullName;
