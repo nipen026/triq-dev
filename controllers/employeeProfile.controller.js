@@ -67,6 +67,7 @@ exports.getEmployeeProfile = async (req, res) => {
             profile
         );
         formatted.profileCompletion = completionPercentage;
+        formatted.AutoChatLanguage = profile?.AutoChatLanguage;
         console.log(formatted,"formatted");
         
         return res.json({
@@ -143,7 +144,8 @@ exports.updateEmployeeProfile = async (req, res) => {
             designation: body.designationName || "",
             organizationName: body.organizationName || "",
             corporateAddress: body.corporateAddress,
-            factoryAddress: body.factoryAddress
+            factoryAddress: body.factoryAddress,
+            AutoChatLanguage: body.AutoChatLanguage
         };
 
         const profile = await Profile.findOneAndUpdate(
