@@ -153,6 +153,7 @@ exports.getDashboardData = async (req, res) => {
       data: {
         today: formatted,
         profilePhoto: employeeData.profilePhoto,
+       
         todaySummary: todayRecord
           ? {
             checkIn: todayRecord.checkIn,
@@ -162,6 +163,8 @@ exports.getDashboardData = async (req, res) => {
             totalBreak: todayRecord.totalBreakMinutes,
             showCheckIn: showCheckIn,
             showBreakIn: showBreakIn,
+            showCheckOut: showCheckOut,
+            showBreakOut: showBreakOut,
           }
           : null,
 
