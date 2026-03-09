@@ -816,7 +816,7 @@ exports.respondCustomerAssignment = async (req, res) => {
 
 exports.resendCustomerRequest = async (req, res) => {
   try {
-    const { customerId } = req.body;
+    const { customerId } = req.params;
 
     const customer = await Customer.findById(customerId)
       .populate("users", "fullName email fcmToken");
