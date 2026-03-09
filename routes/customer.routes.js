@@ -10,7 +10,8 @@ const {
   searchCustomers,
   removeMachineFromCustomer,
   getMyMachines,
-  respondCustomerAssignment
+  respondCustomerAssignment,
+  resendCustomerRequest
 } = require("../controllers/customer.controller");
 const auth = require("../middleware/auth.middleware");
 // @route   POST /api/customers
@@ -33,4 +34,5 @@ router.delete("/delete-customer/:id", deleteCustomer);
 router.get("/search-customers", auth, searchCustomers);
 router.post("/remove-machine/:customerId/:machineId", auth, removeMachineFromCustomer);
 router.post("/respond-machine-assignment", auth, respondCustomerAssignment);
+router.get("/resendCustomerRequest/:customerId", auth, resendCustomerRequest);
 module.exports = router;

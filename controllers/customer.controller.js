@@ -814,3 +814,56 @@ exports.respondCustomerAssignment = async (req, res) => {
   }
 };
 
+exports.resendCustomerRequest = async (req, res) => {
+  try {
+    const { customerId } = req.body;
+
+    const customer = await Customer.findById(customerId)
+      .populate("users", "fullName email fcmToken");
+
+    if (!customer) {
+      return res.status(404).json({ message: "Customer not found" });
+    }
+
+    // Only allow resend if previously rejected
+    if (customer.assignmentStatus !== "Rejected") {
+      return res.status(400).json({
+        message: "Request can only be resent if customer was rejected"
+      });
+    }
+
+    // Reset status
+    customer.assignmentStatus = "Pending";
+    await customer.save();
+
+    // Update machines again
+    for (let m of customer.machines) {
+      await Machine.findByIdAndUpdate(m.machine, {
+        status: "PendingAcceptance"
+      });
+    }
+
+    const senderUser = await User.findById(req.user.id);
+
+    // 🔔 Send notification again
+    await sendCustomerNotification({
+      receiverId: customer.users._id,
+      senderId: req.user.id,
+      customerId: customer._id,
+      title: "Customer Request",
+      body: `${senderUser.fullName} sent you a request again`,
+      isRequest: true,
+      event: "request_resend",
+      senderRole: "organization"
+    });
+
+    res.status(200).json({
+      success: true,
+      message: "Customer request sent again successfully"
+    });
+
+  } catch (err) {
+    console.error("resendCustomerRequest error:", err);
+    res.status(500).json({ error: err.message });
+  }
+};

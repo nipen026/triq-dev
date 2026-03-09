@@ -151,7 +151,7 @@ const DESIGNATION_LEVELS = {
 exports.addDesignation = async (req, res) => {
   try {
     const user = req.user;
-    let { name } = req.body;
+    let { name, department } = req.body;
 
     if (!name) {
       return res.status(400).json({ status: 0, message: "Missing required field: name" });
@@ -190,6 +190,7 @@ exports.addDesignation = async (req, res) => {
     const newDesignation = await Designation.create({
       name: originalName, // save original case
       level,
+      department: department,
       user: user.id,
     });
 
