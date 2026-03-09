@@ -770,7 +770,7 @@ exports.respondCustomerAssignment = async (req, res) => {
 
       // ❌ Reject assignment
       customer.assignmentStatus = "Rejected";
-      customer.organization = undefined; // ✅ allowed
+      // customer.organization = undefined; // ✅ allowed
       // keep organization as-is
 
       // ✅ Reset machines back to Available
