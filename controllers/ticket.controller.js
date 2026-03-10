@@ -245,6 +245,7 @@ exports.createTicket = async (req, res) => {
     res.status(500).json({ message: err.message });
   }
 };
+
 exports.sendTicketNotification = async (req, res) => {
   try {
     const { ticketId } = req.body;
