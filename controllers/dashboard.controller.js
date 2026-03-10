@@ -1,6 +1,6 @@
-const Ticket = require("../models/Ticket");
-const Task = require("../models/Task");
-const Customer = require("../models/Customer");
+const Ticket = require("../models/ticket.model");
+const Task = require("../models/task.model");
+const Customer = require("../models/customer.model");
 
 exports.getLatestRecordIndicator = async (req, res) => {
   try {
