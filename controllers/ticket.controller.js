@@ -40,37 +40,43 @@ async function getHierarchyUsers(employeeId) {
 
 exports.createTicket = async (req, res) => {
   try {
-    const user = req.user;
-    const {
-      problem, errorCode, notes, ticketType, machineId, organisationId,
-      type, engineerRemark, paymentStatus
-    } = req.body;
-    console.log(organisationId, "organisationId");
 
-    // ✅ ensure processor role
-    const processorRole = await Role.findOne({ name: "processor" });
-    if (!user.roles.includes(processorRole.name)) {
-      return res.status(403).json({ message: "Only processor can create tickets" });
+    const user = req.user;
+
+    const {
+      problem,
+      errorCode,
+      notes,
+      ticketType,
+      machineId,
+      organisationId,
+      type,
+      engineerRemark
+    } = req.body;
+
+    // ✅ check machine
+    const machine = await Machine.findById(machineId);
+    if (!machine) {
+      return res.status(404).json({ message: "Machine not found" });
     }
 
-    // ✅ validate machine link
-    const machine = await Machine.findById(machineId);
-    if (!machine) return res.status(404).json({ message: "Machine not found" });
-
+    // ✅ validate machine linked to customer
     const customer = await Customer.findOne({
       users: user.id,
       "machines.machine": machineId
     });
+
     if (!customer) {
-      return res.status(400).json({ message: "Machine not linked to this processor/customer" });
+      return res.status(400).json({
+        message: "Machine not linked to this processor/customer"
+      });
     }
 
-    // ✅ get machine warranty details
     const machineDetails = customer.machines.find(
       m => m.machine.toString() === machineId
     );
 
-    // ✅ enforce warranty restriction
+    // ✅ warranty restriction
     if (
       machineDetails.warrantyStatus === "Out Of Warranty" &&
       ticketType !== "Full Machine Service"
@@ -80,13 +86,65 @@ exports.createTicket = async (req, res) => {
       });
     }
 
-    // ✅ fetch matching pricing by ticketType + type + warranty
+    // --------------------------------------------------
+    // 🔹 FIND PROCESSOR BASED ON EMPLOYEE HIERARCHY
+    // --------------------------------------------------
+
+    let processorId = user.id;
+
+    const employee = await Employee
+      .findOne({ linkedUser: user.id })
+      .populate("designation reportTo linkedUser");
+
+    if (employee) {
+
+      if (employee.designation?.name === "Director") {
+
+        // director becomes processor
+        processorId = user.id;
+
+      } else {
+
+        let current = employee;
+        let directorUser = null;
+
+        while (current?.reportTo) {
+
+          const senior = await Employee
+            .findById(current.reportTo)
+            .populate("designation linkedUser reportTo");
+
+          if (!senior) break;
+
+          if (senior.designation?.name === "Director") {
+            directorUser = senior.linkedUser;
+            break;
+          }
+
+          current = senior;
+        }
+
+        if (!directorUser) {
+          return res.status(400).json({
+            message: "Director not found in hierarchy"
+          });
+        }
+
+        processorId = directorUser._id;
+
+      }
+    }
+
+    // --------------------------------------------------
+    // 🔹 SERVICE PRICING
+    // --------------------------------------------------
+
     const servicePricing = await ServicePricing.findOne(
       {
         organisation: organisationId,
         pricing: {
           $elemMatch: {
-            ticketType: ticketType,
+            ticketType,
             supportMode: type,
             warrantyStatus: machineDetails.warrantyStatus
           }
@@ -102,34 +160,51 @@ exports.createTicket = async (req, res) => {
       !servicePricing.pricing ||
       servicePricing.pricing.length === 0
     ) {
-      // ✅ Use default pricing if none found
+
       pricingData = {
         supportMode: type,
         warrantyStatus: machineDetails.warrantyStatus,
-        ticketType: ticketType,
+        ticketType,
         cost: 0,
         currency: "USD",
-        _id: new mongoose.Types.ObjectId()  // create fake ObjectId for reference
+        _id: new mongoose.Types.ObjectId()
       };
+
     } else {
       pricingData = servicePricing.pricing[0];
     }
 
-    // ✅ handle media uploads
+    // --------------------------------------------------
+    // 🔹 HANDLE MEDIA
+    // --------------------------------------------------
+
     let media = [];
+
     if (req.files && req.files.length > 0) {
-      const imageCount = req.files.filter(f => f.mimetype.startsWith("image/")).length;
+
+      const imageCount = req.files.filter(f =>
+        f.mimetype.startsWith("image/")
+      ).length;
+
       if (imageCount > 5) {
-        return res.status(400).json({ message: "Maximum 5 images allowed" });
+        return res.status(400).json({
+          message: "Maximum 5 images allowed"
+        });
       }
 
       media = req.files.map(file => ({
         url: `/uploads/tickets/${file.filename}`,
-        type: file.mimetype.startsWith("image/") ? "image" : "video"
+        type: file.mimetype.startsWith("image/")
+          ? "image"
+          : "video"
       }));
+
     }
 
-    // ✅ create ticket
+    // --------------------------------------------------
+    // 🔹 CREATE TICKET
+    // --------------------------------------------------
+
     const ticket = new Ticket({
       ticketNumber: generateTicketNumber(),
       problem,
@@ -138,165 +213,94 @@ exports.createTicket = async (req, res) => {
       ticketType,
       media,
       machine: machineId,
-      processor: user.id,
+      processor: processorId,
       type,
       organisation: organisationId,
       engineerRemark,
-      pricing: pricingData._id, // save pricing item id
-      // paymentStatus: paymentStatus || "paid"
+      pricing: pricingData._id,
       paymentStatus: "paid"
     });
 
     await ticket.save();
-    let chatRoom = await ChatRoom.findOne({ ticket: ticket.id });
+
+    // --------------------------------------------------
+    // 🔹 NORMAL CHAT ROOM (Processor ↔ Organisation)
+    // --------------------------------------------------
+
+    let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
+
     if (!chatRoom) {
+
       chatRoom = await ChatRoom.create({
         ticket: ticket._id,
         organisation: organisationId,
-        processor: user.id, // processor creating the ticket
+        processor: processorId
       });
+
     }
-    // const otherUser = await User.findById(organisationId).select('fullName fcmToken');
 
-    // console.log(otherUser, "otherUser?.fcmToken");
+    // --------------------------------------------------
+    // 🔹 GROUP CHAT (ONLY FOR EMPLOYEE TICKETS)
+    // --------------------------------------------------
 
-    // if (otherUser?.fcmToken) {
-    //   // const notifPayload = {
-    //   //   notification: {
-    //   //     title: `New Ticket #${ticket.ticketNumber}`,
-    //   //     body: `Problem: ${ticket.problem}`
-    //   //   },
-    //   //   data: {
-    //   //     type: 'ticket_created',
-    //   //     ticketNumber: ticket.ticketNumber,
-    //   //     ticketId: ticket._id.toString(),
-    //   //     screenName: 'ticket'
-    //   //   }
-    //   // };
-    //   const notificationMessage = `New Ticket "${ticket.ticketNumber}" has been assigned.`;
-    //   const notification = new Notification({
-    //     title: "Ticket Created Successfully",
-    //     body: notificationMessage,
-    //     type: 'ticketRequest',
-    //     receiver: organisationId, // who triggered the notification
-    //     sender: user.id,
-    //     read: false,
-    //     data: {
-    //       type: 'ticket_created',
-    //       ticketNumber: ticket.ticketNumber,
-    //       screenName: 'TicketDetailsView',
-    //       ticketId: ticket._id.toString(),
-    //       Route: '/ticketDetails'
-    //     },
-    //     createdAt: new Date()
-    //   });
-    //   await notification.save();
-
-    //   // await admin.messaging().sendEachForMulticast({
-    //   //   tokens: [otherUser.fcmToken],
-    //   //   notification: notifPayload.notification,
-    //   //   data: notifPayload.data,
-    //   // });
-    //   // await admin.messaging().sendEachForMulticast({
-    //   //   tokens: [otherUser.fcmToken],
-    //   //   notification: {
-    //   //     title: `New Ticket #${ticket.ticketNumber}`,
-    //   //     body: `Problem: ${ticket.problem}`,
-    //   //   },
-    //   //   data: {
-    //   //     type: 'ticket_created',
-    //   //     ticketNumber: String(ticket.ticketNumber),
-    //   //     ticketId: String(ticket._id),
-    //   //     screenName: 'ticket',
-    //   //   },
-    //   // }).then((response) =>
-    //   //   console.log("📨 Notification sent:", response.successCount, "success")
-    //   // );
-    //   const soundData = await Sound.findOne({ type: "ticket_notification", user: otherUser._id });
-    //   const dynamicSoundName = soundData.soundName;
-    //   const androidNotification = {
-    //     channelId: "triq_custom_sound_channel",
-    //     sound: dynamicSoundName,
-    //   };
-    //   const response = await admin.messaging().sendEachForMulticast({
-    //     tokens: [otherUser.fcmToken],
-
-    //     data: {
-    //       title: `New Ticket #${ticket.ticketNumber}`,
-    //       body: `Problem: ${ticket.problem}`,
-    //       type: 'ticket_created',
-    //       ticketNumber: String(ticket.ticketNumber),
-    //       ticketId: String(ticket._id),
-    //       Route: '/ticketDetails',
-    //       screenName: 'TicketDetailsView',
-    //       soundName: dynamicSoundName,
-
-    //     },
-    //     android: {
-    //       priority: "high",
-    //     },
-
-    //     // 4. iOS options
-    //     apns: {
-    //       headers: { "apns-priority": "10" },
-    //       payload: {
-    //         aps: {
-    //           // ❌ ERROR FIX: Aapke code me space tha ` ${...}`. Maine space hata diya.
-    //           sound: `${dynamicSoundName}.aiff`,
-
-    //           // ✅ IMPORTANT: Ye line zaroori hai taaki background me Flutter code chale
-    //           "content-available": 1,
-    //           "mutable-content": 1,
-    //         },
-    //       },
-    //     }
-    //   });
-
-    //   response.responses.forEach((r, i) => {
-    //     if (!r.success) console.log("❌ FCM Error:", r.error?.message);
-    //   });
-
-    // }
     let groupChatRoom = null;
-
-    // check if ticket creator is employee
-    const employee = await Employee.findOne({ linkedUser: user.id });
 
     if (employee) {
 
-      // get hierarchy seniors
-      const seniorUsers = await getHierarchyUsers(employee._id);
+      const members = [user.id];
 
-      // build members list
-      const members = [
-        user.id,
-        ...seniorUsers.map(u => u._id)
-      ];
+      let current = employee;
 
-      // remove duplicates
+      while (current?.reportTo) {
+
+        const senior = await Employee
+          .findById(current.reportTo)
+          .populate("linkedUser reportTo");
+
+        if (!senior) break;
+
+        members.push(senior.linkedUser._id);
+
+        if (senior.designation?.name === "Director") break;
+
+        current = senior;
+
+      }
+
       const uniqueMembers = [...new Set(members.map(id => id.toString()))];
 
-      // create group chat only if not exists
       groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });
 
       if (!groupChatRoom) {
+
         groupChatRoom = await GroupChat.create({
           ticket: ticket._id,
           members: uniqueMembers,
           createdBy: user.id,
           organisation: organisationId
         });
+
       }
 
     }
+
+    // --------------------------------------------------
+    // 🔹 RESPONSE
+    // --------------------------------------------------
+
     res.status(201).json({
       message: "Ticket created successfully",
       ticket,
       pricing: pricingData,
-      chatRoom: chatRoom || groupChatRoom
+      chatRoom: groupChatRoom || chatRoom
     });
+
   } catch (err) {
-    res.status(500).json({ message: err.message });
+
+    res.status(500).json({
+      message: err.message
+    });
+
   }
 };
 
