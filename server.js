@@ -17,6 +17,7 @@ app.use((req, res, next) => {
 require("./socket/chatSocket")(io);
 require("./socket/contactChatSocket")(io);
 require("./socket/CallSocket")(io);
+require("./socket/GroupChatSocket")(io);
 require("./cron/ticketStatusUpdater");
 
 const PORT = process.env.PORT || 4000;

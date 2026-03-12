@@ -9,12 +9,34 @@ const admin = require("../config/firebase");
 const User = require("../models/user.model");
 const Sound = require('../models/sound.model');
 const Notification = require('../models/notification.model')
+const Employee = require("../models/employee.model");
+const GroupChat = require("../models/groupChat.model");
 const mongoose = require("mongoose");
 const socket = require("../socket/socketInstance"); // import socket utility
 function generateTicketNumber() {
   return Math.floor(100000000000 + Math.random() * 900000000000).toString();
 }
 // ======================== GET ALL TICKETS ========================
+
+async function getHierarchyUsers(employeeId) {
+
+  let members = [];
+  let current = await Employee.findById(employeeId);
+
+  while (current?.reportTo) {
+
+    const senior = await Employee.findById(current.reportTo)
+      .populate("linkedUser");
+
+    if (!senior) break;
+
+    members.push(senior.linkedUser);
+
+    current = senior;
+  }
+
+  return members;
+}
 
 exports.createTicket = async (req, res) => {
   try {
@@ -235,11 +257,43 @@ exports.createTicket = async (req, res) => {
     //   });
 
     // }
+    let groupChatRoom = null;
+
+    // check if ticket creator is employee
+    const employee = await Employee.findOne({ linkedUser: user.id });
+
+    if (employee) {
+
+      // get hierarchy seniors
+      const seniorUsers = await getHierarchyUsers(employee._id);
+
+      // build members list
+      const members = [
+        user.id,
+        ...seniorUsers.map(u => u._id)
+      ];
+
+      // remove duplicates
+      const uniqueMembers = [...new Set(members.map(id => id.toString()))];
+
+      // create group chat only if not exists
+      groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });
+
+      if (!groupChatRoom) {
+        groupChatRoom = await GroupChat.create({
+          ticket: ticket._id,
+          members: uniqueMembers,
+          createdBy: user.id,
+          organisation: organisationId
+        });
+      }
+
+    }
     res.status(201).json({
       message: "Ticket created successfully",
       ticket,
       pricing: pricingData,
-      chatRoom
+      chatRoom: chatRoom || groupChatRoom
     });
   } catch (err) {
     res.status(500).json({ message: err.message });
@@ -430,8 +484,8 @@ exports.updateTicket = async (req, res) => {
       const notificationData = await Notification.findOneAndUpdate(
         { "data.ticketId": id, type: "ticketRequest" }
       );
-      console.log(notificationData,"notificationData");
-      
+      console.log(notificationData, "notificationData");
+
       if (notificationData) {
         notificationData.isActive = false;
         await notificationData.save().then(() => console.log("🔕 Old ticket request notification deactivated"));
