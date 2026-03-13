@@ -431,9 +431,19 @@ exports.addEmployee = async (req, res) => {
     }
 
     // Handle reportTo
-    let finalReportTo = reportTo;
+    let finalReportTo = [];
+
+    if (reportTo) {
+
+      if (Array.isArray(reportTo)) {
+        finalReportTo = reportTo;
+      } else {
+        finalReportTo = [reportTo];
+      }
+
+    }
     if (desigExists.name?.toLowerCase() === "ceo") {
-      finalReportTo = currentUser.id;
+      finalReportTo = [currentUser.id];
     }
 
     // ✅ Step 1: Check if User exists

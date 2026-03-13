@@ -243,30 +243,18 @@ exports.createTicket = async (req, res) => {
     // 🔹 GROUP CHAT (ONLY FOR EMPLOYEE TICKETS)
     // --------------------------------------------------
 
+
     let groupChatRoom = null;
 
     if (employee) {
 
-      const members = [user.id];
+      let members = [user.id];
 
-      let current = employee;
-
-      while (current?.reportTo) {
-
-        const senior = await Employee
-          .findById(current.reportTo)
-          .populate("linkedUser reportTo");
-
-        if (!senior) break;
-
-        members.push(senior.linkedUser._id);
-
-        if (senior.designation?.name === "Director") break;
-
-        current = senior;
-
+      if (employee.reportTo && employee.reportTo.length > 0) {
+        members.push(...employee.reportTo);
       }
 
+      // remove duplicates
       const uniqueMembers = [...new Set(members.map(id => id.toString()))];
 
       groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });

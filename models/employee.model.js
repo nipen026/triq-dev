@@ -8,9 +8,9 @@ const AddressSchema = new mongoose.Schema({
   pincode: String
 });
 const emergencySchema = new mongoose.Schema({
-  emergencyContactName:String,
-  emergencyContactPhone:String,
-  emergencyContactEmail:String
+  emergencyContactName: String,
+  emergencyContactPhone: String,
+  emergencyContactEmail: String
 
 })
 const employeeSchema = new mongoose.Schema(
@@ -26,14 +26,16 @@ const employeeSchema = new mongoose.Schema(
     machine: { type: mongoose.Schema.Types.ObjectId, ref: "Machine" },
     country: { type: String },
     area: { type: String },
-    reportTo: { type: String },
+reportTo: [{
+  type: mongoose.Schema.Types.ObjectId
+}],
     employeeType: { type: String },
     shiftTiming: { type: String },
     joiningDate: { type: Date },
-    isActive: { type: Boolean,default:true },
-    personalAddress:AddressSchema,
-    emergencyContact:emergencySchema,
-    postalAddress:AddressSchema,
+    isActive: { type: Boolean, default: true },
+    personalAddress: AddressSchema,
+    emergencyContact: emergencySchema,
+    postalAddress: AddressSchema,
     user: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
     linkedUser: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
   },
