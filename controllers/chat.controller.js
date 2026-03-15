@@ -2,6 +2,7 @@ const ChatRoom = require("../models/chatRoom.model");
 const Message = require("../models/message.model");
 const { getIO } = require("../socket/socketInstance");
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
+const GroupChat = require("../models/groupChat.model");
 // 🔹 POST /api/chat/rooms  → create a chat room manually
 exports.createChatRoomForTicket = async (req, res) => {
   try {
@@ -106,6 +107,7 @@ exports.getRoomByTicket = async (req, res) => {
 // };
 exports.getAllChats = async (req, res) => {
   try {
+
     const userId = req.user.id;
     const roles = req.user.roles;
 
@@ -115,67 +117,117 @@ exports.getAllChats = async (req, res) => {
     if (roles.includes("organization")) {
       currentRole = "organization";
       query.organisation = userId;
-    } else if (roles.includes("processor")) {
+    } 
+    else if (roles.includes("processor")) {
       currentRole = "processor";
       query.processor = userId;
-    } else {
-      return res.status(403).json({ message: "Unauthorized" });
     }
 
-    const page = parseInt(req.query.page) || 1;
-    const limit = parseInt(req.query.limit) || 10;
-    const skip = (page - 1) * limit;
+    //////////////////////////////////////////////////////
+    // DIRECT CHATS
+    //////////////////////////////////////////////////////
 
-    // Sort chats by latest message time
-    const rooms = await ChatRoom.find(query)
+    const directRooms = await ChatRoom.find(query)
       .populate("organisation", "fullName email countryCode")
       .populate("processor", "fullName email countryCode")
       .populate("ticket")
-      .sort({ updatedAt: -1 })
-      .skip(skip)
-      .limit(limit);
+      .sort({ updatedAt: -1 });
 
-    const total = await ChatRoom.countDocuments(query);
+    const directChats = await Promise.all(
+      directRooms.map(async (room) => {
 
-    const formatted = await Promise.all(
-      rooms.map(async (room) => {
         const chatWith =
-          currentRole === "organization" ? room.processor : room.organisation;
+          currentRole === "organization"
+            ? room.processor
+            : room.organisation;
 
         const flag = getFlagWithCountryCode(chatWith?.countryCode);
 
-        // 🧩 Get latest message
-        const lastMessage = await Message.findOne({ room: room._id })
+        const lastMessage = await Message
+          .findOne({ room: room._id })
           .sort({ createdAt: -1 })
           .lean();
 
         const unreadCount = await Message.countDocuments({
           room: room._id,
           sender: { $ne: userId },
-          readBy: { $ne: userId },
+          readBy: { $ne: userId }
         });
 
         return {
           _id: room._id,
+          type: "direct",
           ticket: room.ticket,
           chatWith: { ...chatWith._doc, flag },
-          lastMessage: lastMessage || null,
+          members: [room.organisation, room.processor],
+          lastMessage,
           unreadCount,
-          updatedAt: room.updatedAt,
+          updatedAt: room.updatedAt
         };
+
       })
     );
 
+    //////////////////////////////////////////////////////
+    // GROUP CHATS
+    //////////////////////////////////////////////////////
+
+    const groupRooms = await GroupChat.find({
+      members: userId
+    })
+      .populate("members", "fullName email")
+      .populate("createdBy", "fullName")
+      .populate("ticket", "ticketNumber status")
+      .sort({ updatedAt: -1 });
+
+    const groupChats = await Promise.all(
+      groupRooms.map(async (room) => {
+
+        const lastMessage = await Message
+          .findOne({ room: room._id })
+          .sort({ createdAt: -1 });
+
+        const unreadCount = await Message.countDocuments({
+          room: room._id,
+          sender: { $ne: userId },
+          readBy: { $ne: userId }
+        });
+
+        return {
+          _id: room._id,
+          type: "group",
+          ticket: room.ticket,
+          members: room.members,
+          createdBy: room.createdBy,
+          lastMessage,
+          unreadCount,
+          updatedAt: room.updatedAt
+        };
+
+      })
+    );
+
+    //////////////////////////////////////////////////////
+    // MERGE + SORT
+    //////////////////////////////////////////////////////
+
+    const allChats = [...directChats, ...groupChats]
+      .sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+
     res.json({
-      page,
-      limit,
-      total,
-      totalPages: Math.ceil(total / limit),
-      data: formatted,
+      message: "All chats fetched",
+      total: allChats.length,
+      chats: allChats
     });
+
   } catch (err) {
-    console.error("getAllChats error:", err);
-    res.status(500).json({ message: err.message });
+
+    console.error("getAllUserChats error:", err);
+
+    res.status(500).json({
+      message: err.message
+    });
+
   }
 };
 
