@@ -16,7 +16,8 @@ async function isProcessor(userId) {
   // Check employee designation
   const employee = await Employee.findOne({ linkedUser: userId })
     .populate("designation", "name");
-
+  console.log(employee,"employee ===>");
+  
   if (
     employee &&
     employee.designation &&
