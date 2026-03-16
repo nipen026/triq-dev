@@ -336,7 +336,8 @@ exports.createTicket = async (req, res) => {
     if (employee && employee.linkedUser) {
       processorId = employee.linkedUser._id;
     }
-
+    console.log(processorId,"processorId");
+    
     //--------------------------------------------------
     // 🔹 VALIDATE MACHINE LINKED TO PROCESSOR
     //--------------------------------------------------
