@@ -9,7 +9,8 @@ const {
   getEmployeeHierarchy,
   getEmployeePermissions,
   setEmployeePermissions,
-  getEligibleReportToList
+  getEligibleReportToList,
+  getEmployeeMachines
 } = require("../controllers/employee.controller")
 const auth = require("../middleware/auth.middleware");
 const upload = require("../middleware/uploadEmployeProfile.middleware");
@@ -27,5 +28,6 @@ router.get("/getEligibleReportToList",auth,getEligibleReportToList);
 
 router.get("/getPermissions/:employeeId",auth, getEmployeePermissions);
 router.post("/addPermissions/:employeeId", auth,setEmployeePermissions);
+router.get("/getEmployeeMachines", auth, getEmployeeMachines);
 
 module.exports = router;

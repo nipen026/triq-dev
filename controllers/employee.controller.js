@@ -1240,3 +1240,39 @@ exports.getEligibleReportToList = async (req, res) => {
     });
   }
 };
+exports.getEmployeeMachines = async (req, res) => {
+  try {
+
+    const userId = req.user.id;
+
+    const employee = await Employee.findOne({ linkedUser: userId })
+      .populate({
+        path: "machine",
+        select: "machineName modelNumber machine_type status isActive remarks"
+      });
+
+    if (!employee) {
+      return res.status(404).json({
+        status: 0,
+        message: "Employee not found"
+      });
+    }
+
+    return res.status(200).json({
+      status: 1,
+      message: "Employee machines fetched successfully",
+      data: employee.machine || []
+    });
+
+  } catch (error) {
+
+    console.error("Error fetching machines:", error);
+
+    res.status(500).json({
+      status: 0,
+      message: "Server error",
+      error: error.message
+    });
+
+  }
+};
