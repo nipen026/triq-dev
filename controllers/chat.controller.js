@@ -117,7 +117,7 @@ exports.getAllChats = async (req, res) => {
     if (roles.includes("organization")) {
       currentRole = "organization";
       query.organisation = userId;
-    } 
+    }
     else if (roles.includes("processor")) {
       currentRole = "processor";
       query.processor = userId;
@@ -143,28 +143,18 @@ exports.getAllChats = async (req, res) => {
 
         const flag = getFlagWithCountryCode(chatWith?.countryCode);
 
-        const lastMessage = await Message
-          .findOne({ room: room._id })
-          .sort({ createdAt: -1 })
-          .lean();
-
-        const unreadCount = await Message.countDocuments({
-          room: room._id,
-          sender: { $ne: userId },
-          readBy: { $ne: userId }
-        });
-
         return {
           _id: room._id,
           type: "direct",
           ticket: room.ticket,
-          chatWith: { ...chatWith._doc, flag },
+          chatWith: chatWith
+            ? { ...chatWith.toObject(), flag }
+            : null,
           members: [room.organisation, room.processor],
           lastMessage,
           unreadCount,
           updatedAt: room.updatedAt
         };
-
       })
     );
 
@@ -359,69 +349,69 @@ exports.sendMessage = async (req, res) => {
 
 
 };
-  exports.updateMessage = async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const { messageId } = req.params;
-      const { content } = req.body;
+exports.updateMessage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { messageId } = req.params;
+    const { content } = req.body;
 
-      const message = await Message.findById(messageId);
+    const message = await Message.findById(messageId);
 
-      if (!message)
-        return res.status(404).json({ message: "Message not found" });
+    if (!message)
+      return res.status(404).json({ message: "Message not found" });
 
-      // ✅ only sender can edit
-      if (message.sender.toString() !== userId)
-        return res.status(403).json({ message: "Not allowed" });
+    // ✅ only sender can edit
+    if (message.sender.toString() !== userId)
+      return res.status(403).json({ message: "Not allowed" });
 
-      message.content = content;
-      message.edited = true;
+    message.content = content;
+    message.edited = true;
 
-      await message.save();
+    await message.save();
 
-      const io = getIO();
+    const io = getIO();
 
-      // 🔥 realtime update
-      io.to(message.room.toString()).emit("messageUpdated", message);
+    // 🔥 realtime update
+    io.to(message.room.toString()).emit("messageUpdated", message);
 
-      res.json(message);
+    res.json(message);
 
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  };
-  exports.deleteMessage = async (req, res) => {
-    try {
-      const userId = req.user.id;
-      const { messageId } = req.params;
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
+exports.deleteMessage = async (req, res) => {
+  try {
+    const userId = req.user.id;
+    const { messageId } = req.params;
 
-      const message = await Message.findById(messageId);
+    const message = await Message.findById(messageId);
 
-      if (!message)
-        return res.status(404).json({ message: "Message not found" });
+    if (!message)
+      return res.status(404).json({ message: "Message not found" });
 
-      // ✅ only sender can delete
-      if (message.sender.toString() !== userId)
-        return res.status(403).json({ message: "Not allowed" });
+    // ✅ only sender can delete
+    if (message.sender.toString() !== userId)
+      return res.status(403).json({ message: "Not allowed" });
 
-      message.isDeleted = true;
-      message.deletedAt = new Date();
-      message.content = "This message was deleted";
-      message.attachments = [];
+    message.isDeleted = true;
+    message.deletedAt = new Date();
+    message.content = "This message was deleted";
+    message.attachments = [];
 
-      await message.save();
+    await message.save();
 
-      const io = getIO();
+    const io = getIO();
 
-      // 🔥 realtime update
-      io.to(message.room.toString()).emit("messageDeleted", {
-        _id: message._id,
-        room: message.room
-      });
+    // 🔥 realtime update
+    io.to(message.room.toString()).emit("messageDeleted", {
+      _id: message._id,
+      room: message.room
+    });
 
-      res.json({ success: true });
+    res.json({ success: true });
 
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
-  };
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+};
