@@ -19,9 +19,7 @@ async function isProcessor(userId) {
   console.log(employee,"employee ===>");
   
   if (
-    employee &&
-    employee.designation &&
-    employee.designation.name?.toLowerCase() === "processor"
+    employee
   ) {
     return true;
   }
