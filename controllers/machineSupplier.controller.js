@@ -159,7 +159,7 @@ exports.getUserMachines = async (req, res) => {
       })
         .populate({
           path: "organization",
-          select: "fullName email phone countryCode id",
+          select: "_id fullName email phone countryCode",
         })
         .populate("machines.machine");
 
@@ -216,6 +216,7 @@ exports.getUserMachines = async (req, res) => {
         customer: {
           _id: employee._id,
           organization: {
+            _id: employee._id,   // ✅ added org id
             fullName: employee.name,
             email: employee.email,
             phone: employee.phone,
