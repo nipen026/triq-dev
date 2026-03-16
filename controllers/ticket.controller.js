@@ -38,6 +38,260 @@ async function getHierarchyUsers(employeeId) {
   return members;
 }
 
+// exports.createTicket = async (req, res) => {
+//   try {
+
+//     const user = req.user;
+
+//     const {
+//       problem,
+//       errorCode,
+//       notes,
+//       ticketType,
+//       machineId,
+//       organisationId,
+//       type,
+//       engineerRemark
+//     } = req.body;
+
+//     // ✅ check machine
+//     const machine = await Machine.findById(machineId);
+//     if (!machine) {
+//       return res.status(404).json({ message: "Machine not found" });
+//     }
+
+//     // ✅ validate machine linked to customer
+//     const customer = await Customer.findOne({
+//       users: user.id,
+//       "machines.machine": machineId
+//     });
+
+//     if (!customer) {
+//       return res.status(400).json({
+//         message: "Machine not linked to this processor/customer"
+//       });
+//     }
+
+//     const machineDetails = customer.machines.find(
+//       m => m.machine.toString() === machineId
+//     );
+
+//     // ✅ warranty restriction
+//     if (
+//       machineDetails.warrantyStatus === "Out Of Warranty" &&
+//       ticketType !== "Full Machine Service"
+//     ) {
+//       return res.status(400).json({
+//         message: "Only Full Machine Service allowed for out-of-warranty machines"
+//       });
+//     }
+
+//     // --------------------------------------------------
+//     // 🔹 FIND PROCESSOR BASED ON EMPLOYEE HIERARCHY
+//     // --------------------------------------------------
+
+//     let processorId = user.id;
+
+//     const employee = await Employee
+//       .findOne({ linkedUser: user.id })
+//       .populate("designation reportTo linkedUser");
+
+//     if (employee) {
+
+//       if (employee.designation?.name === "Director") {
+
+//         // director becomes processor
+//         processorId = user.id;
+
+//       } else {
+
+//         let current = employee;
+//         let directorUser = null;
+
+//         while (current?.reportTo) {
+
+//           const senior = await Employee
+//             .findById(current.reportTo)
+//             .populate("designation linkedUser reportTo");
+
+//           if (!senior) break;
+
+//           if (senior.designation?.name === "Director") {
+//             directorUser = senior.linkedUser;
+//             break;
+//           }
+
+//           current = senior;
+//         }
+
+//         if (!directorUser) {
+//           return res.status(400).json({
+//             message: "Director not found in hierarchy"
+//           });
+//         }
+
+//         processorId = directorUser._id;
+
+//       }
+//     }
+
+//     // --------------------------------------------------
+//     // 🔹 SERVICE PRICING
+//     // --------------------------------------------------
+
+//     const servicePricing = await ServicePricing.findOne(
+//       {
+//         organisation: organisationId,
+//         pricing: {
+//           $elemMatch: {
+//             ticketType,
+//             supportMode: type,
+//             warrantyStatus: machineDetails.warrantyStatus
+//           }
+//         }
+//       },
+//       { "pricing.$": 1 }
+//     );
+
+//     let pricingData;
+
+//     if (
+//       !servicePricing ||
+//       !servicePricing.pricing ||
+//       servicePricing.pricing.length === 0
+//     ) {
+
+//       pricingData = {
+//         supportMode: type,
+//         warrantyStatus: machineDetails.warrantyStatus,
+//         ticketType,
+//         cost: 0,
+//         currency: "USD",
+//         _id: new mongoose.Types.ObjectId()
+//       };
+
+//     } else {
+//       pricingData = servicePricing.pricing[0];
+//     }
+
+//     // --------------------------------------------------
+//     // 🔹 HANDLE MEDIA
+//     // --------------------------------------------------
+
+//     let media = [];
+
+//     if (req.files && req.files.length > 0) {
+
+//       const imageCount = req.files.filter(f =>
+//         f.mimetype.startsWith("image/")
+//       ).length;
+
+//       if (imageCount > 5) {
+//         return res.status(400).json({
+//           message: "Maximum 5 images allowed"
+//         });
+//       }
+
+//       media = req.files.map(file => ({
+//         url: `/uploads/tickets/${file.filename}`,
+//         type: file.mimetype.startsWith("image/")
+//           ? "image"
+//           : "video"
+//       }));
+
+//     }
+
+//     // --------------------------------------------------
+//     // 🔹 CREATE TICKET
+//     // --------------------------------------------------
+
+//     const ticket = new Ticket({
+//       ticketNumber: generateTicketNumber(),
+//       problem,
+//       errorCode,
+//       notes,
+//       ticketType,
+//       media,
+//       machine: machineId,
+//       processor: processorId,
+//       type,
+//       organisation: organisationId,
+//       engineerRemark,
+//       pricing: pricingData._id,
+//       paymentStatus: "paid"
+//     });
+
+//     await ticket.save();
+
+//     // --------------------------------------------------
+//     // 🔹 NORMAL CHAT ROOM (Processor ↔ Organisation)
+//     // --------------------------------------------------
+
+//     let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
+
+//     if (!chatRoom) {
+
+//       chatRoom = await ChatRoom.create({
+//         ticket: ticket._id,
+//         organisation: organisationId,
+//         processor: processorId
+//       });
+
+//     }
+
+//     // --------------------------------------------------
+//     // 🔹 GROUP CHAT (ONLY FOR EMPLOYEE TICKETS)
+//     // --------------------------------------------------
+
+
+//     let groupChatRoom = null;
+
+//     if (employee) {
+
+//       let members = [user.id];
+
+//       if (employee.reportTo && employee.reportTo.length > 0) {
+//         members.push(...employee.reportTo);
+//       }
+
+//       // remove duplicates
+//       const uniqueMembers = [...new Set(members.map(id => id.toString()))];
+
+//       groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });
+
+//       if (!groupChatRoom) {
+
+//         groupChatRoom = await GroupChat.create({
+//           ticket: ticket._id,
+//           members: uniqueMembers,
+//           createdBy: user.id,
+//           organisation: organisationId
+//         });
+
+//       }
+
+//     }
+
+//     // --------------------------------------------------
+//     // 🔹 RESPONSE
+//     // --------------------------------------------------
+
+//     res.status(201).json({
+//       message: "Ticket created successfully",
+//       ticket,
+//       pricing: pricingData,
+//       chatRoom: groupChatRoom || chatRoom
+//     });
+
+//   } catch (err) {
+
+//     res.status(500).json({
+//       message: err.message
+//     });
+
+//   }
+// };
+
 exports.createTicket = async (req, res) => {
   try {
 
@@ -54,15 +308,71 @@ exports.createTicket = async (req, res) => {
       engineerRemark
     } = req.body;
 
-    // ✅ check machine
+    //--------------------------------------------------
+    // 🔹 CHECK MACHINE
+    //--------------------------------------------------
+
     const machine = await Machine.findById(machineId);
+
     if (!machine) {
-      return res.status(404).json({ message: "Machine not found" });
+      return res.status(404).json({
+        message: "Machine not found"
+      });
     }
 
-    // ✅ validate machine linked to customer
+    //--------------------------------------------------
+    // 🔹 FIND PROCESSOR (EMPLOYEE OR PROCESSOR)
+    //--------------------------------------------------
+
+    let processorId = user.id;
+
+    const employee = await Employee
+      .findOne({ linkedUser: user.id })
+      .populate("designation reportTo linkedUser");
+
+    if (employee) {
+
+      if (employee.designation?.name === "Director") {
+
+        processorId = user.id;
+
+      } else {
+
+        let currentEmployee = employee;
+        let directorUser = null;
+
+        while (currentEmployee?.reportTo) {
+
+          const senior = await Employee
+            .findById(currentEmployee.reportTo)
+            .populate("designation linkedUser reportTo");
+
+          if (!senior) break;
+
+          if (senior.designation?.name === "Director") {
+            directorUser = senior.linkedUser;
+            break;
+          }
+
+          currentEmployee = senior;
+        }
+
+        if (!directorUser) {
+          return res.status(400).json({
+            message: "Director not found in hierarchy"
+          });
+        }
+
+        processorId = directorUser._id;
+      }
+    }
+
+    //--------------------------------------------------
+    // 🔹 VALIDATE MACHINE LINKED TO PROCESSOR
+    //--------------------------------------------------
+
     const customer = await Customer.findOne({
-      users: user.id,
+      users: processorId,
       "machines.machine": machineId
     });
 
@@ -76,7 +386,10 @@ exports.createTicket = async (req, res) => {
       m => m.machine.toString() === machineId
     );
 
-    // ✅ warranty restriction
+    //--------------------------------------------------
+    // 🔹 WARRANTY VALIDATION
+    //--------------------------------------------------
+
     if (
       machineDetails.warrantyStatus === "Out Of Warranty" &&
       ticketType !== "Full Machine Service"
@@ -86,58 +399,9 @@ exports.createTicket = async (req, res) => {
       });
     }
 
-    // --------------------------------------------------
-    // 🔹 FIND PROCESSOR BASED ON EMPLOYEE HIERARCHY
-    // --------------------------------------------------
-
-    let processorId = user.id;
-
-    const employee = await Employee
-      .findOne({ linkedUser: user.id })
-      .populate("designation reportTo linkedUser");
-
-    if (employee) {
-
-      if (employee.designation?.name === "Director") {
-
-        // director becomes processor
-        processorId = user.id;
-
-      } else {
-
-        let current = employee;
-        let directorUser = null;
-
-        while (current?.reportTo) {
-
-          const senior = await Employee
-            .findById(current.reportTo)
-            .populate("designation linkedUser reportTo");
-
-          if (!senior) break;
-
-          if (senior.designation?.name === "Director") {
-            directorUser = senior.linkedUser;
-            break;
-          }
-
-          current = senior;
-        }
-
-        if (!directorUser) {
-          return res.status(400).json({
-            message: "Director not found in hierarchy"
-          });
-        }
-
-        processorId = directorUser._id;
-
-      }
-    }
-
-    // --------------------------------------------------
+    //--------------------------------------------------
     // 🔹 SERVICE PRICING
-    // --------------------------------------------------
+    //--------------------------------------------------
 
     const servicePricing = await ServicePricing.findOne(
       {
@@ -174,16 +438,16 @@ exports.createTicket = async (req, res) => {
       pricingData = servicePricing.pricing[0];
     }
 
-    // --------------------------------------------------
+    //--------------------------------------------------
     // 🔹 HANDLE MEDIA
-    // --------------------------------------------------
+    //--------------------------------------------------
 
     let media = [];
 
     if (req.files && req.files.length > 0) {
 
-      const imageCount = req.files.filter(f =>
-        f.mimetype.startsWith("image/")
+      const imageCount = req.files.filter(file =>
+        file.mimetype.startsWith("image/")
       ).length;
 
       if (imageCount > 5) {
@@ -201,9 +465,9 @@ exports.createTicket = async (req, res) => {
 
     }
 
-    // --------------------------------------------------
+    //--------------------------------------------------
     // 🔹 CREATE TICKET
-    // --------------------------------------------------
+    //--------------------------------------------------
 
     const ticket = new Ticket({
       ticketNumber: generateTicketNumber(),
@@ -223,9 +487,9 @@ exports.createTicket = async (req, res) => {
 
     await ticket.save();
 
-    // --------------------------------------------------
+    //--------------------------------------------------
     // 🔹 NORMAL CHAT ROOM (Processor ↔ Organisation)
-    // --------------------------------------------------
+    //--------------------------------------------------
 
     let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
 
@@ -239,10 +503,9 @@ exports.createTicket = async (req, res) => {
 
     }
 
-    // --------------------------------------------------
+    //--------------------------------------------------
     // 🔹 GROUP CHAT (ONLY FOR EMPLOYEE TICKETS)
-    // --------------------------------------------------
-
+    //--------------------------------------------------
 
     let groupChatRoom = null;
 
@@ -250,14 +513,15 @@ exports.createTicket = async (req, res) => {
 
       let members = [user.id];
 
-      if (employee.reportTo && employee.reportTo.length > 0) {
-        members.push(...employee.reportTo);
+      if (employee.reportTo) {
+        members.push(employee.reportTo);
       }
 
-      // remove duplicates
       const uniqueMembers = [...new Set(members.map(id => id.toString()))];
 
-      groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });
+      groupChatRoom = await GroupChat.findOne({
+        ticket: ticket._id
+      });
 
       if (!groupChatRoom) {
 
@@ -269,12 +533,11 @@ exports.createTicket = async (req, res) => {
         });
 
       }
-
     }
 
-    // --------------------------------------------------
+    //--------------------------------------------------
     // 🔹 RESPONSE
-    // --------------------------------------------------
+    //--------------------------------------------------
 
     res.status(201).json({
       message: "Ticket created successfully",
@@ -284,6 +547,8 @@ exports.createTicket = async (req, res) => {
     });
 
   } catch (err) {
+
+    console.error(err);
 
     res.status(500).json({
       message: err.message
