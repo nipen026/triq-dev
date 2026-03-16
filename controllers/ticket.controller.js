@@ -328,13 +328,13 @@ exports.createTicket = async (req, res) => {
 
     const employee = await Employee
       .findOne({ linkedUser: user.id })
-      .populate("linkedUser");
+      .populate("linkedUser", "user");
 
     console.log(employee, "employee ===>");
 
     // If logged user is employee → processor is linkedUser (director)
     if (employee && employee.linkedUser) {
-      processorId = employee.linkedUser._id;
+      processorId = employee.user._id;
     }
     console.log(processorId,"processorId");
     
