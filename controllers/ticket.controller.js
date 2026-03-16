@@ -1030,35 +1030,33 @@ exports.getTicketsByStatus = async (req, res) => {
     const employee = await Employee
       .findOne({ linkedUser: user.id })
       .populate("user");
+//--------------------------------------------------
+// 🔹 ROLE FILTER
+//--------------------------------------------------
 
-    //--------------------------------------------------
-    // 🔹 ROLE FILTER
-    //--------------------------------------------------
+const userRoleIds = user.roles.map(r => r.toString());
 
-    if (processorRole && user.roles.includes(processorRole._id)) {
+if (processorRole && userRoleIds.includes(processorRole._id.toString())) {
 
-      if (employee && employee.user) {
-        // employee login → show director tickets
-        query.processor = employee.user._id;
-      } 
-      else {
-        // processor login
-        query.processor = user.id;
-      }
+  if (employee && employee.user) {
+    query.processor = employee.user._id; // employee ticket view
+  } else {
+    query.processor = user.id; // processor login
+  }
 
-    } 
-    else if (organisationRole && user.roles.includes(organisationRole._id)) {
+} 
+else if (organisationRole && userRoleIds.includes(organisationRole._id.toString())) {
 
-      query.organisation = user.id;
+  query.organisation = user.id;
 
-    } 
-    else {
+} 
+else {
 
-      return res.status(403).json({
-        message: "Not authorized"
-      });
+  return res.status(403).json({
+    message: "Not authorized"
+  });
 
-    }
+}
 
     //--------------------------------------------------
     // 🔹 GET TICKETS
