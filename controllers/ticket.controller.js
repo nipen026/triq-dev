@@ -321,21 +321,20 @@ exports.createTicket = async (req, res) => {
     }
 
     //--------------------------------------------------
-    // 🔹 FIND PROCESSOR (DIRECTOR)
+    // 🔹 FIND PROCESSOR
     //--------------------------------------------------
 
     let processorId = user.id;
 
     const employee = await Employee
       .findOne({ linkedUser: user.id })
-      .populate("linkedUser designation");
-    console.log(employee ,"employee ===>");
-    
-    if (employee) {
+      .populate("linkedUser");
 
-      // employee ticket → processor = director
-      processorId = employee.linkedUser.id;
+    console.log(employee, "employee ===>");
 
+    // If logged user is employee → processor is linkedUser (director)
+    if (employee && employee.linkedUser) {
+      processorId = employee.linkedUser._id;
     }
 
     //--------------------------------------------------
@@ -346,7 +345,9 @@ exports.createTicket = async (req, res) => {
       users: processorId,
       "machines.machine": machineId
     }).populate("machines.machine");
-    console.log(customer ,"customer ===>");
+
+    console.log(customer, "customer ===>");
+
     if (!customer) {
       return res.status(400).json({
         message: "Machine not linked to this organisation"
@@ -354,8 +355,14 @@ exports.createTicket = async (req, res) => {
     }
 
     const machineDetails = customer.machines.find(
-      m => m.machine.toString() === machineId
+      m => m.machine && m.machine._id.toString() === machineId
     );
+
+    if (!machineDetails) {
+      return res.status(400).json({
+        message: "Machine details not found"
+      });
+    }
 
     //--------------------------------------------------
     // 🔹 WARRANTY VALIDATION
@@ -390,11 +397,7 @@ exports.createTicket = async (req, res) => {
 
     let pricingData;
 
-    if (
-      !servicePricing ||
-      !servicePricing.pricing ||
-      servicePricing.pricing.length === 0
-       ) {
+    if (!servicePricing || !servicePricing.pricing?.length) {
 
       pricingData = {
         supportMode: type,
@@ -406,9 +409,7 @@ exports.createTicket = async (req, res) => {
       };
 
     } else {
-
       pricingData = servicePricing.pricing[0];
-
     }
 
     //--------------------------------------------------
@@ -467,17 +468,15 @@ exports.createTicket = async (req, res) => {
     let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
 
     if (!chatRoom) {
-
       chatRoom = await ChatRoom.create({
         ticket: ticket._id,
         organisation: organisationId,
         processor: processorId
       });
-
     }
 
     //--------------------------------------------------
-    // 🔹 GROUP CHAT (EMPLOYEE ONLY)
+    // 🔹 GROUP CHAT (IF EMPLOYEE)
     //--------------------------------------------------
 
     let groupChatRoom = null;
