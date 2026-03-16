@@ -499,24 +499,21 @@ exports.addEmployee = async (req, res) => {
         employeeRole = await Role.create([{ name: "employee" }], { session });
       }
 
-      userAccount = await User.create(
-        [
-          {
-            fullName: name,
-            email,
-            password: hashedPassword,
-            phone,
-            isEmailVerified: false,
-            isPhoneVerified: true,
-            emailOTP: "123456",
-            countryCode: "+91",
-            isNewUser: false,
-            roles: [employeeRole._id],
-          },
-        ],
-        { session }
-      );
-      userAccount = userAccount[0];
+      const newUser = new User({
+        fullName: name,
+        email,
+        password: hashedPassword,
+        phone,
+        isEmailVerified: false,
+        isPhoneVerified: true,
+        emailOTP: "123456",
+        countryCode: "+91",
+        roles: [employeeRole._id],
+      });
+
+      await newUser.save({ session });
+
+      userAccount = newUser;
       await sendMail({
         to: email,
         subject: "Welcome! Your Employee Account is Ready",
