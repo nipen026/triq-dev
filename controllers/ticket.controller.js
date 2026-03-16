@@ -329,7 +329,8 @@ exports.createTicket = async (req, res) => {
     const employee = await Employee
       .findOne({ linkedUser: user.id })
       .populate("linkedUser designation");
-
+    console.log(employee ,"employee ===>");
+    
     if (employee) {
 
       // employee ticket → processor = director
@@ -344,8 +345,8 @@ exports.createTicket = async (req, res) => {
     const customer = await Customer.findOne({
       users: processorId,
       "machines.machine": machineId
-    });
-
+    }).populate("machines.machine");
+    console.log(customer ,"customer ===>");
     if (!customer) {
       return res.status(400).json({
         message: "Machine not linked to this organisation"
