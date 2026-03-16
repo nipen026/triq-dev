@@ -321,7 +321,7 @@ exports.createTicket = async (req, res) => {
     }
 
     //--------------------------------------------------
-    // 🔹 FIND PROCESSOR (EMPLOYEE OR PROCESSOR)
+    // 🔹 FIND DIRECTOR (PROCESSOR)
     //--------------------------------------------------
 
     let processorId = user.id;
@@ -332,9 +332,10 @@ exports.createTicket = async (req, res) => {
 
     if (employee) {
 
-      if (employee.designation?.name === "Director") {
+      // If employee is Director
+      if (employee.designation?.name?.toLowerCase() === "director") {
 
-        processorId = user.id;
+        processorId = employee.linkedUser;
 
       } else {
 
@@ -349,7 +350,7 @@ exports.createTicket = async (req, res) => {
 
           if (!senior) break;
 
-          if (senior.designation?.name === "Director") {
+          if (senior.designation?.name?.toLowerCase() === "director") {
             directorUser = senior.linkedUser;
             break;
           }
@@ -368,7 +369,7 @@ exports.createTicket = async (req, res) => {
     }
 
     //--------------------------------------------------
-    // 🔹 VALIDATE MACHINE LINKED TO PROCESSOR
+    // 🔹 VALIDATE MACHINE LINKED TO DIRECTOR
     //--------------------------------------------------
 
     const customer = await Customer.findOne({
@@ -378,7 +379,7 @@ exports.createTicket = async (req, res) => {
 
     if (!customer) {
       return res.status(400).json({
-        message: "Machine not linked to this processor/customer"
+        message: "Machine not linked to this organisation"
       });
     }
 
@@ -419,11 +420,7 @@ exports.createTicket = async (req, res) => {
 
     let pricingData;
 
-    if (
-      !servicePricing ||
-      !servicePricing.pricing ||
-      servicePricing.pricing.length === 0
-    ) {
+    if (!servicePricing || !servicePricing.pricing?.length) {
 
       pricingData = {
         supportMode: type,
@@ -462,7 +459,6 @@ exports.createTicket = async (req, res) => {
           ? "image"
           : "video"
       }));
-
     }
 
     //--------------------------------------------------
@@ -488,23 +484,21 @@ exports.createTicket = async (req, res) => {
     await ticket.save();
 
     //--------------------------------------------------
-    // 🔹 NORMAL CHAT ROOM (Processor ↔ Organisation)
+    // 🔹 NORMAL CHAT ROOM
     //--------------------------------------------------
 
     let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
 
     if (!chatRoom) {
-
       chatRoom = await ChatRoom.create({
         ticket: ticket._id,
         organisation: organisationId,
         processor: processorId
       });
-
     }
 
     //--------------------------------------------------
-    // 🔹 GROUP CHAT (ONLY FOR EMPLOYEE TICKETS)
+    // 🔹 GROUP CHAT (FOR EMPLOYEE)
     //--------------------------------------------------
 
     let groupChatRoom = null;
@@ -519,19 +513,15 @@ exports.createTicket = async (req, res) => {
 
       const uniqueMembers = [...new Set(members.map(id => id.toString()))];
 
-      groupChatRoom = await GroupChat.findOne({
-        ticket: ticket._id
-      });
+      groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });
 
       if (!groupChatRoom) {
-
         groupChatRoom = await GroupChat.create({
           ticket: ticket._id,
           members: uniqueMembers,
           createdBy: user.id,
           organisation: organisationId
         });
-
       }
     }
 
