@@ -137,3 +137,113 @@ exports.getMachineOverview = async (req, res) => {
     res.status(500).json({ error: err.message });
   }
 };
+exports.getUserMachines = async (req, res) => {
+  try {
+
+    const userId = req.user.id;
+
+    const user = await User.findById(userId).populate("roles");
+    const roleNames = user?.roles?.map(r => r.name) || [];
+
+    const result = [];
+
+    //////////////////////////////////////////////////////
+    // PROCESSOR MACHINES
+    //////////////////////////////////////////////////////
+
+    if (roleNames.includes("processor")) {
+
+      const customers = await Customer.find({
+        users: userId,
+        isActive: true,
+      })
+        .populate({
+          path: "organization",
+          select: "fullName email phone countryCode",
+        })
+        .populate("machines.machine");
+
+      const processorMachines = customers
+        .map(cust => {
+
+          const customerObj = cust.toObject();
+
+          customerObj.machines = (customerObj.machines || []).filter(
+            m => m.machine !== null && m.machine !== undefined
+          );
+
+          if (customerObj.machines.length === 0) return null;
+
+          customerObj.flag = getFlagWithCountryCode(
+            customerObj?.organization?.countryCode || "+91"
+          );
+
+          return { customer: customerObj };
+
+        })
+        .filter(Boolean);
+
+      result.push(...processorMachines);
+    }
+
+    //////////////////////////////////////////////////////
+    // EMPLOYEE MACHINES
+    //////////////////////////////////////////////////////
+
+    const employee = await Employee.findOne({ linkedUser: userId })
+      .populate({
+        path: "machine",
+        select: "machineName modelNumber machine_type status isActive remarks"
+      });
+
+    if (employee && employee.machine) {
+
+      const machines = Array.isArray(employee.machine)
+        ? employee.machine
+        : [employee.machine];
+
+      const employeeMachines = machines.map(machine => ({
+        machine,
+        purchaseDate: null,
+        installationDate: null,
+        warrantyStart: null,
+        warrantyEnd: null,
+        warrantyStatus: null,
+        invoiceContractNo: null
+      }));
+
+      result.push({
+        customer: {
+          _id: employee._id,
+          organization: {
+            fullName: employee.name,
+            email: employee.email,
+            phone: employee.phone,
+            countryCode: "+91"
+          },
+          machines: employeeMachines,
+          flag: getFlagWithCountryCode("+91")
+        }
+      });
+
+    }
+
+    //////////////////////////////////////////////////////
+    // RESPONSE
+    //////////////////////////////////////////////////////
+
+    return res.status(200).json({
+      success: true,
+      data: result
+    });
+
+  } catch (err) {
+
+    console.error("Error in getUserMachines:", err);
+
+    return res.status(500).json({
+      error: err.message
+    });
+
+  }
+};

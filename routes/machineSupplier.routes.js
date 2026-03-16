@@ -6,5 +6,6 @@ const verifyToken = require("../middleware/auth.middleware");
 
 router.get("/getMachineSupplier", verifyToken,machineSupplier.getMachineSupplierList);
 router.get("/getMachineOverview", verifyToken,machineSupplier.getMachineOverview);
+router.get("/getUserMachines", verifyToken, machineSupplier.getUserMachines);
 
 module.exports = router;
