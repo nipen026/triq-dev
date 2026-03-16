@@ -143,6 +143,19 @@ exports.getAllChats = async (req, res) => {
 
         const flag = getFlagWithCountryCode(chatWith?.countryCode);
 
+        // ✅ define lastMessage
+        const lastMessage = await Message
+          .findOne({ room: room._id })
+          .sort({ createdAt: -1 })
+          .lean();
+
+        // ✅ define unreadCount
+        const unreadCount = await Message.countDocuments({
+          room: room._id,
+          sender: { $ne: userId },
+          readBy: { $ne: userId }
+        });
+
         return {
           _id: room._id,
           type: "direct",
@@ -155,6 +168,7 @@ exports.getAllChats = async (req, res) => {
           unreadCount,
           updatedAt: room.updatedAt
         };
+
       })
     );
 
