@@ -895,38 +895,174 @@ exports.DeleteTicket = async (req, res) => {
 
 // ======================== GET TICKETS BY STATUS (with Pagination) ========================
 
+// exports.getTicketsByStatus = async (req, res) => {
+//   try {
+//     const user = req.user;
+//     let { status } = req.params; // status from URL param
+//     let { page = 1, limit = 10 } = req.query;
+//     page = parseInt(page);
+//     limit = parseInt(limit);
+
+//     const processorRole = await Role.findOne({ name: "processor" });
+//     const organisationRole = await Role.findOne({ name: "organization" });
+
+//     // ✅ base query
+//     let query = { isActive: true };
+
+//     if (!status || status === "all") {
+//       // no filter – show all statuses
+//     } else if (status.toLowerCase() === "active") {
+//       query.status = { $nin: ["Resolved", "Rejected"] };
+//       // query.status = { $ne: "Rejected" };
+
+//     } else {
+//       query.status = status;
+//     }
+
+//     // ✅ restrict by user role
+//     if (processorRole && user.roles.includes(processorRole.name)) {
+//       query.processor = user.id;
+//     } else if (organisationRole && user.roles.includes(organisationRole.name)) {
+//       query.organisation = user.id;
+//     } else {
+//       return res.status(403).json({ message: "Not authorized" });
+//     }
+
+//     const total = await Ticket.countDocuments(query);
+
+//     const tickets = await Ticket.find(query)
+//       .populate("machine processor organisation")
+//       .skip((page - 1) * limit)
+//       .limit(limit)
+//       .sort({ createdAt: -1 });
+
+//     const data = await Promise.all(
+//       tickets.map(async (t) => {
+//         let warrantyStatus = null;
+//         if (t.processor && t.machine) {
+//           const customer = await Customer.findOne({
+//             // users: t.processor._id.toString(),
+//             "machines.machine": t.machine._id.toString(),
+//           });
+
+//           if (customer) {
+//             const machineDetails = customer.machines.find(
+//               (m) => m.machine.toString() === t.machine._id.toString()
+//             );
+//             console.log(machineDetails, "machineDetails");
+
+//             if (machineDetails) {
+//               warrantyStatus = machineDetails.warrantyStatus;
+//             }
+//           }
+//         }
+
+//         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
+//           .populate("organisation", "fullName email")
+//           .populate("processor", "fullName email");
+
+//         let flag = null;
+//         if (t.organisation?.countryCode || t.processor?.countryCode) {
+//           const phone =
+//             t.organisation?.countryCode || t.processor?.countryCode;
+//           flag = getFlagWithCountryCode(phone);
+//         }
+
+//         return {
+//           ...t.toObject(),
+//           warrantyStatus,
+//           chatRoom,
+//           flag,
+//         };
+//       })
+//     );
+
+//     console.log(data, "data");
+
+//     res.json({
+//       total,
+//       page,
+//       pages: Math.ceil(total / limit),
+//       count: data.length,
+//       data,
+//     });
+//   } catch (err) {
+//     res.status(500).json({ message: err.message });
+//   }
+// };
 exports.getTicketsByStatus = async (req, res) => {
   try {
+
     const user = req.user;
-    let { status } = req.params; // status from URL param
+    let { status } = req.params;
     let { page = 1, limit = 10 } = req.query;
+
     page = parseInt(page);
     limit = parseInt(limit);
+
+    //--------------------------------------------------
+    // 🔹 FIND ROLES
+    //--------------------------------------------------
 
     const processorRole = await Role.findOne({ name: "processor" });
     const organisationRole = await Role.findOne({ name: "organization" });
 
-    // ✅ base query
+    //--------------------------------------------------
+    // 🔹 BASE QUERY
+    //--------------------------------------------------
+
     let query = { isActive: true };
 
     if (!status || status === "all") {
-      // no filter – show all statuses
-    } else if (status.toLowerCase() === "active") {
-      query.status = { $nin: ["Resolved", "Rejected"] };
-      // query.status = { $ne: "Rejected" };
 
-    } else {
+    } 
+    else if (status.toLowerCase() === "active") {
+      query.status = { $nin: ["Resolved", "Rejected"] };
+    } 
+    else {
       query.status = status;
     }
 
-    // ✅ restrict by user role
-    if (processorRole && user.roles.includes(processorRole.name)) {
-      query.processor = user.id;
-    } else if (organisationRole && user.roles.includes(organisationRole.name)) {
+    //--------------------------------------------------
+    // 🔹 CHECK EMPLOYEE
+    //--------------------------------------------------
+
+    const employee = await Employee
+      .findOne({ linkedUser: user.id })
+      .populate("user");
+
+    //--------------------------------------------------
+    // 🔹 ROLE FILTER
+    //--------------------------------------------------
+
+    if (processorRole && user.roles.includes(processorRole._id)) {
+
+      if (employee && employee.user) {
+        // employee login → show director tickets
+        query.processor = employee.user._id;
+      } 
+      else {
+        // processor login
+        query.processor = user.id;
+      }
+
+    } 
+    else if (organisationRole && user.roles.includes(organisationRole._id)) {
+
       query.organisation = user.id;
-    } else {
-      return res.status(403).json({ message: "Not authorized" });
+
+    } 
+    else {
+
+      return res.status(403).json({
+        message: "Not authorized"
+      });
+
     }
+
+    //--------------------------------------------------
+    // 🔹 GET TICKETS
+    //--------------------------------------------------
 
     const total = await Ticket.countDocuments(query);
 
@@ -936,25 +1072,33 @@ exports.getTicketsByStatus = async (req, res) => {
       .limit(limit)
       .sort({ createdAt: -1 });
 
+    //--------------------------------------------------
+    // 🔹 EXTRA DATA
+    //--------------------------------------------------
+
     const data = await Promise.all(
       tickets.map(async (t) => {
+
         let warrantyStatus = null;
-        if (t.processor && t.machine) {
+
+        if (t.machine) {
+
           const customer = await Customer.findOne({
-            // users: t.processor._id.toString(),
-            "machines.machine": t.machine._id.toString(),
+            "machines.machine": t.machine._id
           });
 
           if (customer) {
+
             const machineDetails = customer.machines.find(
-              (m) => m.machine.toString() === t.machine._id.toString()
+              m => m.machine.toString() === t.machine._id.toString()
             );
-            console.log(machineDetails, "machineDetails");
 
             if (machineDetails) {
               warrantyStatus = machineDetails.warrantyStatus;
             }
+
           }
+
         }
 
         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
@@ -962,35 +1106,48 @@ exports.getTicketsByStatus = async (req, res) => {
           .populate("processor", "fullName email");
 
         let flag = null;
+
         if (t.organisation?.countryCode || t.processor?.countryCode) {
+
           const phone =
-            t.organisation?.countryCode || t.processor?.countryCode;
+            t.organisation?.countryCode ||
+            t.processor?.countryCode;
+
           flag = getFlagWithCountryCode(phone);
+
         }
 
         return {
           ...t.toObject(),
           warrantyStatus,
           chatRoom,
-          flag,
+          flag
         };
+
       })
     );
 
-    console.log(data, "data");
+    //--------------------------------------------------
+    // 🔹 RESPONSE
+    //--------------------------------------------------
 
     res.json({
       total,
       page,
       pages: Math.ceil(total / limit),
       count: data.length,
-      data,
+      data
     });
-  } catch (err) {
-    res.status(500).json({ message: err.message });
+
+  } 
+  catch (err) {
+
+    res.status(500).json({
+      message: err.message
+    });
+
   }
 };
-
 
 // ======================== GET SUMMARY ========================
 
