@@ -1,22 +1,44 @@
 const Customer = require("../models/customer.model");
 const Machine = require("../models/machine.model");
 const User = require("../models/user.model");
+const Employee = require("../models/employee.model");
 const { getFlag, getFlagWithCountryCode } = require("../utils/flagHelper");
+async function isProcessor(userId) {
+
+  const user = await User.findById(userId).populate("roles");
+
+  const roleNames = user?.roles?.map(r => r.name) || [];
+
+  if (roleNames.includes("processor")) {
+    return true;
+  }
+
+  // Check employee designation
+  const employee = await Employee.findOne({ linkedUser: userId })
+    .populate("designation", "name");
+
+  if (
+    employee &&
+    employee.designation &&
+    employee.designation.name?.toLowerCase() === "processor"
+  ) {
+    return true;
+  }
+
+  return false;
+}
 
 exports.getMachineSupplierList = async (req, res) => {
   try {
+
     const userId = req.user.id;
 
-    const user = await User.findById(userId).populate("roles");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
+    const hasAccess = await isProcessor(userId);
 
-    const roleNames = user.roles.map(r => r.name);
-
-    // ✅ Only processor can access
-    if (!roleNames.includes("processor")) {
-      return res.status(403).json({ message: "Only processor role can access this" });
+    if (!hasAccess) {
+      return res.status(403).json({
+        message: "Only processor role can access this"
+      });
     }
 
     const customers = await Customer.find({
@@ -29,17 +51,14 @@ exports.getMachineSupplierList = async (req, res) => {
       })
       .populate("machines.machine");
 
-    // ✅ Remove customers without machines
     const result = customers
       .map(cust => {
         const customerObj = cust.toObject();
 
-        // ✅ Keep only valid machines
         customerObj.machines = (customerObj.machines || []).filter(
           m => m.machine !== null && m.machine !== undefined
         );
 
-        // ❌ If no machines left, skip this customer
         if (customerObj.machines.length === 0) return null;
 
         customerObj.flag = getFlagWithCountryCode(
@@ -48,7 +67,7 @@ exports.getMachineSupplierList = async (req, res) => {
 
         return { customer: customerObj };
       })
-      .filter(Boolean); // ✅ Remove null entries
+      .filter(Boolean);
 
     return res.status(200).json({
       success: true,
@@ -65,35 +84,36 @@ exports.getMachineSupplierList = async (req, res) => {
 
 exports.getMachineOverview = async (req, res) => {
   try {
+
     const userId = req.user.id;
-    const user = await User.findById(userId).populate("roles");
-    if (!user) {
-      return res.status(404).json({ message: "User not found" });
-    }
 
-    const roleNames = user.roles.map(r => r.name);
-    if (!roleNames.includes("processor")) {
-      return res.status(403).json({ message: "Only processor role can access machine overview" });
-    }
+    const hasAccess = await isProcessor(userId);
 
-    // ✅ Use find to get all customers linked to this user
-    const customers = await Customer.find({ users: userId, isActive: true })
-      .populate({
-        path: "machines.machine",
-        select: "machineName modelNumber machine_type status isActive remarks",
+    if (!hasAccess) {
+      return res.status(403).json({
+        message: "Only processor role can access machine overview"
       });
+    }
+
+    const customers = await Customer.find({
+      users: userId,
+      isActive: true
+    }).populate({
+      path: "machines.machine",
+      select: "machineName modelNumber machine_type status isActive remarks",
+    });
 
     if (!customers || customers.length === 0) {
-      return res.status(200).json({ message: "Customer not found for this processor" });
+      return res.status(200).json({
+        message: "Customer not found for this processor"
+      });
     }
 
-    // ✅ Flatten all machines from all customers
     const machines = customers.flatMap(customer =>
       customer.machines.map(m => ({
         machineId: m.machine?._id,
         machineName: m.machine?.machineName,
         modelNumber: m.machine?.modelNumber,
-        // serialNumber: m.machine?.serialNumber,
         machineType: m.machine?.machine_type,
         status: m.machine?.status,
         isActive: m.machine?.isActive,
@@ -108,7 +128,11 @@ exports.getMachineOverview = async (req, res) => {
       }))
     );
 
-    res.status(200).json({ success: true, data: machines });
+    res.status(200).json({
+      success: true,
+      data: machines
+    });
+
   } catch (err) {
     console.error(err);
     res.status(500).json({ error: err.message });
