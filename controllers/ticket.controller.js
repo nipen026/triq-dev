@@ -333,7 +333,7 @@ exports.createTicket = async (req, res) => {
     if (employee) {
 
       // employee ticket → processor = director
-      processorId = employee.linkedUser._id;
+      processorId = employee.linkedUser.id;
 
     }
 
