@@ -203,12 +203,15 @@ exports.getAllChats = async (req, res) => {
     //////////////////////////////////////////////////////
 
     const groupRooms = await GroupChat.find({
-      members: userId
-    })
-      .populate("members", "fullName email")
-      .populate("createdBy", "fullName")
-      .populate("ticket", "ticketNumber status")
-      .sort({ updatedAt: -1 });
+  $or: [
+    { members: userId },
+    { organisation: userId }
+  ]
+})
+  .populate("members", "fullName email")
+  .populate("createdBy", "fullName")
+  .populate("ticket", "ticketNumber status")
+  .sort({ updatedAt: -1 });
 
     const groupChats = await Promise.all(
       groupRooms.map(async (room) => {
