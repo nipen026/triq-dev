@@ -1035,27 +1035,20 @@ exports.getTicketsByStatus = async (req, res) => {
 //--------------------------------------------------
 
 const userRoleIds = user.roles.map(r => r.toString());
+const roleNames = user.roles;
 
-if (processorRole && userRoleIds.includes(processorRole._id.toString())) {
+const isOrg = roleNames.includes("organization");
+const isProcessor = roleNames.includes("processor");
+const isEmployee = !!employee;
 
-  if (employee && employee.user) {
-    query.processor = employee.user._id; // employee ticket view
-  } else {
-    query.processor = user.id; // processor login
-  }
-
-} 
-else if (organisationRole && userRoleIds.includes(organisationRole._id.toString())) {
-
+if (isProcessor || isEmployee) {
+  query.processor = isEmployee ? employee.user._id : user.id;
+}
+else if (isOrg) {
   query.organisation = user.id;
-
-} 
+}
 else {
-
-  return res.status(403).json({
-    message: "Not authorized"
-  });
-
+  return res.status(403).json({ message: "Not authorized" });
 }
 
     //--------------------------------------------------
