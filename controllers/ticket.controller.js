@@ -486,7 +486,7 @@ exports.createTicket = async (req, res) => {
 
       const members = [
         user.id,
-        employee.linkedUser._id
+        employee.user._id
       ];
 
       const uniqueMembers = [...new Set(members.map(id => id.toString()))];
