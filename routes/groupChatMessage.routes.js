@@ -2,7 +2,7 @@ const express = require("express");
 const router = express.Router();
 
 const controller = require("../controllers/groupChatMessage.controller");
-const auth = require("../middleware/auth");
+const auth = require("../middleware/auth.middleware");
 
 router.post("/send", auth, controller.sendMessage);
 
