@@ -3,6 +3,7 @@ const Message = require("../models/message.model");
 const { getIO } = require("../socket/socketInstance");
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
 const GroupChat = require("../models/groupChat.model");
+const Role = require("../models/role.model");
 // 🔹 POST /api/chat/rooms  → create a chat room manually
 exports.createChatRoomForTicket = async (req, res) => {
   try {
