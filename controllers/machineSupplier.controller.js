@@ -151,7 +151,7 @@ exports.getUserMachines = async (req, res) => {
     // PROCESSOR MACHINES
     //////////////////////////////////////////////////////
 
-    if (roleNames.includes("processor")) {
+    if (roleNames.includes("employee")) {
 
       const customers = await Customer.find({
         users: employeeData.user._id,
@@ -159,7 +159,7 @@ exports.getUserMachines = async (req, res) => {
       })
         .populate({
           path: "organization",
-          select: "_id fullName email phone countryCode",
+          select: "_id fullName email phone countryCode role",
         })
         .populate("machines.machine");
         console.log(customers,"customers ====>> Customers");
