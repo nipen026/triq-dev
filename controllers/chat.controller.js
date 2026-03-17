@@ -111,20 +111,56 @@ exports.getAllChats = async (req, res) => {
     const userId = req.user.id;
     const roles = req.user.roles;
 
+    //--------------------------------------------------
+    // 🔹 GET ROLE NAMES
+    //--------------------------------------------------
+
+    const roleDocs = await Role.find({ _id: { $in: roles } });
+    const roleNames = roleDocs.map(r => r.name);
+
+    //--------------------------------------------------
+    // 🔹 CHECK EMPLOYEE (for processor mapping)
+    //--------------------------------------------------
+
+    const employee = await Employee
+      .findOne({ linkedUser: userId })
+      .populate("user");
+
     let query = {};
     let currentRole;
 
-    if (roles.includes("organization")) {
+    //--------------------------------------------------
+    // 🔹 ROLE LOGIC
+    //--------------------------------------------------
+
+    if (roleNames.includes("organization")) {
+
       currentRole = "organization";
       query.organisation = userId;
-    }
-    else if (roles.includes("processor")) {
+
+    } 
+    else if (roleNames.includes("processor")) {
+
       currentRole = "processor";
-      query.processor = userId;
+
+      // ✅ if employee → use director
+      if (employee && employee.user) {
+        query.processor = employee.user._id;
+      } else {
+        query.processor = userId;
+      }
+
+    } 
+    else {
+
+      return res.status(403).json({
+        message: "Not authorized"
+      });
+
     }
 
     //////////////////////////////////////////////////////
-    // DIRECT CHATS
+    // 🔹 DIRECT CHATS
     //////////////////////////////////////////////////////
 
     const directRooms = await ChatRoom.find(query)
@@ -143,13 +179,11 @@ exports.getAllChats = async (req, res) => {
 
         const flag = getFlagWithCountryCode(chatWith?.countryCode);
 
-        // ✅ define lastMessage
         const lastMessage = await Message
           .findOne({ room: room._id })
           .sort({ createdAt: -1 })
           .lean();
 
-        // ✅ define unreadCount
         const unreadCount = await Message.countDocuments({
           room: room._id,
           sender: { $ne: userId },
@@ -173,7 +207,7 @@ exports.getAllChats = async (req, res) => {
     );
 
     //////////////////////////////////////////////////////
-    // GROUP CHATS
+    // 🔹 GROUP CHATS (same for all roles)
     //////////////////////////////////////////////////////
 
     const groupRooms = await GroupChat.find({
@@ -189,7 +223,8 @@ exports.getAllChats = async (req, res) => {
 
         const lastMessage = await Message
           .findOne({ room: room._id })
-          .sort({ createdAt: -1 });
+          .sort({ createdAt: -1 })
+          .lean();
 
         const unreadCount = await Message.countDocuments({
           room: room._id,
@@ -212,7 +247,7 @@ exports.getAllChats = async (req, res) => {
     );
 
     //////////////////////////////////////////////////////
-    // MERGE + SORT
+    // 🔹 MERGE + SORT
     //////////////////////////////////////////////////////
 
     const allChats = [...directChats, ...groupChats]
