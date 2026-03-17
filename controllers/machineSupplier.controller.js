@@ -144,7 +144,7 @@ exports.getUserMachines = async (req, res) => {
 
     const user = await User.findById(userId).populate("roles");
     const roleNames = user?.roles?.map(r => r.name) || [];
-
+    const employeeData = await Employee.findOne({ linkedUser: userId });
     const result = [];
 
     //////////////////////////////////////////////////////
@@ -154,7 +154,7 @@ exports.getUserMachines = async (req, res) => {
     if (roleNames.includes("processor")) {
 
       const customers = await Customer.find({
-        users: userId,
+        users: employeeData.user._id,
         isActive: true,
       })
         .populate({
