@@ -135,30 +135,20 @@ exports.getAllChats = async (req, res) => {
     // 🔹 ROLE LOGIC
     //--------------------------------------------------
 
-    if (roleNames.includes("organization")) {
+    const isOrganization = roleNames.includes("organization");
+    const isProcessor = roleNames.includes("processor");
+    const isEmployee = !!employee;
 
+    if (isOrganization) {
       currentRole = "organization";
       query.organisation = userId;
-
     }
-    else if (roleNames.includes("processor")) {
-
+    else if (isProcessor || isEmployee) {
       currentRole = "processor";
-
-      // ✅ if employee → use director
-      if (employee && employee.user) {
-        query.processor = employee.user._id;
-      } else {
-        query.processor = userId;
-      }
-
+      query.processor = isEmployee ? employee.user._id : userId;
     }
     else {
-
-      return res.status(403).json({
-        message: "Not authorized"
-      });
-
+      return res.status(403).json({ message: "Not authorized" });
     }
 
     //////////////////////////////////////////////////////
