@@ -117,35 +117,9 @@ exports.getAllChats = async (req, res) => {
     //--------------------------------------------------
 
     const roleNames = req.user.roles;
+    let query = {};
+    let currentRole;
 
-    //--------------------------------------------------
-    // 🔹 ROLE LOGIC
-    //--------------------------------------------------
-
-    if (roleNames.includes("organization")) {
-
-      currentRole = "organization";
-      query.organisation = userId;
-
-    }
-    else if (roleNames.includes("processor")) {
-
-      currentRole = "processor";
-
-      if (employee && employee.user) {
-        query.processor = employee.user._id;
-      } else {
-        query.processor = userId;
-      }
-
-    }
-    else {
-
-      return res.status(403).json({
-        message: "Not authorized"
-      });
-
-    }
 
     //--------------------------------------------------
     // 🔹 CHECK EMPLOYEE (for processor mapping)
@@ -155,8 +129,6 @@ exports.getAllChats = async (req, res) => {
       .findOne({ linkedUser: userId })
       .populate("user");
 
-    let query = {};
-    let currentRole;
 
     //--------------------------------------------------
     // 🔹 ROLE LOGIC
