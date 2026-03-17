@@ -116,8 +116,36 @@ exports.getAllChats = async (req, res) => {
     // 🔹 GET ROLE NAMES
     //--------------------------------------------------
 
-    const roleDocs = await Role.find({ _id: { $in: roles } });
-    const roleNames = roleDocs.map(r => r.name);
+    const roleNames = req.user.roles;
+
+    //--------------------------------------------------
+    // 🔹 ROLE LOGIC
+    //--------------------------------------------------
+
+    if (roleNames.includes("organization")) {
+
+      currentRole = "organization";
+      query.organisation = userId;
+
+    }
+    else if (roleNames.includes("processor")) {
+
+      currentRole = "processor";
+
+      if (employee && employee.user) {
+        query.processor = employee.user._id;
+      } else {
+        query.processor = userId;
+      }
+
+    }
+    else {
+
+      return res.status(403).json({
+        message: "Not authorized"
+      });
+
+    }
 
     //--------------------------------------------------
     // 🔹 CHECK EMPLOYEE (for processor mapping)
@@ -139,7 +167,7 @@ exports.getAllChats = async (req, res) => {
       currentRole = "organization";
       query.organisation = userId;
 
-    } 
+    }
     else if (roleNames.includes("processor")) {
 
       currentRole = "processor";
@@ -151,7 +179,7 @@ exports.getAllChats = async (req, res) => {
         query.processor = userId;
       }
 
-    } 
+    }
     else {
 
       return res.status(403).json({
