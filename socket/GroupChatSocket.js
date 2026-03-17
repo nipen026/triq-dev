@@ -85,6 +85,7 @@ module.exports = (io) => {
                 room: roomId,
                 sender: socket.userId,
                 content,
+                translatedContent: content,
                 attachments,
                 replyTo,
                 readBy: [socket.userId]
