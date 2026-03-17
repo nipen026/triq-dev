@@ -162,7 +162,7 @@ exports.getUserMachines = async (req, res) => {
           select: "_id fullName email phone countryCode",
         })
         .populate("machines.machine");
-
+        console.log(customers,"customers ====>> Customers");
       const processorMachines = customers
         .map(cust => {
 
