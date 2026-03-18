@@ -31,6 +31,7 @@ const LiveKitRoutes = require("./routes/livekit.routes");
 const StripeRoutes = require("./routes/stripe.routes");
 const appLinkRoutes = require("./routes/appLinks.routes");
 const dashboardRoutes= require("./routes/dashboard.routes");
+const groupChatRoutes = require("./routes/groupChat.routes");
 const groupChatMessage = require("./routes/groupChatMessage.routes");
 const path = require("path");
 
@@ -70,6 +71,7 @@ app.use("/api/livekit", LiveKitRoutes);
 app.use("/api/stripe", StripeRoutes);
 app.use("/api/links",appLinkRoutes );
 app.use("/api/dashboard",dashboardRoutes );
+app.use("/api/groupChat",groupChatRoutes);
 app.use("/api/groupChatMessage",groupChatMessage);
 
 
