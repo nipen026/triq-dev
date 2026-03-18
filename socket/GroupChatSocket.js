@@ -162,6 +162,7 @@ module.exports = (io) => {
                     room: roomId,
                     sender: socket.userId,
                     content,
+                    translatedContent: content,
                     attachments,
                     replyTo: replyTo || null,
                     readBy: [socket.userId],
