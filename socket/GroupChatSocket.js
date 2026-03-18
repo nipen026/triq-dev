@@ -278,7 +278,8 @@ module.exports = (io) => {
                             android: pushPayload.android,
                             apns: pushPayload.apns
                         });
-
+                        console.log(response,"response");
+                        
                         response.responses.forEach(async (res, idx) => {
                             if (!res.success) {
                                 const errorCode = res.error.code;
