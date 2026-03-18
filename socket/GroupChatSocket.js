@@ -272,7 +272,27 @@ module.exports = (io) => {
                             }
                         };
 
-                        await admin.messaging().send(pushPayload);
+                        const response = await admin.messaging().sendEachForMulticast({
+                            tokens: [member.fcmToken],
+                            data: pushPayload.data,
+                            android: pushPayload.android,
+                            apns: pushPayload.apns
+                        });
+
+                        response.responses.forEach(async (res, idx) => {
+                            if (!res.success) {
+                                const errorCode = res.error.code;
+
+                                if (
+                                    errorCode === "messaging/registration-token-not-registered" ||
+                                    errorCode === "messaging/invalid-registration-token"
+                                ) {
+                                    await User.findByIdAndUpdate(memberId, {
+                                        $unset: { fcmToken: "" }
+                                    });
+                                }
+                            }
+                        });
                     }
                 }
 
