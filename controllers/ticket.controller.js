@@ -486,6 +486,7 @@ exports.createTicket = async (req, res) => {
 
       const members = [
         user.id,
+        organisationId,
         employee.user._id
       ];
 
