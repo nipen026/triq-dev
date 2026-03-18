@@ -457,7 +457,8 @@ exports.createTicket = async (req, res) => {
       organisation: organisationId,
       engineerRemark,
       pricing: pricingData._id,
-      paymentStatus: "paid"
+      paymentStatus: "paid",
+      createdAt: new Date()
     });
 
     await ticket.save();
