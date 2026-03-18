@@ -230,6 +230,7 @@ exports.getAllChats = async (req, res) => {
         return {
           _id: room._id,
           type: "group",
+          name: room.groupName,
           ticket: room.ticket,
           members: room.members,
           createdBy: room.createdBy,
