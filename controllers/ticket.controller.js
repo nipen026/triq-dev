@@ -336,8 +336,8 @@ exports.createTicket = async (req, res) => {
     if (employee && employee.linkedUser) {
       processorId = employee.user._id;
     }
-    console.log(processorId,"processorId");
-    
+    console.log(processorId, "processorId");
+
     //--------------------------------------------------
     // 🔹 VALIDATE MACHINE LINKED TO PROCESSOR
     //--------------------------------------------------
@@ -482,6 +482,18 @@ exports.createTicket = async (req, res) => {
     //--------------------------------------------------
 
     let groupChatRoom = null;
+    //--------------------------------------------------
+    // 🔹 GENERATE GROUP NAME
+    //--------------------------------------------------
+
+    const organisationUser = await User.findById(organisationId).select("fullName");
+    const processorUser = await User.findById(processorId).select("fullName");
+
+    const organisationName = organisationUser?.fullName || "Org";
+    const processorName = processorUser?.fullName || "Processor";
+
+    // final format
+    const groupName = `${organisationName}-${processorName}`;
 
     if (employee) {
 
@@ -493,19 +505,23 @@ exports.createTicket = async (req, res) => {
 
       const uniqueMembers = [...new Set(members.map(id => id.toString()))];
 
-      groupChatRoom = await GroupChat.findOne({
-        ticket: ticket._id
-      });
+      let groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });
 
       if (!groupChatRoom) {
 
         groupChatRoom = await GroupChat.create({
           ticket: ticket._id,
+          groupName: groupName,
           members: uniqueMembers,
           createdBy: user.id,
           organisation: organisationId
         });
 
+      } else {
+
+        // 🔥 update name if already exists
+        groupChatRoom.groupName = groupName;
+        await groupChatRoom.save();
       }
 
     }
@@ -1017,10 +1033,10 @@ exports.getTicketsByStatus = async (req, res) => {
 
     if (!status || status === "all") {
 
-    } 
+    }
     else if (status.toLowerCase() === "active") {
       query.status = { $nin: ["Resolved", "Rejected"] };
-    } 
+    }
     else {
       query.status = status;
     }
@@ -1032,26 +1048,26 @@ exports.getTicketsByStatus = async (req, res) => {
     const employee = await Employee
       .findOne({ linkedUser: user.id })
       .populate("user");
-//--------------------------------------------------
-// 🔹 ROLE FILTER
-//--------------------------------------------------
+    //--------------------------------------------------
+    // 🔹 ROLE FILTER
+    //--------------------------------------------------
 
-const userRoleIds = user.roles.map(r => r.toString());
-const roleNames = user.roles;
+    const userRoleIds = user.roles.map(r => r.toString());
+    const roleNames = user.roles;
 
-const isOrg = roleNames.includes("organization");
-const isProcessor = roleNames.includes("processor");
-const isEmployee = !!employee;
+    const isOrg = roleNames.includes("organization");
+    const isProcessor = roleNames.includes("processor");
+    const isEmployee = !!employee;
 
-if (isProcessor || isEmployee) {
-  query.processor = isEmployee ? employee.user._id : user.id;
-}
-else if (isOrg) {
-  query.organisation = user.id;
-}
-else {
-  return res.status(403).json({ message: "Not authorized" });
-}
+    if (isProcessor || isEmployee) {
+      query.processor = isEmployee ? employee.user._id : user.id;
+    }
+    else if (isOrg) {
+      query.organisation = user.id;
+    }
+    else {
+      return res.status(403).json({ message: "Not authorized" });
+    }
 
     //--------------------------------------------------
     // 🔹 GET TICKETS
@@ -1132,7 +1148,7 @@ else {
       data
     });
 
-  } 
+  }
   catch (err) {
 
     res.status(500).json({

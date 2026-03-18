@@ -15,7 +15,10 @@ const GroupChatSchema = new mongoose.Schema({
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"
   },
-
+  groupName: {
+    type: String,
+    required: true
+  },
   organisation: {
     type: mongoose.Schema.Types.ObjectId,
     ref: "User"

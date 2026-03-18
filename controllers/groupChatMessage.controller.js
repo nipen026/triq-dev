@@ -179,3 +179,127 @@ exports.markSeen = async (req, res) => {
   }
 
 };
+exports.getAllAttachments = async (req, res) => {
+  try {
+
+    const userId = req.user.id;
+    const { roomId } = req.params;
+    const { type, page = 1, limit = 20 } = req.query;
+
+    //--------------------------------------------------
+    // 🔹 VALIDATE ROOM
+    //--------------------------------------------------
+
+    const room = await GroupChat.findById(roomId);
+
+    if (!room) {
+      return res.status(404).json({
+        message: "Chat room not found"
+      });
+    }
+
+    //--------------------------------------------------
+    // 🔹 CHECK MEMBERSHIP
+    //--------------------------------------------------
+
+    const isMember = room.members.some(
+      m => m.toString() === userId
+    );
+
+    if (!isMember) {
+      return res.status(403).json({
+        message: "Not a member of this chat"
+      });
+    }
+
+    //--------------------------------------------------
+    // 🔹 QUERY BUILD
+    //--------------------------------------------------
+
+    let matchStage = {
+      room: room._id,
+      attachments: { $exists: true, $ne: [] }
+    };
+
+    //--------------------------------------------------
+    // 🔹 FILTER BY TYPE (optional)
+    //--------------------------------------------------
+
+    if (type) {
+      matchStage["attachments.type"] = type; 
+      // image | video | file
+    }
+
+    //--------------------------------------------------
+    // 🔹 AGGREGATION (BEST WAY)
+    //--------------------------------------------------
+
+    const attachments = await GroupChatMessage.aggregate([
+      { $match: matchStage },
+
+      // split attachments array
+      { $unwind: "$attachments" },
+
+      // filter again (important)
+      ...(type ? [{ $match: { "attachments.type": type } }] : []),
+
+      // sort latest first
+      { $sort: { createdAt: -1 } },
+
+      // pagination
+      { $skip: (page - 1) * parseInt(limit) },
+      { $limit: parseInt(limit) },
+
+      // join sender
+      {
+        $lookup: {
+          from: "users",
+          localField: "sender",
+          foreignField: "_id",
+          as: "sender"
+        }
+      },
+      { $unwind: "$sender" },
+
+      //--------------------------------------------------
+      // 🔹 FINAL SHAPE
+      //--------------------------------------------------
+
+      {
+        $project: {
+          _id: 0,
+          messageId: "$_id",
+          file: "$attachments",
+          sender: {
+            _id: "$sender._id",
+            fullName: "$sender.fullName"
+          },
+          createdAt: 1
+        }
+      }
+    ]);
+
+    //--------------------------------------------------
+    // 🔹 TOTAL COUNT (optional)
+    //--------------------------------------------------
+
+    const total = await GroupChatMessage.countDocuments(matchStage);
+
+    //--------------------------------------------------
+    // 🔹 RESPONSE
+    //--------------------------------------------------
+
+    res.json({
+      message: "Attachments fetched",
+      page: parseInt(page),
+      count: attachments.length,
+      total,
+      data: attachments
+    });
+
+  } catch (err) {
+    res.status(500).json({
+      message: err.message
+    });
+  }
+};

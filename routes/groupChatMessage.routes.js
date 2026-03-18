@@ -15,5 +15,10 @@ router.post("/react", auth, controller.reactMessage);
 router.delete("/:messageId", auth, controller.deleteMessage);
 
 router.post("/seen", auth, controller.markSeen);
+router.get(
+  "/attachments/:roomId",
+  auth,
+  controller.getAllAttachments
+);
 
 module.exports = router;
