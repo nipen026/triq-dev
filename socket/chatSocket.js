@@ -88,7 +88,7 @@ module.exports = (io) => {
 
         // 🌐 Translate the message only for receiver
         let translatedText = content;
-        if (content && targetLang || receiverProfile.AutoChatLanguage) {
+        if (content && targetLang) {
           try {
             const result = await translate(content, { to: targetLang });
             translatedText = result.text;

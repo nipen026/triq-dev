@@ -1,6 +1,10 @@
 const ChatRoom = require("../models/groupChat.model");
 const Message = require("../models/groupChatMessage.model");
+const Profile = require("../models/profile.model");
+const Sound = require("../models/sound.model");
+const User = require("../models/user.model");
 const admin = require("firebase-admin");
+const { translate } = require("@vitalets/google-translate-api");
 module.exports = (io) => {
 
     const onlineUsers = new Map();
@@ -71,79 +75,220 @@ module.exports = (io) => {
         // SEND MESSAGE
         //////////////////////////////////////////////////
 
+        // socket.on("sendMessage", async ({ roomId, content, attachments, replyTo }) => {
+
+        //     const room = await ChatRoom.findById(roomId).populate("members");
+
+        //     if (!room) return;
+
+        //     //////////////////////////////////////////////////
+        //     // SAVE MESSAGE
+        //     //////////////////////////////////////////////////
+
+        //     const message = await Message.create({
+        //         room: roomId,
+        //         sender: socket.userId,
+        //         content,
+        //         translatedContent: content,
+        //         attachments,
+        //         replyTo,
+        //         readBy: [socket.userId]
+        //     });
+
+        //     //////////////////////////////////////////////////
+        //     // EMIT MESSAGE
+        //     //////////////////////////////////////////////////
+
+        //     io.to(roomId).emit("newMessage", message);
+
+        //     //////////////////////////////////////////////////
+        //     // UPDATE CHAT LIST
+        //     //////////////////////////////////////////////////
+
+        //     for (const member of room.members) {
+
+        //         const unreadCount = await Message.countDocuments({
+        //             room: roomId,
+        //             sender: { $ne: member._id },
+        //             readBy: { $ne: member._id }
+        //         });
+
+        //         io.to(member._id.toString()).emit("updateChatList", {
+        //             roomId,
+        //             lastMessage: message,
+        //             unreadCount
+        //         });
+
+        //     }
+
+        //     //////////////////////////////////////////////////
+        //     // SEND PUSH NOTIFICATION
+        //     //////////////////////////////////////////////////
+
+        //     for (const member of room.members) {
+
+        //         if (member._id.toString() === socket.userId) continue;
+
+        //         const isInRoom = userRooms.get(member._id?.toString())?.has(roomId);
+
+        //         if (!isInRoom && member.fcmToken) {
+
+        //             await admin.messaging().send({
+        //                 token: member.fcmToken,
+        //                 data: {
+        //                     type: "chat_message",
+        //                     roomId: roomId.toString(),
+        //                     message: content || "Attachment"
+        //                 }
+        //             });
+
+        //         }
+
+        //     }
+
+        // });
         socket.on("sendMessage", async ({ roomId, content, attachments, replyTo }) => {
+            try {
+                if (!socket.userId || !roomId) return;
 
-            const room = await ChatRoom.findById(roomId).populate("members");
+                const room = await ChatRoom.findById(roomId).populate("members");
+                if (!room) return;
 
-            if (!room) return;
+                //////////////////////////////////////////////////
+                // 🔹 SAVE ORIGINAL MESSAGE
+                //////////////////////////////////////////////////
 
-            //////////////////////////////////////////////////
-            // SAVE MESSAGE
-            //////////////////////////////////////////////////
-
-            const message = await Message.create({
-                room: roomId,
-                sender: socket.userId,
-                content,
-                translatedContent: content,
-                attachments,
-                replyTo,
-                readBy: [socket.userId]
-            });
-
-            //////////////////////////////////////////////////
-            // EMIT MESSAGE
-            //////////////////////////////////////////////////
-
-            io.to(roomId).emit("newMessage", message);
-
-            //////////////////////////////////////////////////
-            // UPDATE CHAT LIST
-            //////////////////////////////////////////////////
-
-            for (const member of room.members) {
-
-                const unreadCount = await Message.countDocuments({
+                const message = await Message.create({
                     room: roomId,
-                    sender: { $ne: member._id },
-                    readBy: { $ne: member._id }
+                    sender: socket.userId,
+                    content,
+                    attachments,
+                    replyTo: replyTo || null,
+                    readBy: [socket.userId],
                 });
 
-                io.to(member._id.toString()).emit("updateChatList", {
-                    roomId,
-                    lastMessage: message,
-                    unreadCount
-                });
+                //////////////////////////////////////////////////
+                // 🔹 PROCESS EACH MEMBER (TRANSLATION + NOTIFICATION)
+                //////////////////////////////////////////////////
 
-            }
+                for (const member of room.members) {
 
-            //////////////////////////////////////////////////
-            // SEND PUSH NOTIFICATION
-            //////////////////////////////////////////////////
+                    const memberId = member._id.toString();
 
-            for (const member of room.members) {
+                    // skip sender
+                    if (memberId === socket.userId) continue;
 
-                if (member._id.toString() === socket.userId) continue;
+                    //////////////////////////////////////////////////
+                    // 🔹 GET USER LANGUAGE
+                    //////////////////////////////////////////////////
 
-                const isInRoom = userRooms.get(member._id?.toString())?.has(roomId);
+                    const profile = await Profile.findOne({ user: memberId });
+                    const targetLang = profile?.chatLanguage || "en";
 
-                if (!isInRoom && member.fcmToken) {
+                    //////////////////////////////////////////////////
+                    // 🔹 TRANSLATE MESSAGE
+                    //////////////////////////////////////////////////
 
-                    await admin.messaging().send({
-                        token: member.fcmToken,
-                        data: {
-                            type: "chat_message",
-                            roomId: roomId.toString(),
-                            message: content || "Attachment"
+                    let translatedText = content;
+
+                    if (content && targetLang) {
+                        try {
+                            const result = await translate(content, { to: targetLang });
+                            translatedText = result.text;
+                        } catch (err) {
+                            console.warn("Translation failed:", err.message);
                         }
+                    }
+
+                    //////////////////////////////////////////////////
+                    // 🔹 EMIT MESSAGE (PER USER)
+                    //////////////////////////////////////////////////
+
+                    io.to(memberId).emit("newMessage", {
+                        ...message.toObject(),
+                        translatedContent: translatedText
                     });
 
+                    //////////////////////////////////////////////////
+                    // 🔹 UNREAD COUNT
+                    //////////////////////////////////////////////////
+
+                    const unreadCount = await Message.countDocuments({
+                        room: roomId,
+                        sender: { $ne: memberId },
+                        readBy: { $ne: memberId }
+                    });
+
+                    io.to(memberId).emit("updateChatList", {
+                        roomId,
+                        lastMessage: {
+                            ...message.toObject(),
+                            translatedContent: translatedText
+                        },
+                        unreadCount
+                    });
+
+                    //////////////////////////////////////////////////
+                    // 🔹 PUSH NOTIFICATION (ONLY IF OFFLINE)
+                    //////////////////////////////////////////////////
+
+                    const isInRoom = userRooms.get(memberId)?.has(roomId);
+
+                    if (!isInRoom && member.fcmToken) {
+
+                        const soundData = await Sound.findOne({
+                            type: "chat",
+                            user: memberId
+                        });
+
+                        const soundName = soundData?.soundName || "default";
+
+                        const senderUser = await User.findById(socket.userId);
+
+                        const pushPayload = {
+                            token: member.fcmToken,
+
+                            data: {
+                                type: "group_chat",
+                                title: `${senderUser?.fullName || "User"} (Group)`,
+                                body: translatedText || "Attachment",
+                                roomId: roomId.toString(),
+                                sound: soundName,
+                            },
+
+                            android: {
+                                priority: "high"
+                            },
+
+                            apns: {
+                                headers: { "apns-priority": "10" },
+                                payload: {
+                                    aps: {
+                                        sound: `${soundName}.aiff`,
+                                        "content-available": 1,
+                                        "mutable-content": 1
+                                    }
+                                }
+                            }
+                        };
+
+                        await admin.messaging().send(pushPayload);
+                    }
                 }
 
+                //////////////////////////////////////////////////
+                // 🔹 EMIT TO ROOM (FOR REALTIME USERS)
+                //////////////////////////////////////////////////
+
+                io.to(roomId).emit("newMessage", {
+                    ...message.toObject(),
+                    translatedContent: content // sender version
+                });
+
+            } catch (err) {
+                console.error("Group sendMessage error:", err);
             }
-
         });
-
         //////////////////////////////////////////////////
         // MESSAGE SEEN
         //////////////////////////////////////////////////
