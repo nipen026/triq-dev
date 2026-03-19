@@ -16,10 +16,12 @@ const groupChatMessageSchema = new mongoose.Schema({
 
   translatedContent: String,
 
-  attachments: [{
-    url: String,
-    type: String
-  }],
+   attachments: [
+    {
+      url: String,
+      type: { type: String } // 'image' | 'video' | 'document'
+    }
+  ],
 
   replyTo: {
     type: mongoose.Schema.Types.ObjectId,
