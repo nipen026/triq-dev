@@ -130,13 +130,16 @@ exports.createCustomer = async (req, res) => {
     if (customerData.machines && customerData.machines.length > 0) {
       for (let m of customerData.machines) {
         await Machine.findByIdAndUpdate(m.machine, {
-          status: "PendingAcceptance"
+          status: isOrgUser ? "Assigned" : "PendingAcceptance"
         });
-
       }
     }
 
-    customer.assignmentStatus = "Pending";
+    if (isOrgUser) {
+      customer.assignmentStatus = "Assigned"; // ✅ direct active
+    } else {
+      customer.assignmentStatus = "Pending";  // ✅ normal flow
+    }
     await customer.save();
 
     let user;
@@ -207,16 +210,18 @@ exports.createCustomer = async (req, res) => {
 
     const receiverId = user._id;
 
-    await sendCustomerNotification({
-      receiverId,
-      senderId: req.user.id,
-      customerId: customer._id,
-      title: "Customer Request",
-      body: `${validUser.fullName} sent you a request`,
-      isRequest: true,                     // ⭐ request
-      event: "request",
-      senderRole: isOrgUser ? "organization" : "processor"
-    });
+    if (!isOrgUser) {
+      await sendCustomerNotification({
+        receiverId,
+        senderId: req.user.id,
+        customerId: customer._id,
+        title: "Customer Request",
+        body: `${validUser.fullName} sent you a request`,
+        isRequest: true,
+        event: "request",
+        senderRole: "organization"
+      });
+    }
     // if (!isOrgUser) {
     //   const notificationMessage = `${validUser.fullName} sent you a request.`;
 
@@ -591,9 +596,11 @@ exports.searchCustomers = async (req, res) => {
 
     const customers = await Customer.aggregate([
       { $match: match },
-      { $group: { _id: "$email", // group by email
-                   doc: { $first: "$$ROOT" }, // take the first document
-                 },
+      {
+        $group: {
+          _id: "$email", // group by email
+          doc: { $first: "$$ROOT" }, // take the first document
+        },
       },
       { $replaceRoot: { newRoot: "$doc" } }, // flatten back
     ]);

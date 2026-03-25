@@ -467,21 +467,26 @@ exports.createTicket = async (req, res) => {
     // 🔹 NORMAL CHAT ROOM
     //--------------------------------------------------
 
-    let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
+    // let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
 
-    if (!chatRoom) {
-      chatRoom = await ChatRoom.create({
-        ticket: ticket._id,
-        organisation: organisationId,
-        processor: processorId
-      });
-    }
+    // if (!chatRoom) {
+    //   chatRoom = await ChatRoom.create({
+    //     ticket: ticket._id,
+    //     organisation: organisationId,
+    //     processor: processorId
+    //   });
+    // }
 
     //--------------------------------------------------
     // 🔹 GROUP CHAT (IF EMPLOYEE)
     //--------------------------------------------------
 
-    let groupChatRoom = null;
+    //--------------------------------------------------
+    // 🔹 CHAT CREATION (FIXED)
+    //--------------------------------------------------
+
+    let finalChatRoom = null;
+
     //--------------------------------------------------
     // 🔹 GENERATE GROUP NAME
     //--------------------------------------------------
@@ -492,8 +497,11 @@ exports.createTicket = async (req, res) => {
     const organisationName = organisationUser?.fullName || "Org";
     const processorName = processorUser?.fullName || "Processor";
 
-    // final format
     const groupName = `${organisationName}-${processorName}`;
+
+    //--------------------------------------------------
+    // 🔹 IF EMPLOYEE → GROUP CHAT ONLY
+    //--------------------------------------------------
 
     if (employee) {
 
@@ -508,22 +516,37 @@ exports.createTicket = async (req, res) => {
       let groupChatRoom = await GroupChat.findOne({ ticket: ticket._id });
 
       if (!groupChatRoom) {
-
         groupChatRoom = await GroupChat.create({
           ticket: ticket._id,
-          groupName: groupName,
+          groupName,
           members: uniqueMembers,
           createdBy: user.id,
           organisation: organisationId
         });
-
       } else {
-
-        // 🔥 update name if already exists
         groupChatRoom.groupName = groupName;
         await groupChatRoom.save();
       }
 
+      finalChatRoom = groupChatRoom;
+
+    } else {
+
+      //--------------------------------------------------
+      // 🔹 NORMAL CHAT (ONLY WHEN NO EMPLOYEE)
+      //--------------------------------------------------
+
+      let chatRoom = await ChatRoom.findOne({ ticket: ticket._id });
+
+      if (!chatRoom) {
+        chatRoom = await ChatRoom.create({
+          ticket: ticket._id,
+          organisation: organisationId,
+          processor: processorId
+        });
+      }
+
+      finalChatRoom = chatRoom;
     }
 
     //--------------------------------------------------
@@ -1008,9 +1031,9 @@ exports.DeleteTicket = async (req, res) => {
 //     res.status(500).json({ message: err.message });
 //   }
 // };
+
 exports.getTicketsByStatus = async (req, res) => {
   try {
-
     const user = req.user;
     let { status } = req.params;
     let { page = 1, limit = 10 } = req.query;
@@ -1019,20 +1042,13 @@ exports.getTicketsByStatus = async (req, res) => {
     limit = parseInt(limit);
 
     //--------------------------------------------------
-    // 🔹 FIND ROLES
-    //--------------------------------------------------
-
-    const processorRole = await Role.findOne({ name: "processor" });
-    const organisationRole = await Role.findOne({ name: "organization" });
-
-    //--------------------------------------------------
     // 🔹 BASE QUERY
     //--------------------------------------------------
 
     let query = { isActive: true };
 
     if (!status || status === "all") {
-
+      // no filter
     }
     else if (status.toLowerCase() === "active") {
       query.status = { $nin: ["Resolved", "Rejected"] };
@@ -1042,32 +1058,55 @@ exports.getTicketsByStatus = async (req, res) => {
     }
 
     //--------------------------------------------------
+    // 🔹 GET USER ROLES (FIXED)
+    //--------------------------------------------------
+
+    const roleNames = (user.roles || []).map(r => {
+      if (typeof r === "string") return r;
+      if (r.name) return r.name;
+      return r.toString();
+    });
+
+    const isOrg = roleNames.includes("organization");
+    const isProcessor = roleNames.includes("processor");
+
+    //--------------------------------------------------
     // 🔹 CHECK EMPLOYEE
     //--------------------------------------------------
 
     const employee = await Employee
       .findOne({ linkedUser: user.id })
       .populate("user");
-    //--------------------------------------------------
-    // 🔹 ROLE FILTER
-    //--------------------------------------------------
 
-    const userRoleIds = user.roles.map(r => r.toString());
-    const roleNames = user.roles;
-
-    const isOrg = roleNames.includes("organization");
-    const isProcessor = roleNames.includes("processor");
     const isEmployee = !!employee;
 
+    //--------------------------------------------------
+    // 🔹 ROLE FILTER (FIXED)
+    //--------------------------------------------------
+
     if (isProcessor || isEmployee) {
-      query.processor = isEmployee ? employee.user._id : user.id;
+      query.processor = isEmployee
+        ? employee.user._id
+        : new mongoose.Types.ObjectId(user.id);
     }
     else if (isOrg) {
-      query.organisation = user.id;
+      query.organisation = new mongoose.Types.ObjectId(user.id);
     }
     else {
       return res.status(403).json({ message: "Not authorized" });
     }
+
+    //--------------------------------------------------
+    // 🔍 DEBUG (optional - remove in production)
+    //--------------------------------------------------
+    console.log("DEBUG:", {
+      userId: user.id,
+      roles: roleNames,
+      isProcessor,
+      isEmployee,
+      isOrg,
+      finalQuery: query
+    });
 
     //--------------------------------------------------
     // 🔹 GET TICKETS
@@ -1087,17 +1126,14 @@ exports.getTicketsByStatus = async (req, res) => {
 
     const data = await Promise.all(
       tickets.map(async (t) => {
-
         let warrantyStatus = null;
 
         if (t.machine) {
-
           const customer = await Customer.findOne({
             "machines.machine": t.machine._id
           });
 
           if (customer) {
-
             const machineDetails = customer.machines.find(
               m => m.machine.toString() === t.machine._id.toString()
             );
@@ -1105,9 +1141,7 @@ exports.getTicketsByStatus = async (req, res) => {
             if (machineDetails) {
               warrantyStatus = machineDetails.warrantyStatus;
             }
-
           }
-
         }
 
         const chatRoom = await ChatRoom.findOne({ ticket: t._id })
@@ -1117,13 +1151,11 @@ exports.getTicketsByStatus = async (req, res) => {
         let flag = null;
 
         if (t.organisation?.countryCode || t.processor?.countryCode) {
-
           const phone =
             t.organisation?.countryCode ||
             t.processor?.countryCode;
 
           flag = getFlagWithCountryCode(phone);
-
         }
 
         return {
@@ -1132,7 +1164,6 @@ exports.getTicketsByStatus = async (req, res) => {
           chatRoom,
           flag
         };
-
       })
     );
 
@@ -1148,13 +1179,12 @@ exports.getTicketsByStatus = async (req, res) => {
       data
     });
 
-  }
-  catch (err) {
+  } catch (err) {
+    console.error("getTicketsByStatus error:", err);
 
     res.status(500).json({
       message: err.message
     });
-
   }
 };
 
