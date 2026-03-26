@@ -80,6 +80,9 @@ const hasOrganizationRole = async (userId) => {
 exports.createCustomer = async (req, res) => {
   const session = await Customer.startSession();
   session.startTransaction();
+  let user;
+  const isOrgUser = await hasOrganizationRole(req.user.id);
+
 
   try {
     const customerData = pickCustomerFields(req.body);
@@ -142,7 +145,7 @@ exports.createCustomer = async (req, res) => {
     }
     await customer.save();
 
-    let user;
+
     if (existingUser) {
       // ✅ Skip creating user, just link
       user = existingUser;
@@ -206,7 +209,6 @@ exports.createCustomer = async (req, res) => {
 
 
     // 🔔 FCM
-    const isOrgUser = await hasOrganizationRole(user._id);
 
     const receiverId = user._id;
 
