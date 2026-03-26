@@ -14,52 +14,63 @@ const { getFlag } = require("../utils/flagHelper");
 exports.addExternalContact = async (req, res) => {
   try {
     const user = req.user;
-    const { name, email, phone } = req.body;
+    let { name, email, phone } = req.body;
 
-    // ✅ Step 1: Check if the person already exists as an Employee
+    if (!name || (!email && !phone)) {
+      return res.status(400).json({
+        status: 0,
+        message: "Name and (email or phone) required"
+      });
+    }
+
+    email = email?.toLowerCase();
+
+    // 🔥 Prevent duplicate
+    const alreadyExists = await ExternalContact.findOne({
+      $or: [{ email }, { phone }],
+      addedBy: user.id
+    });
+
+    if (alreadyExists) {
+      return res.status(400).json({
+        status: 0,
+        message: "Contact already exists"
+      });
+    }
+
+    // 🔥 Check employee
     const existingEmployee = await Employee.findOne({
-      $or: [
-        { email: email?.toLowerCase() },
-        { phone: phone },
-      ],
-    })
-      .populate("designation", "name")
-      .populate("department", "name")
-      .lean();
+      $or: [{ email }, { phone }]
+    }).lean();
+
+    let newContact;
 
     if (existingEmployee) {
-      // ✅ Step 2: Create external contact linked to existing employee details
-      const newContact = await ExternalContact.create({
+      newContact = await ExternalContact.create({
         name: existingEmployee.name || name,
         email: existingEmployee.email || email,
         phone: existingEmployee.phone || phone,
         addedBy: user.id,
-        linkedEmployee: existingEmployee._id, // 🔹 Optional: Add field to link them
+        linkedEmployee: existingEmployee._id,
       });
-
-      return res.status(200).json({
-        status: 1,
-        message: "External contact added successfully (existing employee linked)",
-        data: newContact,
+    } else {
+      newContact = await ExternalContact.create({
+        name,
+        email,
+        phone,
+        addedBy: user.id,
       });
     }
 
-    // ✅ Step 3: Otherwise, create as a normal new external contact
-    const newContact = await ExternalContact.create({
-      name,
-      email,
-      phone,
-      addedBy: user.id,
-    });
-
-    return res.status(200).json({
+    res.status(200).json({
       status: 1,
       message: "External contact added successfully",
       data: newContact,
     });
+
   } catch (error) {
     console.error("❌ Error adding external contact:", error);
-    return res.status(500).json({
+    res.status(500).json({
       status: 0,
       message: "Server error",
       error: error.message,

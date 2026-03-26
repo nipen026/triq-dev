@@ -557,7 +557,7 @@ exports.createTicket = async (req, res) => {
       message: "Ticket created successfully",
       ticket,
       pricing: pricingData,
-      chatRoom: groupChatRoom || chatRoom
+      chatRoom: finalChatRoom
     });
 
   } catch (err) {
