@@ -45,7 +45,7 @@ exports.getEmployeeProfile = async (req, res) => {
 
         const employee = await Employee.findOne({ linkedUser: userId })
             .populate("department")
-            .populate("designation").populate('user');
+            .populate("designation").populate('linkedUser');
         console.log(employee,"employee");
         const profile = await Profile.findOne({ user: userId });
 
