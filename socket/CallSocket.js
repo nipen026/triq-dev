@@ -6,7 +6,7 @@ const Sound = require('../models/sound.model');
 const admin = require("firebase-admin");
 const ChatRoom = require('../models/chatRoom.model');  // Chat table model
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
-
+const GroupChatRoom = require("../models/groupChat.model"); // ✅ NEW
 
 module.exports = (io) => {
 
@@ -23,94 +23,258 @@ module.exports = (io) => {
 
 
 
-        socket.on("call-event", async ({eventType, room_id, callType = "video" }) => {
+        // socket.on("call-event", async ({eventType, room_id, callType = "video" }) => {
+        //     try {
+        //         console.log(eventType, room_id, callType, "type, room_id, callType");
+
+        //         const senderId = socket.userId;
+        //         if (!senderId) return console.log("❌ Unregistered Sender");
+
+        //         const room = await Room.findOne({ roomName: room_id }).select("token");
+        //         console.log(room, "room");
+
+        //         const chatRoom = await ChatRoom.findById(room_id).populate("organisation processor");
+        //         if (!chatRoom) return console.log("❌ ChatRoom Not Found");
+
+        //         // AUTO GET RECEIVER
+        //         const receiverId =
+        //             senderId === String(chatRoom.organisation._id)
+        //                 ? String(chatRoom.processor._id)
+        //                 : String(chatRoom.organisation._id);
+
+        //         const sender = await User.findById(senderId).select("fullName countryCode");
+        //         const profile = await Profile.findOne({ user: senderId }).select("profileImage");
+        //         const userID = await User.findOne({ _id: receiverId });
+        //         console.log(userID)
+        //         const payload = {
+        //             eventType,
+        //             room_id,
+        //             user_id: receiverId,
+        //             name: sender.fullName,
+        //             sender_name: senderId === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
+        //             receiver_name: senderId === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) : String(chatRoom.organisation.fullName),
+        //             profile_pic: profile?.profileImage || "",
+        //             flag: getFlagWithCountryCode(sender.countryCode),
+        //             callType,
+        //             roomToken: room?.token
+        //         };
+        //         const receiverData = await User.findById(receiverId).select("fcmToken fullName");
+        //         // 🔥 EMIT CALL TO RECEIVER ONLY
+        //         // if (global.onlineUsers.has(receiverId)) {  
+        //         io.to(receiverId).emit("call-event", payload);
+        //         console.log("📞 CALL SENTTT →", receiverId);
+
+        //         console.log(receiverData, eventType, "receiver");
+
+        //         if (eventType == 'call-request') {
+        //             console.log('hello');
+
+        //             const userSound = await Sound.findOne({
+        //                 user: receiverId,
+        //                 type: callType === "audio" ? "voice_call" : "video_call"
+        //             }) || { soundName: "bell" };
+
+        //             const notify = {
+        //                 tokens: [receiverData.fcmToken],
+        //                 data: {
+        //                     ...payload,
+        //                     title: `${sender.fullName} is calling`,
+        //                     body: `Incoming ${callType} call`,
+        //                     screenName: callType === "video" ? "video_call_view" : "audio_call_view",
+        //                     sound: userSound.soundName
+        //                 },
+        //                 android: { priority: "high" },
+        //                 apns: {
+        //                     payload: {
+        //                         aps: {
+        //                             sound: `${userSound.soundName}.aiff`,
+        //                             "content-available": 1,
+        //                             "mutable-content": 1
+        //                         }
+        //                     }
+        //                 }
+        //             };
+        //             console.log(notify, "notify");
+
+        //             await admin.messaging().sendEachForMulticast(notify);
+        //             console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
+        //         }
+        //         // } else {
+        //         //     console.log("❌ No FCM Token found for receiver");
+        //         // }
+
+
+        //         // } else console.log("📵 Receiver Offline — Push Only");
+
+        //     } catch (err) {
+        //         console.log("❌ CALL ERROR:", err);
+        //     }
+        // });
+        // On disconnect ======================================
+
+        socket.on("call-event", async (data) => {
             try {
-                console.log(eventType, room_id, callType, "type, room_id, callType");
+                const {
+                    eventType,
+                    roomName,
+                    chatId,
+                    groupId,
+                    callType = "video",
+                    isGroupCall = false
+                } = data;
 
                 const senderId = socket.userId;
                 if (!senderId) return console.log("❌ Unregistered Sender");
 
-                const room = await Room.findOne({ roomName: room_id }).select("token");
-                console.log(room, "room");
+                //--------------------------------------------------
+                // 🔹 GET ROOM TOKEN
+                //--------------------------------------------------
+                const room = await Room.findOne({ roomName });
 
-                const chatRoom = await ChatRoom.findById(room_id).populate("organisation processor");
-                if (!chatRoom) return console.log("❌ ChatRoom Not Found");
+                //--------------------------------------------------
+                // 🔹 FIND RECEIVERS
+                //--------------------------------------------------
+                let receivers = [];
 
-                // AUTO GET RECEIVER
-                const receiverId =
-                    senderId === String(chatRoom.organisation._id)
-                        ? String(chatRoom.processor._id)
-                        : String(chatRoom.organisation._id);
+                if (isGroupCall) {
+                    const group = await GroupChatRoom
+                        .findById(groupId)
+                        .select("members");
 
-                const sender = await User.findById(senderId).select("fullName countryCode");
-                const profile = await Profile.findOne({ user: senderId }).select("profileImage");
-                const userID = await User.findOne({ _id: receiverId });
-                console.log(userID)
+                    if (!group) return console.log("❌ Group not found");
+
+                    receivers = group.members
+                        .map(id => id.toString())
+                        .filter(id => id !== senderId);
+
+                } else {
+                    const chatRoom = await ChatRoom.findById(chatId)
+                        .populate("organisation processor");
+
+                    if (!chatRoom) return console.log("❌ ChatRoom Not Found");
+
+                    const receiverId =
+                        senderId === String(chatRoom.organisation._id)
+                            ? String(chatRoom.processor._id)
+                            : String(chatRoom.organisation._id);
+
+                    receivers = [receiverId];
+                }
+
+                //--------------------------------------------------
+                // 🔹 SENDER INFO
+                //--------------------------------------------------
+                const sender = await User.findById(senderId)
+                    .select("fullName countryCode");
+
+                const profile = await Profile.findOne({ user: senderId })
+                    .select("profileImage");
+
+                //--------------------------------------------------
+                // 🔹 PAYLOAD
+                //--------------------------------------------------
                 const payload = {
                     eventType,
-                    room_id,
-                    user_id: receiverId,
-                    name: sender.fullName,
-                    sender_name: senderId === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
-                    receiver_name: senderId === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) : String(chatRoom.organisation.fullName),
-                    profile_pic: profile?.profileImage || "",
-                    flag: getFlagWithCountryCode(sender.countryCode),
+                    roomName,
+                    chatId,
+                    groupId,
                     callType,
+                    isGroupCall,
+                    senderId,
+                    sender_name: sender?.fullName,
+                    profile_pic: profile?.profileImage || "",
+                    flag: getFlagWithCountryCode(sender?.countryCode),
                     roomToken: room?.token
                 };
-                const receiverData = await User.findById(receiverId).select("fcmToken fullName");
-                // 🔥 EMIT CALL TO RECEIVER ONLY
-                // if (global.onlineUsers.has(receiverId)) {  
-                io.to(receiverId).emit("call-event", payload);
-                console.log("📞 CALL SENTTT →", receiverId);
 
-                console.log(receiverData, eventType, "receiver");
+                //--------------------------------------------------
+                // 🔹 SOCKET EMIT TO ALL RECEIVERS
+                //--------------------------------------------------
+                receivers.forEach((id) => {
+                    io.to(id).emit("call-event", payload);
+                });
 
-                if (eventType == 'call-request') {
-                    console.log('hello');
+                console.log(`📞 ${eventType} →`, receivers);
 
-                    const userSound = await Sound.findOne({
-                        user: receiverId,
-                        type: callType === "audio" ? "voice_call" : "video_call"
-                    }) || { soundName: "bell" };
+                //--------------------------------------------------
+                // 🔹 HANDLE EVENTS
+                //--------------------------------------------------
 
-                    const notify = {
-                        tokens: [receiverData.fcmToken],
-                        data: {
-                            ...payload,
-                            title: `${sender.fullName} is calling`,
-                            body: `Incoming ${callType} call`,
-                            screenName: callType === "video" ? "video_call_view" : "audio_call_view",
-                            sound: userSound.soundName
-                        },
-                        android: { priority: "high" },
-                        apns: {
-                            payload: {
-                                aps: {
-                                    sound: `${userSound.soundName}.aiff`,
-                                    "content-available": 1,
-                                    "mutable-content": 1
+                // 📞 CALL REQUEST
+                if (eventType === "call-request") {
+
+                    for (const receiverId of receivers) {
+
+                        const receiver = await User.findById(receiverId)
+                            .select("fcmToken");
+
+                        if (!receiver?.fcmToken) continue;
+
+                        const soundData =
+                            await Sound.findOne({
+                                user: receiverId,
+                                type: callType === "audio" ? "voice_call" : "video_call"
+                            }) || { soundName: "bell" };
+
+                        try {
+                            await admin.messaging().send({
+                                token: receiver.fcmToken,
+                                data: {
+                                    ...payload,
+                                    title: `${sender.fullName} is calling`,
+                                    body: `Incoming ${callType} call`,
+                                    screenName:
+                                        callType === "video"
+                                            ? "video_call_view"
+                                            : "audio_call_view",
+                                    sound: soundData.soundName
                                 }
-                            }
+                            });
+
+                        } catch (err) {
+                            console.log("❌ FCM ERROR:", err.message);
                         }
-                    };
-                    console.log(notify, "notify");
-
-                    await admin.messaging().sendEachForMulticast(notify);
-                    console.log(`📨 PUSH SENT → ${receiverData.fullName}`);
+                    }
                 }
-                // } else {
-                //     console.log("❌ No FCM Token found for receiver");
-                // }
 
+                //--------------------------------------------------
+                // ✅ CALL ACCEPT
+                //--------------------------------------------------
+                if (eventType === "call-accept") {
+                    console.log("✅ Call accepted");
 
-                // } else console.log("📵 Receiver Offline — Push Only");
+                    // Notify all users to JOIN
+                    receivers.forEach((id) => {
+                        io.to(id).emit("call-accepted", payload);
+                    });
+                }
+
+                //--------------------------------------------------
+                // ❌ CALL DECLINE
+                //--------------------------------------------------
+                if (eventType === "call-decline") {
+                    console.log("❌ Call declined");
+
+                    receivers.forEach((id) => {
+                        io.to(id).emit("call-declined", payload);
+                    });
+                }
+
+                //--------------------------------------------------
+                // 🔴 CALL END
+                //--------------------------------------------------
+                if (eventType === "call-end") {
+                    console.log("🔴 Call ended");
+
+                    receivers.forEach((id) => {
+                        io.to(id).emit("call-ended", payload);
+                    });
+                }
 
             } catch (err) {
                 console.log("❌ CALL ERROR:", err);
             }
         });
-        // On disconnect ======================================
         socket.on("disconnect", () => {
             console.log("🔴 User Disconnected:", socket.userId);
         });
