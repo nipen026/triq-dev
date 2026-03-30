@@ -162,8 +162,8 @@ exports.createSession = async (req, res) => {
           })) || { soundName: "bell" };
 
         try {
-          await admin.messaging().sendEach({
-            token: receiver.fcmToken,
+          await admin.messaging().sendEachForMulticast({
+            tokens: [receiver.fcmToken],
             data: {
               title: `${senderUser?.fullName || "User"} is calling`,
               body: `Incoming ${callType} call`,
