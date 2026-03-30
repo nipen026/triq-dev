@@ -161,62 +161,65 @@ exports.createSession = async (req, res) => {
             type: callType === "audio" ? "voice_call" : "video_call"
           })) || { soundName: "bell" };
 
-        await admin.messaging().send({
-          token: receiver.fcmToken,
-          data: {
-            title: `${senderUser?.fullName || "User"} is calling`,
-            body: `Incoming ${callType} call`,
-            eventType,
-            room_id: roomName,
-            user_id: receiver._id.toString(),
-            name: senderUser?.fullName || "",
-            profile_pic: profile?.profileImage || "",
-            flag: getFlagWithCountryCode(senderUser?.countryCode),
-            callType,
-            isGroupCall: "true",
-            groupName: groupChat?.groupName || "",
-            roomToken: room?.token,
-            screenName:
-              callType === "video"
-                ? "video_call_view"
-                : "audio_call_view",
-            sound: soundData.soundName
-          },
-          android: { priority: "high" },
-          apns: {
-            payload: {
-              aps: {
-                sound: `${soundData.soundName}.aiff`,
-                "content-available": 1
-              }
+        try {
+          await admin.messaging().send({
+            token: receiver.fcmToken,
+            data: {
+              title: `${senderUser?.fullName || "User"} is calling`,
+              body: `Incoming ${callType} call`,
+              eventType,
+              room_id: roomName,
+              user_id: receiver._id.toString(),
+              name: senderUser?.fullName || "",
+              profile_pic: profile?.profileImage || "",
+              flag: getFlagWithCountryCode(senderUser?.countryCode),
+              callType,
+              isGroupCall: isGroupCall ? "true" : "false",
+              groupName: groupChat?.groupName || "",
+              roomToken: room?.token,
+              screenName:
+                callType === "video"
+                  ? "video_call_view"
+                  : "audio_call_view",
+              sound: soundData.soundName
             }
+          });
+
+        } catch (fcmError) {
+          console.error(`❌ FCM ERROR for user ${receiver._id}:`, fcmError.message);
+
+          // 🔥 AUTO CLEAN INVALID TOKEN
+          if (fcmError.message.includes("Requested entity was not found")) {
+            await User.findByIdAndUpdate(receiver._id, {
+              $unset: { fcmToken: "" }
+            });
+            console.log(`🧹 Removed invalid FCM token for user ${receiver._id}`);
           }
-        });
+        }
+
+        console.log("📨 PUSH SENT TO:", receivers);
       }
 
-      console.log("📨 PUSH SENT TO:", receivers);
+      //--------------------------------------------------
+      // 🔹 RESPONSE
+      //--------------------------------------------------
+      return res.json({
+        status: 1,
+        message: "Livekit session created",
+        token,
+        eventType,
+        identity: userId,
+        callType,
+        isGroupCall,
+        livekitUrl: process.env.LIVEKIT_URL
+      });
     }
+    } catch (err) {
+      console.error("❌ LIVEKIT ERROR:", err);
 
-    //--------------------------------------------------
-    // 🔹 RESPONSE
-    //--------------------------------------------------
-    return res.json({
-      status: 1,
-      message: "Livekit session created",
-      token,
-      eventType,
-      identity: userId,
-      callType,
-      isGroupCall,
-      livekitUrl: process.env.LIVEKIT_URL
-    });
-
-  } catch (err) {
-    console.error("❌ LIVEKIT ERROR:", err);
-
-    return res.status(500).json({
-      status: 0,
-      error: err.message
-    });
-  }
-};
+      return res.status(500).json({
+        status: 0,
+        error: err.message
+      });
+    }
+  };
