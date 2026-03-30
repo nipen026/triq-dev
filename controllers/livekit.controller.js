@@ -160,6 +160,26 @@ exports.createSession = async (req, res) => {
             user: receiver._id,
             type: callType === "audio" ? "voice_call" : "video_call"
           })) || { soundName: "bell" };
+        const notificationdata = {
+          title: `${senderUser?.fullName || "User"} is calling`,
+          body: `Incoming ${callType} call`,
+          eventType,
+          room_id: roomName,
+          user_id: receiver._id.toString(),
+          name: senderUser?.fullName || "",
+          profile_pic: profile?.profileImage || "",
+          flag: getFlagWithCountryCode(senderUser?.countryCode),
+          callType,
+          isGroupCall: isGroupCall ? "true" : "false",
+          groupName: groupChat?.groupName || "",
+          roomToken: room?.token,
+          screenName:
+            callType === "video"
+              ? "video_call_view"
+              : "audio_call_view",
+          sound: soundData.soundName
+        }
+        console.log(notificationdata, "notificationdata");
 
         try {
           await admin.messaging().sendEachForMulticast({
@@ -214,12 +234,12 @@ exports.createSession = async (req, res) => {
         livekitUrl: process.env.LIVEKIT_URL
       });
     }
-    } catch (err) {
-      console.error("❌ LIVEKIT ERROR:", err);
+  } catch (err) {
+    console.error("❌ LIVEKIT ERROR:", err);
 
-      return res.status(500).json({
-        status: 0,
-        error: err.message
-      });
-    }
-  };
+    return res.status(500).json({
+      status: 0,
+      error: err.message
+    });
+  }
+};
