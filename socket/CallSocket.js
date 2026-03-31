@@ -202,62 +202,47 @@ module.exports = (io) => {
 
                 // 📞 CALL REQUEST
                 if (eventType === "call-request") {
-
-                    for (const receiverId of receivers) {
-
-                        const receiver = await User.findById(receiverId)
-                            .select("fcmToken");
-
-                        if (!receiver?.fcmToken) continue;
-
-                        const soundData =
-                            await Sound.findOne({
-                                user: receiverId,
-                                type: callType === "audio" ? "voice_call" : "video_call"
-                            }) || { soundName: "bell" };
-
-                        try {
-                            await admin.messaging().send({
-                                token: receiver.fcmToken,
-                                data: {
-                                    ...payload,
-                                    title: `${sender.fullName} is calling`,
-                                    body: `Incoming ${callType} call`,
-                                    screenName:
-                                        callType === "video"
-                                            ? "video_call_view"
-                                            : "audio_call_view",
-                                    sound: soundData.soundName
-                                }
-                            });
-
-                        } catch (err) {
-                            console.log("❌ FCM ERROR:", err.message);
-                        }
-                    }
+                    receivers.forEach(id => {
+                        io.to(id).emit("incoming-call", {
+                            roomName,
+                            callType,
+                            user: senderId
+                        });
+                    });
                 }
 
                 //--------------------------------------------------
                 // ✅ CALL ACCEPT
                 //--------------------------------------------------
                 if (eventType === "call-accept") {
-                    console.log("✅ Call accepted");
 
-                    // Notify all users to JOIN
-                    receivers.forEach((id) => {
-                        io.to(id).emit("call-accepted", payload);
+                    // 🔥 Generate NEW token
+                    const token = await generateLivekitToken(roomName, senderId, senderId);
+
+                    receivers.forEach(id => {
+                        io.to(id).emit("call-accepted", {
+                            roomName,
+                            callType,
+                            token,
+                            user: senderId
+                        });
                     });
+
+                    return;
                 }
 
                 //--------------------------------------------------
                 // ❌ CALL DECLINE
                 //--------------------------------------------------
                 if (eventType === "call-decline") {
-                    console.log("❌ Call declined");
-
-                    receivers.forEach((id) => {
-                        io.to(id).emit("call-declined", payload);
+                    receivers.forEach(id => {
+                        io.to(id).emit("call-declined", {
+                            roomName,
+                            user: senderId
+                        });
                     });
+
+                    return;
                 }
 
                 //--------------------------------------------------
