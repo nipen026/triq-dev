@@ -1,6 +1,6 @@
 const { AccessToken } = require("livekit-server-sdk");
 
-const generateLivekitToken = (roomName, identity, name) => {
+const generateLivekitToken = async (roomName, identity, name) => {
   const apiKey = process.env.LIVEKIT_API_KEY;
   const apiSecret = process.env.LIVEKIT_API_SECRET;
 
@@ -11,7 +11,7 @@ const generateLivekitToken = (roomName, identity, name) => {
   const at = new AccessToken(apiKey, apiSecret, {
     identity,
     name,
-    ttl: "10m", // ✅ VERY IMPORTANT (increase expiry)
+    ttl: "10m",
   });
 
   at.addGrant({
@@ -22,7 +22,8 @@ const generateLivekitToken = (roomName, identity, name) => {
     canPublishData: true,
   });
 
-  return at.toJwt();
+  const token = await at.toJwt();
+  return token;
 };
 
 module.exports = { generateLivekitToken };
