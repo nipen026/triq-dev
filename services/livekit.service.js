@@ -11,6 +11,7 @@ const generateLivekitToken = (roomName, identity, name) => {
   const at = new AccessToken(apiKey, apiSecret, {
     identity,
     name,
+    ttl: "10m", // ✅ VERY IMPORTANT (increase expiry)
   });
 
   at.addGrant({
