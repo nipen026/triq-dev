@@ -7,7 +7,7 @@ const admin = require("firebase-admin");
 const ChatRoom = require('../models/chatRoom.model');  // Chat table model
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
 const GroupChatRoom = require("../models/groupChat.model"); // ✅ NEW
-
+const { generateLivekitToken } = require("../services/livekit.service");
 module.exports = (io) => {
 
 
