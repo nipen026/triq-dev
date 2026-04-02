@@ -275,7 +275,7 @@ exports.createSession = async (req, res) => {
     const userId =
       identity || `user_${Math.random().toString(36).substring(2, 9)}`;
 
-    const token = generateLivekitToken(roomName, userId, name || userId);
+    const token = await generateLivekitToken(roomName, userId, name || userId);
 
     let room = await Room.findOne({ roomName });
 
