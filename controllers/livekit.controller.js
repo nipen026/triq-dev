@@ -243,31 +243,41 @@
 //     });
 //   }
 // };
+// controllers/call.controller.js
+
 const Room = require("../models/room.model");
 const User = require("../models/user.model");
 const Sound = require("../models/sound.model");
-const Profile = require('../models/profile.model');
+const Profile = require("../models/profile.model");
+const ChatRoom = require("../models/chatRoom.model");
+const GroupChat = require("../models/groupChat.model");
+const admin = require("../config/firebase");
 const { generateLivekitToken } = require("../services/livekit.service");
 const { getIO } = require("../socket/socketInstance");
-const ChatRoom = require('../models/chatRoom.model');
-const admin = require("../config/firebase");
 const { getFlagWithCountryCode } = require("../utils/flagHelper");
 
 exports.createSession = async (req, res) => {
   try {
-    const { roomName, identity, name, users, callType = "video", eventType = "call-request" } = req.body;
-    if (!roomName) return res.status(400).json({ error: "roomName is required" });
+    const {
+      roomName,
+      identity,
+      name,
+      users,
+      callType = "video",
+      eventType = "call-request",
+      isGroupCall = false
+    } = req.body;
 
-    const userId = identity || `user_${Math.random().toString(36).substring(2, 9)}`;
+    if (!roomName) {
+      return res.status(400).json({ error: "roomName is required" });
+    }
+
+    const userId =
+      identity || `user_${Math.random().toString(36).substring(2, 9)}`;
+
+    const token = generateLivekitToken(roomName, userId, name || userId);
 
     let room = await Room.findOne({ roomName });
-
-    // 🚫 Prevent duplicate call request - if already ringing, do not notify again
-    // if (room && room.eventType === "call-request") {
-    //   return res.json({ status: 2, msg: "Call already ringing...", roomName });
-    // }
-
-    const token = await generateLivekitToken(roomName, userId, name || userId);
 
     if (!room) {
       room = await Room.create({
@@ -276,81 +286,148 @@ exports.createSession = async (req, res) => {
         token,
         users,
         callType,
-        eventType
+        eventType,
+        isGroupCall
       });
     } else {
+      room.token = token;
       room.eventType = eventType;
       room.users = users;
-      room.token = token;
+      room.isGroupCall = isGroupCall;
       await room.save();
     }
 
-    // 🔥 FIXED — DO NOT USE findById(roomName)
-    const chatRoom = await ChatRoom.findById(roomName).populate("organisation processor")
-    if (!chatRoom) return console.log("❌ ChatRoom Not Found");
+    let receivers = [];
+    let senderUser = null;
+    let groupName = "";
 
-    const receiverId =
-      users === String(chatRoom.organisation._id)
-        ? String(chatRoom.processor._id)
-        : String(chatRoom.organisation._id);
-    const senderUser = users === String(chatRoom.organisation._id) ? chatRoom.organisation : chatRoom.processor;
-    const receiverUser = users === String(chatRoom.organisation._id) ? chatRoom.processor : chatRoom.organisation;
+    //---------------------------------------
+    // ✅ GROUP CALL
+    //---------------------------------------
+    if (isGroupCall) {
+      const group = await GroupChat.findById(roomName).populate("members");
+
+      if (!group) {
+        return res.status(404).json({ error: "Group not found" });
+      }
+
+      senderUser = await User.findById(users).select("fullName countryCode");
+      groupName = group.groupName;
+
+      receivers = group.members
+        .map((m) => m._id.toString())
+        .filter((id) => id !== users);
+    }
+
+    //---------------------------------------
+    // ✅ 1-to-1 CALL
+    //---------------------------------------
+    else {
+      const chatRoom = await ChatRoom.findById(roomName).populate(
+        "organisation processor"
+      );
+
+      if (!chatRoom) {
+        return res.status(404).json({ error: "Chat room not found" });
+      }
+
+      const receiverId =
+        users === String(chatRoom.organisation._id)
+          ? String(chatRoom.processor._id)
+          : String(chatRoom.organisation._id);
+
+      senderUser =
+        users === String(chatRoom.organisation._id)
+          ? chatRoom.organisation
+          : chatRoom.processor;
+
+      receivers = [receiverId];
+    }
+
+    //---------------------------------------
+    // ✅ SOCKET EMIT
+    //---------------------------------------
     const io = getIO();
-    io.to(receiverId).emit("incoming-call",
-      {
+
+    receivers.forEach((receiverId) => {
+      io.to(receiverId).emit("incoming-call", {
         eventType,
         roomName,
         callType,
         token,
-        sender_name: senderUser.fullName,
-        receiver_name: receiverUser.fullName,
-        flag: getFlagWithCountryCode(senderUser.countryCode),
-        user: users
-      }
-    );
+        isGroupCall,
+        groupName,
+        sender_name: senderUser?.fullName || "User",
+        flag: getFlagWithCountryCode(senderUser?.countryCode)
+      });
+    });
 
-    console.log(`📞 SOCKET SENT TO → ${receiverId}`);
+    console.log("📞 SOCKET SENT TO:", receivers);
 
-    // 📌 PUSH NOTIFICATION ONLY IF call-request
+    //---------------------------------------
+    // ✅ PUSH NOTIFICATIONS
+    //---------------------------------------
     if (eventType === "call-request") {
-      const receiver = await User.findById(receiverId).select("fullName fcmToken countryCode");
-      if (receiver?.fcmToken) {
-        const soundData = await Sound.findOne({
-          user: receiverId,
-          type: callType === "audio" ? "voice_call" : "video_call"
-        }) || { soundName: "bell" };
-        const sender = await User.findById(users).select("fullName countryCode");
-        const profile = await Profile.findOne({ user: users }).select("profileImage");
-        await admin.messaging().send({
-          token: receiver.fcmToken,
-          data: {
-            title: `${sender.fullName} is calling`,
-            body: `Incoming ${callType} call`,
-            eventType,
-            room_id: roomName,
-            user_id: receiverId,
-            name: sender.fullName,
-            sender_name: users === String(chatRoom.organisation._id) ? String(chatRoom.organisation.fullName) : String(chatRoom.processor.fullName),
-            receiver_name: users === String(chatRoom.organisation._id) ? String(chatRoom.processor.fullName) : String(chatRoom.organisation.fullName),
-            profile_pic: profile?.profileImage || "",
-            flag: getFlagWithCountryCode(sender.countryCode),
-            callType,
-            roomToken: room?.token,
-            screenName: callType === "video" ? "video_call_view" : "audio_call_view",
-            sound: soundData.soundName
-          },
-          android: { priority: "high" },
-          apns: { payload: { aps: { sound: `${soundData.soundName}.aiff`, "content-available": 1 } } }
-        });
+      const usersData = await User.find({
+        _id: { $in: receivers }
+      }).select("fullName fcmToken countryCode");
 
-        console.log("📨 PUSH NOTIFICATION SENT");
+      const profile = await Profile.findOne({ user: users });
+
+      for (const receiver of usersData) {
+        if (!receiver.fcmToken) continue;
+
+        const soundData =
+          (await Sound.findOne({
+            user: receiver._id,
+            type: callType === "audio" ? "voice_call" : "video_call"
+          })) || { soundName: "bell" };
+
+        try {
+          await admin.messaging().send({
+            token: receiver.fcmToken,
+            data: {
+              title: `${senderUser?.fullName} is calling`,
+              body: `Incoming ${callType} call`,
+              eventType,
+              room_id: roomName,
+              callType,
+              isGroupCall: isGroupCall ? "true" : "false",
+              groupName,
+              name: senderUser?.fullName || "",
+              profile_pic: profile?.profileImage || "",
+              flag: getFlagWithCountryCode(senderUser?.countryCode),
+              roomToken: token,
+              screenName:
+                callType === "video"
+                  ? "video_call_view"
+                  : "audio_call_view",
+              sound: soundData.soundName
+            }
+          });
+        } catch (err) {
+          console.log("❌ FCM ERROR:", err.message);
+        }
       }
     }
 
-    return res.json({ status: 1, message: "Livekit session created", token, eventType, identity: userId, callType, livekitUrl: process.env.LIVEKIT_URL });
+    //---------------------------------------
+    return res.json({
+      status: 1,
+      message: "Livekit session created",
+      token,
+      eventType,
+      identity: userId,
+      callType,
+      isGroupCall,
+      livekitUrl: process.env.LIVEKIT_URL
+    });
 
   } catch (err) {
-    console.error("LIVEKIT ERROR", err);
-    return res.status(500).json({ status: 0, error: err.message });
+    console.error("❌ LIVEKIT ERROR:", err);
+    return res.status(500).json({
+      status: 0,
+      error: err.message
+    });
   }
 };
