@@ -267,7 +267,7 @@ exports.createSession = async (req, res) => {
       eventType = "call-request",
       isGroupCall = false
     } = req.body;
-
+    console.log(req.body, "createSession body");
     if (!roomName) {
       return res.status(400).json({ error: "roomName is required" });
     }

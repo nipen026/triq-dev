@@ -8,6 +8,7 @@ const RoomSchema = new mongoose.Schema(
     isActive: { type: Boolean, default: true },
     token:{type:String,required:true},
     eventType:{type:String,required:true},
+      isGroupCall:{type:Boolean,default:false}
   },
   { timestamps: true }
 );
