@@ -122,17 +122,53 @@ exports.createSession = async (req, res) => {
     console.log("📞 SOCKET SENT TO:", receivers);
 
     //---------------------------------------
-    // ✅ PUSH NOTIFICATIONS
+    // ✅ PUSH NOTIFICATIONS (FIXED)
     //---------------------------------------
     if (eventType === "call-request") {
-      const usersData = await User.find({
-        _id: { $in: receivers }
-      }).select("fullName fcmToken countryCode");
 
+      let pushUsers = [];
+
+      //---------------------------------------
+      // GROUP CALL USERS
+      //---------------------------------------
+      if (isGroupCall) {
+        const group = await GroupChat.findById(roomName)
+          .populate("members", "fullName fcmToken countryCode");
+
+        if (!group) {
+          return res.status(404).json({ error: "Group not found" });
+        }
+
+        pushUsers = group.members.filter(
+          (m) => String(m._id) !== String(users) // ❌ exclude sender
+        );
+
+        console.log("📢 GROUP MEMBERS:", pushUsers.map(u => u._id));
+      }
+
+      //---------------------------------------
+      // 1-to-1 USERS
+      //---------------------------------------
+      else {
+        pushUsers = await User.find({
+          _id: { $in: receivers }
+        }).select("fullName fcmToken countryCode");
+      }
+
+      //---------------------------------------
+      // COMMON DATA
+      //---------------------------------------
       const profile = await Profile.findOne({ user: users });
 
-      for (const receiver of usersData) {
-        if (!receiver.fcmToken) continue;
+      //---------------------------------------
+      // SEND PUSH
+      //---------------------------------------
+      for (const receiver of pushUsers) {
+
+        if (!receiver.fcmToken) {
+          console.log("❌ No FCM token:", receiver._id);
+          continue;
+        }
 
         const soundData =
           (await Sound.findOne({
@@ -141,35 +177,11 @@ exports.createSession = async (req, res) => {
           })) || { soundName: "bell" };
 
         try {
-          // await admin.messaging().send({
-          //   token: receiver.fcmToken,
-          //   data: {
-          //     title: `${senderUser?.fullName} is calling`,
-          //     body: `Incoming ${callType} call`,
-          //     eventType,
-          //     room_id: roomName,
-          //     callType,
-          //     isGroupCall: isGroupCall ? "true" : "false",
-          //     groupName,
-          //     name: senderUser?.fullName || "",
-          //     profile_pic: profile?.profileImage || "",
-          //     flag: getFlagWithCountryCode(senderUser?.countryCode),
-          //     roomToken: token,
-          //     screenName:
-          //       callType === "video"
-          //         ? "video_call_view"
-          //         : "audio_call_view",
-          //     sound: soundData.soundName
-          //   }
-          // });
-          const group = await GroupChat.findById(roomName).populate("members");
-          console.log("🚀 Sending push to:", group.members);
-                
-          group.members.forEach(async member => {
-            console.log("📲 FCM:", member.fcmToken);
+          console.log("🚀 Sending push to:", receiver._id);
+          console.log("📲 FCM:", receiver.fcmToken);
 
-            await admin.messaging().send({
-              token: member.fcmToken,
+          await admin.messaging().send({
+            token: receiver.fcmToken,
 
             data: {
               title: `${senderUser?.fullName} is calling`,
@@ -183,32 +195,37 @@ exports.createSession = async (req, res) => {
               profile_pic: String(profile?.profileImage || ""),
               flag: String(getFlagWithCountryCode(senderUser?.countryCode)),
               roomToken: String(token),
-              screenName: callType === "video"
-                ? "video_call_view"
-                : "audio_call_view",
+              screenName:
+                callType === "video"
+                  ? "video_call_view"
+                  : "audio_call_view",
               sound: soundData.soundName
             },
 
-            android: {
-              priority: "high"
-            },
+            android: { priority: "high" },
 
             apns: {
               payload: {
-                aps: {
-                  "content-available": 1
-                }
+                aps: { "content-available": 1 }
               }
             }
           });
-          console.log("🚀 Sending push to:", member._id);
-          console.log("📲 FCM:", member.fcmToken);
-        });
-      } catch (err) {
-        console.log("❌ FCM ERROR:", err.message);
+
+        } catch (err) {
+          console.log("❌ FCM ERROR:", err.message);
+
+          // 🔥 REMOVE INVALID TOKEN
+          if (
+            err.message.includes("Requested entity was not found") ||
+            err.message.includes("registration-token-not-registered")
+          ) {
+            await User.findByIdAndUpdate(receiver._id, {
+              $unset: { fcmToken: "" }
+            });
+          }
+        }
       }
     }
-  }
 
     //---------------------------------------
     return res.json({
