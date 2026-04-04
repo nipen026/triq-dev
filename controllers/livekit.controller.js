@@ -165,21 +165,18 @@ exports.createSession = async (req, res) => {
           await admin.messaging().send({
             token: receiver.fcmToken,
 
-            notification: {
-              title: `${senderUser?.fullName} is calling`,
-              body: `Incoming ${callType} call`
-            },
-
             data: {
-              eventType,
-              room_id: roomName,
-              callType,
+              title: `${senderUser?.fullName} is calling`,
+              body: `Incoming ${callType} call`,
+              eventType: String(eventType),
+              room_id: String(roomName),
+              callType: String(callType),
               isGroupCall: isGroupCall ? "true" : "false",
-              groupName,
-              name: senderUser?.fullName || "",
-              profile_pic: profile?.profileImage || "",
-              flag: getFlagWithCountryCode(senderUser?.countryCode),
-              roomToken: token,
+              groupName: String(groupName || ""),
+              name: String(senderUser?.fullName || ""),
+              profile_pic: String(profile?.profileImage || ""),
+              flag: String(getFlagWithCountryCode(senderUser?.countryCode)),
+              roomToken: String(token),
               screenName: callType === "video"
                 ? "video_call_view"
                 : "audio_call_view",
@@ -188,8 +185,18 @@ exports.createSession = async (req, res) => {
 
             android: {
               priority: "high"
+            },
+
+            apns: {
+              payload: {
+                aps: {
+                  "content-available": 1
+                }
+              }
             }
           });
+          console.log("🚀 Sending push to:", receiver._id);
+          console.log("📲 FCM:", receiver.fcmToken);
         } catch (err) {
           console.log("❌ FCM ERROR:", err.message);
         }
