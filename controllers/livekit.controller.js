@@ -162,7 +162,10 @@ exports.createSession = async (req, res) => {
           //     sound: soundData.soundName
           //   }
           // });
-          await admin.messaging().send({
+          console.log("🚀 Sending push to:", receiver);
+          console.log("📲 FCM:", receiver.fcmToken);
+
+          await admin.messaging().sendEachForMulticast({
             token: receiver.fcmToken,
 
             data: {
