@@ -162,11 +162,12 @@ exports.createSession = async (req, res) => {
           //     sound: soundData.soundName
           //   }
           // });
-          console.log("🚀 Sending push to:", receiver);
-          console.log("📲 FCM:", receiver.fcmToken);
+          console.log("🚀 Sending push to:", group.members);
+          group.members.forEach(async member => {
+            console.log("📲 FCM:", member.fcmToken);
 
-          await admin.messaging().sendEachForMulticast({
-            token: receiver.fcmToken,
+            await admin.messaging().send({
+              token: member.fcmToken,
 
             data: {
               title: `${senderUser?.fullName} is calling`,
@@ -198,13 +199,14 @@ exports.createSession = async (req, res) => {
               }
             }
           });
-          console.log("🚀 Sending push to:", receiver._id);
-          console.log("📲 FCM:", receiver.fcmToken);
-        } catch (err) {
-          console.log("❌ FCM ERROR:", err.message);
-        }
+          console.log("🚀 Sending push to:", member._id);
+          console.log("📲 FCM:", member.fcmToken);
+        });
+      } catch (err) {
+        console.log("❌ FCM ERROR:", err.message);
       }
     }
+  }
 
     //---------------------------------------
     return res.json({
