@@ -163,6 +163,7 @@ exports.createSession = async (req, res) => {
           //   }
           // });
           console.log("🚀 Sending push to:", group.members);
+                const group = await GroupChat.findById(roomName).populate("members");
           group.members.forEach(async member => {
             console.log("📲 FCM:", member.fcmToken);
 
